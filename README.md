@@ -1,2 +1,12 @@
 # comparative-organoids
-Data exploration for possible project with Mo Mostajo about differences between human brains and human brain organoids
+
+*comparative-organoids*
+
+A short description of the project.
+
+To generate the production environment, run
+```
+conda env create <ENV_NAME> --file environment.yml
+```
+
+
