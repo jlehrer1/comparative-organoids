@@ -1,4 +1,5 @@
 CONTAINER = jmlehrer/cell-exploration
+JOB = job.yaml 
 
 exec:
 	docker exec -it $(CONTAINER) /bin/bash

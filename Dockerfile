@@ -29,11 +29,11 @@ RUN apt-get --allow-releaseinfo-change update && \
         ffmpeg \
         libsm6 \
         libxext6 \
-        libgl1-mesa-glx 
+        libgl1-mesa-glx \
+        gzip 
 
 RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy 
 RUN conda install -c conda-forge python-kaleido
 RUN pip install statdepth==0.7.17 kaleido opencv-python Pillow matplotlib umap-learn dask 
-RUN pip install git+git://github.com/braingeneers/braingeneerspy
 
 COPY . .

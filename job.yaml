@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rna-seq-umap-projection-w-comments
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: rna-seq-umap-projection-w-comments
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: rna-seq-umap-projection-w-comments
+        image: jmlehrer/cell-exploration:latest
+        command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        args: ["./unzip.sh && sleep 1000000"]
+        resources:
+          limits:
+            memory: 110Gi
+            cpu: "10"
+          requests:
+            memory: 100Gi
+            cpu: "8"
+        volumeMounts:
+        - name: ephemeral
+          mountPath: "/data"
+      volumes:
+      # Ephemeral storage
+      - name: ephemeral
+        emptyDir: {}
