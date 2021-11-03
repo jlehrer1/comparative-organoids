@@ -18,7 +18,7 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["./unzip.sh && sleep 1000000"]
+        args: ["./unzip.sh && python src/data/make_dataset.py"]
         resources:
           limits:
             memory: 110Gi

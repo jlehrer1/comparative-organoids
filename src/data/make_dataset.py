@@ -17,8 +17,8 @@ def draw_umap(data, n_neighbors=15, min_dist=0.1, n_components=2, metric='euclid
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in raw data using Dask')
-df_organoid_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'organoid.tsv.gz'), compression='gzip', sep='\t')
-df_primary_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'primary.tsv.gz'), compression='gzip', sep='\t')
+df_organoid_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'organoid.tsv'), sep='\t')
+df_primary_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'primary.tsv'), sep='\t')
 
 print('Setting index and transposing data')
 df_organoid_raw['gene'].apply(lambda x: x.split('|')[0]) # For some reason gene expressions are marked twice so just fix this quickly
