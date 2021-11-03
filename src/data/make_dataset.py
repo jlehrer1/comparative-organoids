@@ -20,12 +20,14 @@ print('Reading in raw data using Dask')
 df_organoid_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'organoid.tsv'), sep='\t', sample=10000000)
 df_primary_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'primary.tsv'), sep='\t', sample=10000000)
 
-print('Setting index and transposing data')
+print('Fixing index on organoid data')
 df_organoid_raw['gene'].apply(lambda x: x.split('|')[0]) # For some reason gene expressions are marked twice so just fix this quickly
 
+print('Setting index')
 df_primary_raw = df_primary_raw.set_index('gene')
 df_organoid_raw = df_organoid_raw.set_index('gene')
 
+print('Transposing data')
 df_primary_raw = df_primary_raw.T
 df_organoid_raw = df_organoid_raw.T
 
@@ -53,6 +55,14 @@ for neighbor in params['n_neighbors']:
                 n_components=n,
             )
 
-            df_primary.to_csv(f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv', index=False)
-            df_organoid.to_csv(f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv', index=False)
+            df_primary.to_csv(
+                os.path.join(here, '..', '..', 'data', 'interim', f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv', 
+                index=False)
+            )
 
+            df_organoid.to_csv(
+                os.path.join(here, '..', '..', 'data', 'interim', f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv', 
+                index=False)
+            )
+
+            print(f'Written with {neighbor} neighbors, {dist} distance, {n} components')
