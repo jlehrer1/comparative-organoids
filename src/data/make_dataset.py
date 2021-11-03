@@ -4,6 +4,14 @@ import pathlib
 import os 
 import umap
 import dask.dataframe as dd
+import boto3
+    
+s3 = boto3.resource(
+    's3',
+    endpoint_url="https://s3.nautilus.optiputer.net",
+    aws_access_key_id="EFIE1S59OR5CHDC4KCHK",
+    aws_secret_access_key="DRXgeKsTLctfFX9udqfT04go8JpxG3qWxj0OKHVU",
+)
 
 def draw_umap(data, n_neighbors=15, min_dist=0.1, n_components=2, metric='euclidean'):
     fit = umap.UMAP(
@@ -14,6 +22,12 @@ def draw_umap(data, n_neighbors=15, min_dist=0.1, n_components=2, metric='euclid
     )
     return fit.fit_transform(data);
     
+def upload(file_name, remote_name):
+    s3.Bucket('braingeneersdev').upload_file(
+        Filename=file_name,
+        Key=os.path.join('jlehrer', 'mo_data', remote_name)
+    )
+
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in raw data using Dask')
@@ -56,13 +70,24 @@ for neighbor in params['n_neighbors']:
             )
 
             df_primary.to_csv(
-                os.path.join(here, '..', '..', 'data', 'interim', f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv', 
-                index=False)
+                os.path.join(here, '..', '..', 'data', 'interim', f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'), 
+                index=False
             )
 
             df_organoid.to_csv(
-                os.path.join(here, '..', '..', 'data', 'interim', f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv', 
-                index=False)
+                os.path.join(here, '..', '..', 'data', 'interim', f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'), 
+                index=False
             )
 
-            print(f'Written with {neighbor} neighbors, {dist} distance, {n} components')
+            print(f'Written UMAP with {neighbor} neighbors, {dist} distance, {n} components')
+            print(f'Uploading UMAP with {neighbor} neighbors, {dist} distance, {n} components to S3')
+            
+            upload(
+                os.path.join(here, '..', '..', 'data', 'interim', f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'),
+                f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'
+            )
+
+            upload(
+                os.path.join(here, '..', '..', 'data', 'interim', f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'),
+                f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'
+            )
