@@ -4,7 +4,12 @@ import matplotlib.pyplot as plt
 import umap
 import plotly.express as px
 import plotly.graph_objects as go
+import dask.dataframe as dd
+import pathlib 
+import os 
 
-df_organoid_raw = pd.read_csv('../data/raw/organoid.tsv.gz', compression='gzip', sep='\t', nrows=10)
-df_primary_raw = pd.read_csv('../data/raw/primary.tsv.gz', compression='gzip', sep='\t', nrows=10)
-df_organoid_raw = df_organoid_raw['gene'].apply(lambda x: x.split('|')[0])
+here = pathlib.Path(__file__).parent.absolute()
+
+# Test reading in compressed files in my Docker container 
+dask_test = dd.read_csv(os.path.join(here, '../data/raw/organoid.tsv.gz'), compression='gzip', sep='\t', nrows=10, sample=1000000000)
+pandas_test = pd.read_csv(os.path.join(here, '../data/raw/organoid.tsv.gz'), compression='gzip', sep='\t')
