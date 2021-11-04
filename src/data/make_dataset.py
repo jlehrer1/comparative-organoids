@@ -37,9 +37,12 @@ df_primary_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'prim
 print('Fixing index on organoid data')
 df_organoid_raw['gene'].apply(lambda x: x.split('|')[0]) # For some reason gene expressions are marked twice so just fix this quickly
 
-print('Setting index')
-df_primary_raw = df_primary_raw.set_index('gene')
-df_organoid_raw = df_organoid_raw.set_index('gene')
+# print('Setting index')
+# df_primary_raw = df_primary_raw.set_index('gene')
+# df_organoid_raw = df_organoid_raw.set_index('gene')
+print('Dropping gene column for faster computation, can be mapped back later')
+df_primary_raw = df_primary_raw.drop('gene', axis=1)
+df_organoid_raw = df_organoid_raw.drop('gene', axis=1)
 
 print('Transposing data')
 df_primary_raw = df_primary_raw.T

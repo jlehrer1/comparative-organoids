@@ -1,24 +1,24 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-test-read
+  name: rna-seq-generate-transposed-data
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-test-read
+        k8s-app: rna-seq-generate-transposed-data
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-test-read
+      - name: rna-seq-generate-transposed-data
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python notebooks/test.py"]
+        args: ["./unzip.sh && python src/data/generate_transposed_data.py"]
         resources:
           limits:
             memory: 16Gi
