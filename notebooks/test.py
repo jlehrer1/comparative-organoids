@@ -11,5 +11,5 @@ import os
 here = pathlib.Path(__file__).parent.absolute()
 
 # Test reading in compressed files in my Docker container 
-dask_test = dd.read_csv(os.path.join(here, '../data/raw/organoid.tsv.gz'), compression='gzip', sep='\t', nrows=10, sample=1000000000)
-pandas_test = pd.read_csv(os.path.join(here, '../data/raw/organoid.tsv.gz'), compression='gzip', sep='\t')
+dask_test = dd.read_csv(os.path.join(here, '../data/raw/organoid.tsv.gz'), compression='gzip', sep='\t', sample=1000000000)
+pandas_test = pd.read_csv(os.path.join(here, '../data/raw/organoid.tsv.gz'), compression='gzip', sep='\t', nrows=10)
