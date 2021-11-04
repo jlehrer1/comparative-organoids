@@ -28,15 +28,14 @@ df_primary_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'prim
 print('Fixing index on organoid data')
 df_organoid_raw['gene'].apply(lambda x: x.split('|')[0]) # For some reason gene expressions are marked twice so just fix this quickly
 
-print('Setting index')
-df_primary_raw = df_primary_raw.set_index('gene')
-df_organoid_raw = df_organoid_raw.set_index('gene')
-
 print('Transposing data')
 df_primary_raw = df_primary_raw.T
 df_organoid_raw = df_organoid_raw.T
 
+print('Writing out to csv')
 df_primary_raw.to_csv('df_primary_raw.csv', index=False)
 df_organoid_raw.to_csv('df_organoid_raw.csv', index=False)
 
+print('Uploading to s3')
 upload('df_primary_raw_tranposed.csv', 'df_primary_raw_tranposed.csv')
+upload('df_organoid_raw.csv', 'df_organoid_raw.csv')
