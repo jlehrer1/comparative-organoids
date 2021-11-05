@@ -1,6 +1,6 @@
 FROM python:3.8-slim-buster
 
-WORKDIR /
+WORKDIR /src
 
 ENV PATH="/root/miniconda3/bin:${PATH}"
 ARG PATH="/root/miniconda3/bin:${PATH}"

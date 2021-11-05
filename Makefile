@@ -1,5 +1,4 @@
 CONTAINER = jmlehrer/cell-exploration
-JOB = job.yaml 
 
 exec:
 	docker exec -it $(CONTAINER) /bin/bash
@@ -13,16 +12,7 @@ push:
 run:
 	docker run -it $(CONTAINER) /bin/bash
 
-job:
-	kubectl create -f $(JOB)
+all:
+	kubectl create -f yaml/umap.yaml && kubectl create -f yaml/transpose.yaml 
 
-retry:
-	docker build -t $(CONTAINER) .
-	docker push $(CONTAINER)
-	kubectl delete job julians-experiment 
-	kubectl create -f pod.yaml
-
-cleancluster:
-	rm -rf results/*
-	aws --endpoint https://s3.nautilus.optiputer.net s3 rm s3://braingeneersdev/jlehrer/cluster_test/ --recursive
 
