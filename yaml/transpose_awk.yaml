@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-umap
+  name: rna-seq-transpose-awk
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-umap
+        k8s-app: rna-seq-transpose-awk
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-umap
+      - name: rna-seq-transpose-awk
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -20,8 +20,8 @@ spec:
           value: "1"
         args: [
           "./unzip.sh && \
-          awk -f transpose.awk data/raw/organoid.tsv > organoid_T.tsv && \
-          awk -f transpose.awk data/raw/primary.tsv > primary_T.tsv && \
+          gawk -f transpose.awk data/raw/organoid.tsv > organoid_T.tsv && \
+          gawk -f transpose.awk data/raw/primary.tsv > primary_T.tsv && \
           python src/data/upload_transposed.py"
         ]
         resources:
@@ -29,8 +29,8 @@ spec:
             memory: 100Gi
             cpu: "16"
           requests:
-            memory: 72Gi
-            cpu: "16"
+            memory: 16Gi
+            cpu: "4"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"
