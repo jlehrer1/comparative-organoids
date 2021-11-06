@@ -30,10 +30,11 @@ RUN apt-get --allow-releaseinfo-change update && \
         libsm6 \
         libxext6 \
         libgl1-mesa-glx \
-        gzip 
+        gzip \
+        gawk 
 
 RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy 
-RUN conda install -c conda-forge python-kaleido
-RUN pip install statdepth==0.7.17 kaleido opencv-python Pillow matplotlib umap-learn dask 
+RUN conda install -c conda-forge python-kaleido dask-xgboost
+RUN pip install statdepth==0.7.17 kaleido opencv-python Pillow matplotlib umap-learn dask dask-ml
 
 COPY . .

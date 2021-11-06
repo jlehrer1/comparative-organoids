@@ -29,20 +29,28 @@ df_primary_raw = dd.read_csv(os.path.join(here, '..', '..', 'data', 'raw', 'prim
 # df_organoid_raw['gene'].apply(lambda x: x.split('|')[0]) # For some reason gene expressions are marked twice so just fix this quickly
 
 print('Dropping gene column so everything is numeric')
-df_organoid_raw = df_organoid_raw.drop('gene', axis=1)
 df_primary_raw = df_primary_raw.drop('gene', axis=1)
+df_organoid_raw = df_organoid_raw.drop('gene', axis=1)
+
+print('Printing types of what should be dataframes')
+print(type(df_primary_raw))
+print(type(df_organoid_raw))
 
 print('Casting data to array so it can be transposed')
-df_primary_raw = df_primary_raw.values
-df_primary_raw = df_organoid_raw.values
+primary_raw_arr = df_primary_raw.to_dask_array()
+organoid_raw_arr = df_organoid_raw.to_dask_array()
+
+print('Printing types of what should be arrays')
+print(type(primary_raw_arr))
+print(type(organoid_raw_arr))
 
 print('Transposing array')
-df_primary_raw = df_primary_raw.T
-df_organoid_raw = df_organoid_raw.T
+primary_raw_arr = primary_raw_arr.transpose()
+organoid_raw_arr = organoid_raw_arr.transpose()
 
 print('Casting back to csv')
-df_primary_raw = dd.from_dask_array(df_primary_raw)
-df_organoid_raw = dd.from_dask_array(df_organoid_raw)
+df_primary_raw = dd.from_dask_array(primary_raw_arr)
+df_organoid_raw = dd.from_dask_array(organoid_raw_arr)
 
 print('Writing out to csv')
 df_primary_raw.to_csv('df_primary_raw.csv', index=False)

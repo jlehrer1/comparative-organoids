@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rna-seq-umap
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: rna-seq-umap
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: rna-seq-umap
+        image: jmlehrer/cell-exploration:latest
+        command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        args: ["python src/models/train_model.py"]
+        resources:
+          limits:
+            memory: 100Gi
+            cpu: "16"
+          requests:
+            memory: 72Gi
+            cpu: "16"
+        volumeMounts:
+        - name: ephemeral
+          mountPath: "/data"
+      volumes:
+      # Ephemeral storage
+      - name: ephemeral
+        emptyDir: {}

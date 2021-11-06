@@ -15,4 +15,5 @@ run:
 all:
 	kubectl create -f yaml/umap.yaml && kubectl create -f yaml/transpose.yaml 
 
-
+stop:
+	kubectl delete job rna-seq-generate-transpose; kubectl delete job rna-seq-umap
