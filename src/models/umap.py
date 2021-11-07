@@ -30,14 +30,14 @@ def upload(file_name, remote_name):
 
 here = pathlib.Path(__file__).parent.absolute()
 
-print('Reading in raw data using Dask')
+print('Reading in raw data')
 df_organoid_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t')
 df_primary_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
 
 comb = pd.concat([df_organoid_raw, df_primary_raw])
 
 params = {
-    'n_neighbors': [10, 50, 100, 1000, 10000, 50000, 100000],
+    'n_neighbors': [10, 50, 100, 1000, comb.shape[0]//4, comb.shape[0]//3],
     'min_dist': [0.1, 0.25, 0.5, 0.8, 0.99],
     'n_components': [2, 3],
 }
@@ -46,39 +46,18 @@ print('Finding umap embeddings')
 for neighbor in params['n_neighbors']:
     for dist in params['min_dist']:
         for n in params['n_components']:
-            df_primary = draw_umap(
-                data=df_primary_raw,
+
+            umap = draw_umap(
                 n_neighbors=neighbor,
                 min_dist=dist,
                 n_components=n,
             )
 
-            df_organoid = draw_umap(
-                data=df_organoid_raw,
-                n_neighbors=neighbor,
-                min_dist=dist,
-                n_components=n,
-            )
+            umap['Type'] = comb['Type'].apply(lambda x: 'Organoid' if x == 1 else 'Primary')
 
-            df_primary.to_csv(
-                os.path.join(here, '..', '..', 'data', 'interim', f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'), 
-                index=False
-            )
-
-            df_organoid.to_csv(
-                os.path.join(here, '..', '..', 'data', 'interim', f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'), 
-                index=False
-            )
+            umap.to_csv(f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.tsv', sep='\t')
 
             print(f'Written UMAP with {neighbor} neighbors, {dist} distance, {n} components')
             print(f'Uploading UMAP with {neighbor} neighbors, {dist} distance, {n} components to S3')
             
-            upload(
-                os.path.join(here, '..', '..', 'data', 'interim', f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'),
-                f'primary_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'
-            )
-
-            upload(
-                os.path.join(here, '..', '..', 'data', 'interim', f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'),
-                f'organoid_neighbors_{neighbor}_dist_{dist}_components_{n}.csv'
-            )
+            upload(f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.tsv', f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.tsv')
