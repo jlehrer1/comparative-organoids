@@ -22,5 +22,5 @@ def upload(file_name, remote_name=None):
 
 here = pathlib.Path(__file__).parent.absolute()
 
-upload(os.path.join(here, '..', '..', 'organoid_T.tsv'))
+# upload(os.path.join(here, '..', '..', 'organoid_T_inmem.tsv'))
 upload(os.path.join(here, '..', '..', 'primary_T.tsv'))
