@@ -49,10 +49,10 @@ def plot_umap(umap_data, title):
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in organoid data')
-df_organoid_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t')
+df_organoid_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t').set_index('cell', drop=True)
 
 print('Reading in primary data')
-df_primary_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
+df_primary_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t').set_index('cell', drop=True)
 
 print('Joining DataFrames')
 comb = pd.concat([df_organoid_raw, df_primary_raw])
@@ -94,6 +94,7 @@ print('Finding umap embeddings')
 #             upload(f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.png', f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.png')
 
 # UMAP, only tuning n_neighbors
+
 for neighbor in params['n_neighbors']:
     print(f'Calculating UMAP with {neighbor} neighbors')
 

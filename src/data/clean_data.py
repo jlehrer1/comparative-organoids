@@ -6,10 +6,10 @@ import os
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in raw organoid data')
-organoid = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.tsv'), sep='\t')
+organoid = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.tsv'), sep='\t').set_index('gene', drop=True)
 
 print('Reading in raw primary data')
-primary = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.tsv'), sep='\t')
+primary = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.tsv'), sep='\t').set_index('gene', drop=True)
 
 # Fix index name 
 print('Setting indices')
