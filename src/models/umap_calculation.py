@@ -20,7 +20,8 @@ def calc_umap(data, n_neighbors=15, min_dist=0.1, n_components=2, metric='euclid
         n_neighbors=n_neighbors,
         min_dist=min_dist,
         n_components=n_components,
-        metric=metric
+        metric=metric,
+        verbose=True,
     )
     return fit.fit_transform(data);
     
@@ -64,43 +65,12 @@ params = {
 }
 
 print('Finding umap embeddings')
-# for neighbor in params['n_neighbors']:
-#     for dist in params['min_dist']:
-#         for n in params['n_components']:
-#             print(f'Calculating UMAP with {neighbor} neighbors, {dist} distance, {n} components')
-
-#             # Calculate UMAP
-#             umap = calc_umap(
-#                 data=comb.drop('Type', axis=1),
-#                 n_neighbors=neighbor,
-#                 min_dist=dist,
-#                 n_components=n,
-#             )
-
-#             umap['Type'] = comb['Type'].apply(lambda x: 'Organoid' if x == 1 else 'Primary')
-#             umap = umap.rename({0: 'UMAP_1', 1:'UMAP_2'}, axis=1)
-
-#             # Generate UMAP plot
-#             plot_umap(
-#                 umap, 
-#                 f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}'
-#             )
-
-#             # Write data to csv
-#             umap.to_csv(f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.tsv', sep='\t')
-
-#             # Upload data and plots
-#             upload(f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.tsv', f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.tsv')
-#             upload(f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.png', f'comb_umap_nneigh_{neighbor}_mindist_{dist}_ncomp_{n}.png')
-
-# UMAP, only tuning n_neighbors
-
 for neighbor in params['n_neighbors']:
     print(f'Calculating UMAP with {neighbor} neighbors')
 
     # Calculate UMAP
     umap = calc_umap(
-        data=comb.drop('Type', axis=1),
+        data=comb.drop('Type', axis=1), # Don't consider type a dimension? Since it may have strong influence on global structure. Not sure though
         n_neighbors=neighbor,
     )
 
