@@ -35,6 +35,6 @@ RUN apt-get --allow-releaseinfo-change update && \
 
 RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy 
 RUN conda install -c conda-forge python-kaleido dask-xgboost hdbscan
-RUN pip install statdepth==0.7.17 kaleido opencv-python Pillow matplotlib umap-learn dask dask-ml pynndescent
+RUN pip install statdepth==0.7.17 kaleido matplotlib umap-learn dask dask-ml pynndescent seaborn
 
 COPY . .

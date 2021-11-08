@@ -20,6 +20,7 @@ spec:
           value: "1"
         args: [
           "./unzip.sh && \
+          gawk -f transpose.awk data/raw/organoid.tsv > organoid_T.tsv \
           gawk -f transpose.awk data/raw/primary.tsv > primary_T.tsv && \
           python src/data/upload_transposed.py"
         ]
@@ -28,8 +29,8 @@ spec:
             memory: 100Gi
             cpu: "16"
           requests:
-            memory: 16Gi
-            cpu: "4"
+            memory: 1Gi
+            cpu: "1"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

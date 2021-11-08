@@ -18,19 +18,14 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: [
-          "./unzip.sh && \
-          gawk -f transpose_inmem.awk data/raw/organoid.tsv > organoid_T_inmem.tsv && \
-          gawk -f transpose_inmem.awk data/raw/primary.tsv > primary_T_inmem.tsv && \
-          python src/data/upload_transposed.py"
-        ]
+        args: ["./unzip.sh && python src/data/pandas_transpose.py"]
         resources:
           limits:
-            memory: 1000Gi
+            memory: 100Gi
             cpu: "16"
           requests:
-            memory: 750Gi
-            cpu: "8"
+            memory: 75Gi
+            cpu: "4"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

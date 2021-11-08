@@ -18,14 +18,14 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/models/umap.py"]
+        args: ["python src/models/umap_calculation.py"]
         resources:
           limits:
             memory: 100Gi
             cpu: "16"
           requests:
             memory: 72Gi
-            cpu: "16"
+            cpu: "4"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

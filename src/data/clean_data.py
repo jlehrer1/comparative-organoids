@@ -4,18 +4,25 @@ import pathlib
 import os 
 
 here = pathlib.Path(__file__).parent.absolute()
+
+print('Reading in raw organoid data')
 organoid = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.tsv'), sep='\t')
+
+print('Reading in raw primary data')
 primary = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.tsv'), sep='\t')
 
 # Fix index name 
+print('Setting indices')
 organoid.index = organoid.index.rename('cell')
 primary.index = primary.index.rename('cell')
 
 # Fix gene expression names in organoid data
+print('Fixing organoid column names')
 organoid_cols = [x.split('|')[0] for x in organoid.columns]
 organoid.columns = organoid_cols
 
 # Consider only the genes between the two
+print('Calculating gene intersection')
 subgenes = list(set(organoid.columns).intersection(primary.columns))
 
 # Just keep those genes
@@ -31,5 +38,8 @@ organoid['Type'] = [1]*organoid.shape[0] # 1 --> Organoid cell
 primary['Type'] = [0]*primary.shape[0]
 
 # Write to tsv 
-organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t', index=False)
-primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t', index=False)
+print('Writing out clean organoid data to tsv')
+organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t')
+
+print('Writing out clean primary data to tsv')
+primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
