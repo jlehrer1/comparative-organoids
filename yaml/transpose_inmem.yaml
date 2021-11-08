@@ -21,10 +21,10 @@ spec:
         args: ["./unzip.sh && python src/data/pandas_transpose.py"]
         resources:
           limits:
-            memory: 250Gi
+            memory: 500Gi
             cpu: "16"
           requests:
-            memory: 200Gi
+            memory: 500Gi
             cpu: "4"
         volumeMounts:
         - name: ephemeral

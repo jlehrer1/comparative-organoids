@@ -50,16 +50,22 @@ def plot_umap(umap_data, title):
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in organoid data')
-df_organoid_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t').set_index('cell', drop=True)
+df_organoid_raw = (pd.read_csv(
+    os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t')
+    .set_index('cell', drop=True)
+)
 
 print('Reading in primary data')
-df_primary_raw = pd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t').set_index('cell', drop=True)
+df_primary_raw = (pd.read_csv(
+    os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
+    .set_index('cell', drop=True)
+)
 
 print('Joining DataFrames')
 comb = pd.concat([df_organoid_raw, df_primary_raw])
 
 params = {
-    'n_neighbors': [10, 50, 100, 1000, comb.shape[0]//4, comb.shape[0]//3],
+    'n_neighbors': [1000, comb.shape[0]//4, comb.shape[0]//3],
     'min_dist': [0.1, 0.25, 0.5, 0.8, 0.99],
     'n_components': [2, 3],
 }
@@ -69,23 +75,26 @@ for neighbor in params['n_neighbors']:
     print(f'Calculating UMAP with {neighbor} neighbors')
 
     # Calculate UMAP
-    umap = calc_umap(
+    umap_df = calc_umap(
         data=comb.drop('Type', axis=1), # Don't consider type a dimension? Since it may have strong influence on global structure. Not sure though
         n_neighbors=neighbor,
     )
-
-    umap['Type'] = comb['Type'].apply(lambda x: 'Organoid' if x == 1 else 'Primary')
-    umap = umap.rename({0: 'UMAP_1', 1:'UMAP_2'}, axis=1)
+    
+    umap_df = pd.DataFrame(umap_df, index=comb.index)
+    umap_df['Type'] = comb['Type'].apply(lambda x: 'Organoid' if x == 1 else 'Primary')
+    umap_df = umap_df.rename({0: 'UMAP_1', 1:'UMAP_2'}, axis=1)
 
     # Generate UMAP plot
     plot_umap(
-        umap, 
+        umap_df,
         f'comb_umap_nneigh_{neighbor}'
     )
 
     # Write data to csv
-    umap.to_csv(f'comb_umap_nneigh_{neighbor}.tsv', sep='\t')
+    print('Writing UMAP data to csv')
+    umap_df.to_csv(f'comb_umap_nneigh_{neighbor}.tsv', sep='\t')
 
     # Upload data and plots
+    print('Uploading UMAP data to S3')
     upload(f'comb_umap_nneigh_{neighbor}.tsv', f'comb_umap_nneigh_{neighbor}.tsv')
     upload(f'comb_umap_nneigh_{neighbor}.png', f'comb_umap_nneigh_{neighbor}.png')
