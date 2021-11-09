@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-umap-w-dist-and-metric
+  name: rna-seq-umap-w-dist
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-umap-w-dist-and-metric
+        k8s-app: rna-seq-umap-w-dist-set-state
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-umap-w-dist-and-metric
+      - name: rna-seq-umap-w-dist-set-state
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -25,7 +25,7 @@ spec:
             cpu: "24"
           requests:
             memory: 16Gi
-            cpu: "8"
+            cpu: "4"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

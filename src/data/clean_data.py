@@ -30,10 +30,20 @@ organoid = organoid[subgenes]
 primary = primary[subgenes]
 
 # Fill NaN's with zeros
+print('Filling NaN\'s with zeros')
 organoid = organoid.fillna(0)
 primary = primary.fillna(0)
 
-# Add type 
+print('Removing all zero columns in organoid and primary data')
+for col in subgenes:
+    if (organoid[col] == 0).all():
+        organoid = organoid.drop(col, axis=1)
+
+    if (primary[col] == 0).all():
+        primary = primary.drop(col, axis=1)
+
+# Add type
+print('Adding type column')
 organoid['Type'] = [1]*organoid.shape[0] # 1 --> Organoid cell
 primary['Type'] = [0]*primary.shape[0]
 
