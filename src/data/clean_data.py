@@ -35,6 +35,7 @@ organoid = organoid.fillna(0)
 primary = primary.fillna(0)
 
 print('Removing all zero columns in organoid and primary data')
+# Maybe remove this once we have the full transposed dataset
 for col in subgenes:
     if (organoid[col] == 0).all():
         organoid = organoid.drop(col, axis=1)
