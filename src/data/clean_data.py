@@ -1,7 +1,25 @@
 import pandas as pd 
 import numpy as np
 import pathlib 
+from tqdm import tqdm
 import os 
+import boto3 
+
+s3 = boto3.resource(
+    's3',
+    endpoint_url="https://s3.nautilus.optiputer.net",
+    aws_access_key_id="EFIE1S59OR5CHDC4KCHK",
+    aws_secret_access_key="DRXgeKsTLctfFX9udqfT04go8JpxG3qWxj0OKHVU",
+)
+   
+def upload(file_name, remote_name=None):
+    if remote_name == None:
+        remote_name = file_name
+
+    s3.Bucket('braingeneersdev').upload_file(
+        Filename=file_name,
+        Key=os.path.join('jlehrer', 'mo_data/clean', remote_name)
+    )
 
 here = pathlib.Path(__file__).parent.absolute()
 
@@ -36,7 +54,7 @@ primary = primary.fillna(0)
 
 print('Removing all zero columns in organoid and primary data')
 # Maybe remove this once we have the full transposed dataset
-for col in subgenes:
+for col in tqdm(subgenes):
     if (organoid[col] == 0).all():
         organoid = organoid.drop(col, axis=1)
 
@@ -54,3 +72,7 @@ organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.ts
 
 print('Writing out clean primary data to tsv')
 primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
+
+print('Uploading files to S3')
+upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'))
+upload(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'))
