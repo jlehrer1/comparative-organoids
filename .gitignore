@@ -103,3 +103,4 @@ data/external/.gitkeep
 # Data that I don't need to upload, large uncompressed files
 organoid_T.tsv
 primary_T.tsv
+remote/*

@@ -11,7 +11,7 @@ s3 = boto3.resource(
     aws_access_key_id="EFIE1S59OR5CHDC4KCHK",
     aws_secret_access_key="DRXgeKsTLctfFX9udqfT04go8JpxG3qWxj0OKHVU",
 )
-   
+
 def upload(file_name, remote_name=None):
     if remote_name == None:
         remote_name = file_name
