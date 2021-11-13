@@ -1,10 +1,12 @@
 import pandas as pd 
+import dask.dataframe as da
 import numpy as np
 import pathlib 
 from tqdm import tqdm
 import os 
 import boto3 
 
+CHUNKSIZE = 1000
 s3 = boto3.resource(
     's3',
     endpoint_url="https://s3.nautilus.optiputer.net",
@@ -32,21 +34,23 @@ def download(remote_name, file_name=None):
 
 here = pathlib.Path(__file__).parent.absolute()
 
-print('Reading in raw organoid data')
-organoid = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.tsv'), sep='\t').set_index('gene', drop=True)
+print('Downloading raw organoid data from S3')
+download('organoid_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'))
 
-print('Reading in raw primary data')
-primary = pd.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.tsv'), sep='\t').set_index('gene', drop=True)
+print('Downloading raw primary data from S3')
+download('primary_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'))
 
-# Fix index name 
-print('Setting indices')
-organoid.index = organoid.index.rename('cell')
-primary.index = primary.index.rename('cell')
+print(f'Reading in raw organoid data with Dask')
+organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'), dtype='float64')
+
+print('Reading in raw primary data with Dask')
+primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'), dtype='float64')
 
 # Fix gene expression names in organoid data
 print('Fixing organoid column names')
 organoid_cols = [x.split('|')[0] for x in organoid.columns]
 organoid.columns = organoid_cols
+organoid = organoid.compute()
 
 # Consider only the genes between the two
 print('Calculating gene intersection')
@@ -56,10 +60,17 @@ subgenes = list(set(organoid.columns).intersection(primary.columns))
 organoid = organoid[subgenes]
 primary = primary[subgenes]
 
+print('Computing...')
+organoid = organoid.compute()
+primary = primary.compute()
+
 # Fill NaN's with zeros
 print('Filling NaN\'s with zeros')
 organoid = organoid.fillna(0)
 primary = primary.fillna(0)
+
+organoid = organoid.compute()
+primary = primary.compute()
 
 print('Removing all zero columns in organoid and primary data')
 # Maybe remove this once we have the full transposed dataset
@@ -70,18 +81,21 @@ for col in tqdm(subgenes):
     if (primary[col] == 0).all():
         primary = primary.drop(col, axis=1)
 
-# Add type
-print('Adding type column')
-organoid['Type'] = [1]*organoid.shape[0] # 1 --> Organoid cell
-primary['Type'] = [0]*primary.shape[0]
+organoid = organoid.compute()
+primary = primary.compute()
 
-# Write to tsv 
-print('Writing out clean organoid data to tsv')
-organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t')
+# Add type
+print('Adding type column, need to compute number of rows')
+organoid['Type'] = np.ones(organoid.shape[0].compute()) # 1 --> Organoid cell
+primary['Type'] = np.zeros(primary.shape[0].compute())
+
+# Write out files 
+print('Writing out clean organoid data to csv')
+organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), index=False)
 
 print('Writing out clean primary data to tsv')
-primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
+primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), index=False)
 
 print('Uploading files to S3')
-upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'))
-upload(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'))
+upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
+upload(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'))
