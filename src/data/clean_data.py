@@ -97,5 +97,5 @@ print('Writing out clean primary data to tsv')
 primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), index=False)
 
 print('Uploading files to S3')
-upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
-upload(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'))
+upload(os.path.join('processed', 'primary.csv'))
+upload(os.path.join('processed', 'organoid.csv'))

@@ -1,35 +1,31 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-transpose-awk-primary
+  name: rna-seq-umap
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-transpose-awk-primary
+        k8s-app: rna-seq-umap
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-transpose-awk-primary
+      - name: rna-seq-umap
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: [
-          "./unzip.sh && \
-          gawk -f transpose.awk data/raw/primary.tsv > primary_T.tsv && \
-          python src/data/upload_transposed.py"
-        ]
+        args: ["python src/data/clean_data.py"]
         resources:
           limits:
             memory: 100Gi
             cpu: "16"
           requests:
-            memory: 1Gi
-            cpu: "1"
+            memory: 72Gi
+            cpu: "32"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

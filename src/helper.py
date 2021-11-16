@@ -16,4 +16,3 @@ def upload(file_name, remote_name=None):
         Filename=file_name,
         Key=os.path.join('jlehrer', 'mo_data', remote_name)
 )
-
