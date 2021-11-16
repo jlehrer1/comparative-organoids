@@ -34,13 +34,15 @@ def download(remote_name, file_name=None):
 
 here = pathlib.Path(__file__).parent.absolute()
 
-print('Downloading raw organoid data from S3')
-download('organoid_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'))
+if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv')) \
+    and os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv')):
+    print('Downloading raw organoid data from S3')
+    download('organoid_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'))
 
-print('Downloading raw primary data from S3')
-download('primary_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'))
+    print('Downloading raw primary data from S3')
+    download('primary_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'))
 
-print(f'Reading in raw organoid data with Dask')
+print('Reading in raw organoid data with Dask')
 organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'), dtype='float64')
 
 print('Reading in raw primary data with Dask')
@@ -91,11 +93,11 @@ primary['Type'] = np.zeros(primary.shape[0].compute())
 
 # Write out files 
 print('Writing out clean organoid data to csv')
-organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), index=False)
+organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), index=False, single_file=True)
 
-print('Writing out clean primary data to tsv')
-primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), index=False)
+print('Writing out clean primary data to csv')
+primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), index=False, single_file=True)
 
 print('Uploading files to S3')
-upload(os.path.join('processed', 'primary.csv'))
-upload(os.path.join('processed', 'organoid.csv'))
+upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), 'primary.csv')
+upload(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), 'organoid.csv')

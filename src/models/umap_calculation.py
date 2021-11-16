@@ -8,6 +8,7 @@ import boto3
 import matplotlib.pyplot as plt 
 import seaborn as sns
 import itertools 
+import dask.dataframe as da
 
 s3 = boto3.resource(
     's3',
@@ -17,6 +18,9 @@ s3 = boto3.resource(
 )
 
 def upload(file_name, remote_name):
+    if remote_name == None:
+        remote_name = file_name
+
     s3.Bucket('braingeneersdev').upload_file(
         Filename=file_name,
         Key=os.path.join('jlehrer', 'mo_data', remote_name)
@@ -37,22 +41,31 @@ def plot_umap(umap_data, title):
     plt.title(title)
     fig.savefig(f'{title}.png')
 
+def umap_calc(data, n_neighbors, min_dist):
+    fit = umap.UMAP(
+        n_neighbors=neighbor,
+        min_dist=dist,
+        verbose=True,
+        random_state=42,
+    )
+
+    umap_df = fit.fit_transform(data.drop('Type', axis=1));
+    umap_df = umap_df.rename({0: 'UMAP_1', 1:'UMAP_2'}, axis=1)
+
+    return umap_df
+
+
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in organoid data')
-df_organoid_raw = (pd.read_csv(
-    os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t')
-    .set_index('cell', drop=True)
-)
+organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'))
 
 print('Reading in primary data')
-df_primary_raw = (pd.read_csv(
-    os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
-    .set_index('cell', drop=True)
-)
+primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
 
 print('Joining DataFrames')
-comb = pd.concat([df_organoid_raw, df_primary_raw])
+comb = pd.concat([organoid, primary])
+comb = comb.compute()
 
 params = {
     'n_neighbors': [15, 100, 1000, comb.shape[0]//4, comb.shape[0]//3],
@@ -65,30 +78,31 @@ print('Finding umap embeddings')
 for neighbor, dist in itertools.product(params['n_neighbors'], params['min_dist']):
     print(f'Calculating UMAP with {neighbor} neighbors, {dist} min dist')
 
-    fit = umap.UMAP(
-        n_neighbors=neighbor,
-        min_dist=dist,
-        verbose=True,
-        random_state=42,
-    )
-
-    umap_df = fit.fit_transform(comb.drop('Type', axis=1));
-
-    umap_df = pd.DataFrame(umap_df, index=comb.index)
-    umap_df['Type'] = comb['Type'].apply(lambda x: 'Organoid' if x == 1 else 'Primary')
-    umap_df = umap_df.rename({0: 'UMAP_1', 1:'UMAP_2'}, axis=1)
+    comb_df = umap_calc(comb, neighbor, dist).compute()
+    org_df = umap_calc(organoid, neighbor, dist).compute()
+    prim_df = umap_calc(organoid, neighbor, dist).compute()
 
     # Generate UMAP plot
-    plot_umap(
-        umap_df,
-        f'comb_umap_nneigh_{neighbor}_{dist}'
-    )
+    plot_umap(comb_df,f'comb_umap_nneigh_{neighbor}_{dist}')
+    plot_umap(org_df,f'org_umap_nneigh_{neighbor}_{dist}')
+    plot_umap(prim_df,f'prim_umap_nneigh_{neighbor}_{dist}')
 
-    # Write data to csv
+
     print('Writing UMAP data to csv')
-    umap_df.to_csv(f'comb_umap_nneigh_{neighbor}_{dist}.tsv', sep='\t')
+    comb_df.to_csv(f'comb_umap_nneigh_{neighbor}_{dist}.csv')
+    org_df.to_csv(f'org_umap_nneigh_{neighbor}_{dist}.csv')
+    prim_df.to_csv(f'prim_umap_nneigh_{neighbor}_{dist}.csv')
 
     # Upload data and plots
-    print('Uploading UMAP data to S3')
-    upload(f'comb_umap_nneigh_{neighbor}_{dist}.tsv', f'comb_umap_nneigh_{neighbor}_{dist}.tsv')
-    upload(f'comb_umap_nneigh_{neighbor}_{dist}.png', f'comb_umap_nneigh_{neighbor}_{dist}.png')
+    print('Uploading combined data to S3')
+    upload(f'comb_umap_nneigh_{neighbor}_{dist}.csv')
+    upload(f'comb_umap_nneigh_{neighbor}_{dist}.png')
+
+    print('Uploading organoid data to S3')
+    upload(f'org_umap_nneigh_{neighbor}_{dist}.csv')
+    upload(f'org_umap_nneigh_{neighbor}_{dist}.png')
+
+    print('Uploading primary data to S3')
+    upload(f'prim_umap_nneigh_{neighbor}_{dist}.csv')
+    upload(f'prim_umap_nneigh_{neighbor}_{dist}.png')
+
