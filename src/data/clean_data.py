@@ -5,6 +5,7 @@ import pathlib
 from tqdm import tqdm
 import os 
 import boto3 
+from download_data import download_all
 
 CHUNKSIZE = 1000
 s3 = boto3.resource(
