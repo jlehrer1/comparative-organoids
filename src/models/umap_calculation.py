@@ -10,6 +10,11 @@ import seaborn as sns
 import itertools 
 import dask.dataframe as da
 
+# Not sure if this works distributed
+from dask.diagnostics import ProgressBar
+pbar = ProgressBar()                
+pbar.register() # global registration
+
 s3 = boto3.resource(
     's3',
     endpoint_url="https://s3.nautilus.optiputer.net",
@@ -53,7 +58,6 @@ def umap_calc(data, n_neighbors, min_dist):
     umap_df = umap_df.rename({0: 'UMAP_1', 1:'UMAP_2'}, axis=1)
 
     return umap_df
-
 
 here = pathlib.Path(__file__).parent.absolute()
 

@@ -1,11 +1,15 @@
 import pandas as pd 
 import dask.dataframe as da
+from dask.diagnostics import ProgressBar
 import numpy as np
 import pathlib 
 from tqdm import tqdm
 import os 
 import boto3 
 from download_data import download_all
+
+pbar = ProgressBar()                
+pbar.register() # global registration
 
 CHUNKSIZE = 1000
 s3 = boto3.resource(
