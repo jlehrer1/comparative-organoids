@@ -4,6 +4,9 @@ import hdbscan
 import pathlib 
 import os 
 import boto3 
+import dask.dataframe as da 
+import dask
+from dask.diagnostics import ProgressBar
 
 s3 = boto3.resource(
     's3',
@@ -21,16 +24,33 @@ def upload(file_name, remote_name=None):
         Key=os.path.join('jlehrer', 'mo_data', remote_name)
     )
 
+@dask.delayed
+def dask_cluster(data):
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
+    return clusterer.fit(primary)
+
 here = pathlib.Path(__file__).parent.absolute()
+data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
-print('Reading in organoid data')
-df_organoid_raw = (pd.read_csv(
-    os.path.join(here, '..', '..', 'data', 'processed', 'organoid.tsv'), sep='\t')
-    .set_index('cell', drop=True)
-)
+print('Reading in organoid and primary data with Dask')
+organoid = da.read_csv(os.path.join(data_path, 'organoid.csv'))
+primary = da.read_csv(os.path.join(data_path, 'primary.csv'))
 
-print('Reading in primary data')
-df_primary_raw = (pd.read_csv(
-    os.path.join(here, '..', '..', 'data', 'processed', 'primary.tsv'), sep='\t')
-    .set_index('cell', drop=True)
-)
+print('Computing primary clusters')
+prim_clusters = dask_cluster(organoid).compute()
+
+print('Computing organoid clusters')
+org_clusters = dask_cluster(primary).compute()
+
+print('Getting labels and writing to csv')
+prim_labels = np.array(prim_clusters.clusters_)
+org_labels = np.array(org_clusters.clusters_)
+
+np.savetext('primary_labels.csv', prim_labels, delimiter=',')
+np.savetext('organoid_labels.csv', org_labels, delimiter=',')
+
+print('Uploading to S3')
+upload('primary_labels.csv')
+upload('organoid_labels.csv')
+
+

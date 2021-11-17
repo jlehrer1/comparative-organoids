@@ -1,35 +1,34 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-clean-data
+  name: rna-seq-cluster
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-clean-data
+        k8s-app: rna-seq-cluster
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-clean-data
+      - name: rna-seq-cluster
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/data/clean_data.py"]
+        args: ["python src/models/hdbscan_clustering.py"]
         resources:
           limits:
             memory: 100Gi
-            cpu: "64"
+            cpu: "24"
           requests:
-            memory: 72Gi
-            cpu: "32"
+            memory: 16Gi
+            cpu: "4"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"
       volumes:
-      # Ephemeral storage
       - name: ephemeral
         emptyDir: {}

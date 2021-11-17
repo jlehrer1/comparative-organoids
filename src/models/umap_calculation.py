@@ -5,10 +5,11 @@ import os
 import umap
 import dask.dataframe as dd
 import boto3
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import seaborn as sns
-import itertools 
+import itertools
 import dask.dataframe as da
+import dask
 
 # Not sure if this works distributed
 from dask.diagnostics import ProgressBar
@@ -46,6 +47,7 @@ def plot_umap(umap_data, title):
     plt.title(title)
     fig.savefig(f'{title}.png')
 
+@dask.delayed
 def umap_calc(data, n_neighbors, min_dist):
     fit = umap.UMAP(
         n_neighbors=neighbor,
@@ -67,9 +69,12 @@ organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'orga
 print('Reading in primary data')
 primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
 
+print('Setting type column, requires Dask computation of shape')
+organoid['Type'] = np.zeros(organoid.shape[0].compute())
+primary['Type'] = np.ones(primary.shape[0].compute())
+
 print('Joining DataFrames')
-comb = pd.concat([organoid, primary])
-comb = comb.compute()
+comb = da.multi.concat([organoid, primary])
 
 params = {
     'n_neighbors': [15, 100, 1000, comb.shape[0]//4, comb.shape[0]//3],

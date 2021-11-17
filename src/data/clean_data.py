@@ -11,7 +11,6 @@ from download_data import download_all
 pbar = ProgressBar()                
 pbar.register() # global registration
 
-CHUNKSIZE = 1000
 s3 = boto3.resource(
     's3',
     endpoint_url="https://s3.nautilus.optiputer.net",
@@ -39,11 +38,11 @@ def download(remote_name, file_name=None):
 
 here = pathlib.Path(__file__).parent.absolute()
 
-if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv')) \
-    and os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv')):
+if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv')):
     print('Downloading raw organoid data from S3')
     download('organoid_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'))
 
+if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv')):
     print('Downloading raw primary data from S3')
     download('primary_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'))
 
@@ -57,44 +56,25 @@ primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary
 print('Fixing organoid column names')
 organoid_cols = [x.split('|')[0] for x in organoid.columns]
 organoid.columns = organoid_cols
-organoid = organoid.compute()
 
 # Consider only the genes between the two
 print('Calculating gene intersection')
 subgenes = list(set(organoid.columns).intersection(primary.columns))
+print(f'Length of subgenes is {len(subgenes)}')
+print(f'Type of organoid and primary is {type(organoid)}, {type(primary)}')
 
 # Just keep those genes
-organoid = organoid[subgenes]
-primary = primary[subgenes]
-
-print('Computing...')
-organoid = organoid.compute()
-primary = primary.compute()
+organoid = organoid.loc[:, subgenes]
+primary = primary.loc[:, subgenes]
 
 # Fill NaN's with zeros
 print('Filling NaN\'s with zeros')
 organoid = organoid.fillna(0)
 primary = primary.fillna(0)
 
-organoid = organoid.compute()
-primary = primary.compute()
-
-print('Removing all zero columns in organoid and primary data')
-# Maybe remove this once we have the full transposed dataset
-for col in tqdm(subgenes):
-    if (organoid[col] == 0).all():
-        organoid = organoid.drop(col, axis=1)
-
-    if (primary[col] == 0).all():
-        primary = primary.drop(col, axis=1)
-
-organoid = organoid.compute()
-primary = primary.compute()
-
-# Add type
-print('Adding type column, need to compute number of rows')
-organoid['Type'] = np.ones(organoid.shape[0].compute()) # 1 --> Organoid cell
-primary['Type'] = np.zeros(primary.shape[0].compute())
+print('Doing all computations')
+organoid = organoid.persist()
+primary = primary.persist()
 
 # Write out files 
 print('Writing out clean organoid data to csv')

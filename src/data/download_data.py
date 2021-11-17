@@ -21,12 +21,11 @@ def download(remote_name, file_name=None):
 def download_all():
     here = pathlib.Path(__file__).parent.absolute()
 
-    if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'clean', 'organoid.csv')) \
-    and os.path.isfile(os.path.join(here, '..', '..', 'data', 'clean', 'organoid.csv')):
-
+    if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'clean', 'organoid.csv')):
         print('Downloading clean organoid data from S3')
         download('organoid.csv', os.path.join(here, '..', '..', 'data', 'clean', 'primary.csv'))
-
+        
+    if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'clean', 'organoid.csv')):
         print('Downloading raw primary data from S3')
         download('primary.csv', os.path.join(here, '..', '..', 'data', 'clean', 'primary.csv'))
 

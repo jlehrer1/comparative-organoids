@@ -14,5 +14,17 @@ def upload(file_name, remote_name=None):
 
     s3.Bucket('braingeneersdev').upload_file(
         Filename=file_name,
-        Key=os.path.join('jlehrer', 'mo_data', remote_name)
+        Key=os.path.join('jlehrer',  remote_name)
 )
+
+def download(remote_name, file_name=None):
+    if file_name == None:
+        file_name == remote_name
+
+    s3.Bucket('braingeneersdev').download_file(
+        Key=os.path.join('jlehrer', 'transposed_data', remote_name),
+        Filename=file_name
+    )
+
+if __name__ == "__main__":
+    pass
