@@ -10,7 +10,6 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from helper import download, upload
-from download_data import download_all
 
 pbar = ProgressBar()                
 pbar.register() # global registration
@@ -19,11 +18,11 @@ here = pathlib.Path(__file__).parent.absolute()
 
 if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv')):
     print('Downloading raw organoid data from S3')
-    download('organoid_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'))
+    download(os.path.join('transposed_data', 'organoid_T.csv'), os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'))
 
 if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv')):
     print('Downloading raw primary data from S3')
-    download('primary_T.csv', os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'))
+    download(os.path.join('transposed_data', 'primary_T.csv'), os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'))
 
 print('Reading in raw organoid data with Dask')
 organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'), dtype='float64')

@@ -47,6 +47,6 @@ primary_umap.to_csv(f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP
 print('Uploading to S3')
 
 upload(
-    os.path.join('reduced_data', f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}'), 
-    f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}'
+    os.path.join('reduced_data', f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
+    f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'
 )
