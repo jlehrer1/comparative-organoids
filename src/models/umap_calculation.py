@@ -35,18 +35,16 @@ def plot_umap(umap_data, title):
     fig.savefig(f'{title}.png')
 
 @dask.delayed
-def umap_calc(data, n_neighbors, min_dist):
+def umap_calc(data, n_neighbors, min_dist, n_components):
     fit = umap.UMAP(
-        n_neighbors=neighbor,
-        min_dist=dist,
+        n_neighbors=n_neighbors,
+        min_dist=min_dist,
+        n_components=n_components,
         verbose=True,
         random_state=42,
     )
 
-    umap_df = fit.fit_transform(data.drop('Type', axis=1));
-    umap_df = umap_df.rename({0: 'UMAP_1', 1:'UMAP_2'}, axis=1)
-
-    return umap_df
+    return fit.fit_transform(data)
 
 here = pathlib.Path(__file__).parent.absolute()
 
