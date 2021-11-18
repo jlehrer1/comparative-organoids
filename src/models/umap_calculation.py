@@ -1,7 +1,7 @@
 import pandas as pd 
 import numpy as np
 import pathlib 
-import os 
+import os
 import umap
 import dask.dataframe as dd
 import boto3
@@ -10,27 +10,14 @@ import seaborn as sns
 import itertools
 import dask.dataframe as da
 import dask
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from helper import upload
 
 # Not sure if this works distributed
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()                
 pbar.register() # global registration
-
-s3 = boto3.resource(
-    's3',
-    endpoint_url="https://s3.nautilus.optiputer.net",
-    aws_access_key_id="EFIE1S59OR5CHDC4KCHK",
-    aws_secret_access_key="DRXgeKsTLctfFX9udqfT04go8JpxG3qWxj0OKHVU",
-)
-
-def upload(file_name, remote_name):
-    if remote_name == None:
-        remote_name = file_name
-
-    s3.Bucket('braingeneersdev').upload_file(
-        Filename=file_name,
-        Key=os.path.join('jlehrer', 'mo_data', remote_name)
-    )
 
 def plot_umap(umap_data, title):
     fig, ax = plt.subplots(figsize=(10, 10))
