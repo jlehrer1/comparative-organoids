@@ -11,33 +11,44 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from helper import download, upload
 
-pbar = ProgressBar()                
+pbar = ProgressBar()
 pbar.register() # global registration
 
 here = pathlib.Path(__file__).parent.absolute()
 
 if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv')):
     print('Downloading raw organoid data from S3')
-    download(os.path.join('transposed_data', 'organoid_T.csv'), os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'))
+    download(
+        os.path.join('transposed_data', 'organoid_T.csv'), 
+        os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv')
+    )
 
 if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv')):
     print('Downloading raw primary data from S3')
-    download(os.path.join('transposed_data', 'primary_T.csv'), os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'))
+    download(
+        os.path.join('transposed_data', 'primary_T.csv'), 
+        os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv')
+    )
 
 print('Reading in raw organoid data with Dask')
-organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'), dtype='float64')
+organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T    .csv'), assume_missing=True).set_index('gene')
 
 print('Reading in raw primary data with Dask')
-primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'), dtype='float64')
+primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'), assume_missing=True).set_index('gene')
 
 # Fix gene expression names in organoid data
 print('Fixing organoid column names')
 organoid_cols = [x.split('|')[0] for x in organoid.columns]
 organoid.columns = organoid_cols
 
+print('Renaming index')
+organoid.index = organoid.index.rename('cell')
+primary.index = primary.index.rename('cell')
+
 # Consider only the genes between the two
 print('Calculating gene intersection')
 subgenes = list(set(organoid.columns).intersection(primary.columns))
+
 print(f'Length of subgenes is {len(subgenes)}')
 print(f'Type of organoid and primary is {type(organoid)}, {type(primary)}')
 

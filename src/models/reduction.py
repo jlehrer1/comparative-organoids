@@ -1,13 +1,7 @@
 import pandas as pd 
-import numpy as np
 import pathlib 
 import os
 import umap
-import dask.dataframe as dd
-import boto3
-import matplotlib.pyplot as plt
-import seaborn as sns
-import itertools
 import dask.dataframe as da
 import dask
 import sys
@@ -42,7 +36,7 @@ print(f'Calculating UMAP reduction with n_components={N_COMP} and n_neighbors={N
 primary_umap = pd.DataFrame(umap_calc(primary, NEIGHBORS, N_COMP).compute())
 
 print('Writing to csv')
-primary_umap.to_csv(f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}')
+primary_umap.to_csv(f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv')
 
 print('Uploading to S3')
 

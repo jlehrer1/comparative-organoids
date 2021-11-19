@@ -4,7 +4,6 @@ import pathlib
 import os
 import umap
 import dask.dataframe as dd
-import boto3
 import matplotlib.pyplot as plt
 import seaborn as sns
 import itertools
