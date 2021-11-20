@@ -13,7 +13,7 @@ run:
 	docker run -it $(CONTAINER) /bin/bash
 
 all:
-	kubectl create -f yaml/umap.yaml && kubectl create -f yaml/transpose.yaml 
+	kubectl create -f yaml/reduction.yaml && kubectl create -f yaml/umap.yaml
 
 stop:
 	kubectl delete job rna-seq-generate-transpose; kubectl delete job rna-seq-umap; 

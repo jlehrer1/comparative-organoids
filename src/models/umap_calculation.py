@@ -76,10 +76,9 @@ for neighbor, dist in itertools.product(params['n_neighbors'], params['min_dist'
     prim_df = umap_calc(organoid, neighbor, dist).compute()
 
     # Generate UMAP plot
-    plot_umap(comb_df,f'comb_umap_nneigh_{neighbor}_{dist}')
-    plot_umap(org_df,f'org_umap_nneigh_{neighbor}_{dist}')
-    plot_umap(prim_df,f'prim_umap_nneigh_{neighbor}_{dist}')
-
+    plot_umap(comb_df, f'comb_umap_nneigh_{neighbor}_{dist}')
+    plot_umap(org_df, f'org_umap_nneigh_{neighbor}_{dist}')
+    plot_umap(prim_df, f'prim_umap_nneigh_{neighbor}_{dist}')
 
     print('Writing UMAP data to csv')
     comb_df.to_csv(f'comb_umap_nneigh_{neighbor}_{dist}.csv')

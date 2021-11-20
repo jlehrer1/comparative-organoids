@@ -18,7 +18,7 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/models/umap_calculation.py"]
+        args: ["python src/data/download_data.py && python src/models/umap_calculation.py"]
         resources:
           limits:
             memory: 100Gi

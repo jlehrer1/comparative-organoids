@@ -31,7 +31,7 @@ if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'primary
     )
 
 print('Reading in raw organoid data with Dask')
-organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T    .csv'), assume_missing=True).set_index('gene')
+organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'), assume_missing=True).set_index('gene')
 
 print('Reading in raw primary data with Dask')
 primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'), assume_missing=True).set_index('gene')
