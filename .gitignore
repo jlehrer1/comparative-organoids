@@ -93,6 +93,7 @@ data/raw/*
 data/interim/*
 data/processed/*
 data/external/*
+data/meta/*
 
 data/raw/.gitkeep
 data/interim/.gitkeep
