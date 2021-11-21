@@ -56,8 +56,6 @@ print('Reading in primary data')
 primary = dd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
 
 print('Setting type column, requires Dask computation of shape')
-# organoid['Type'] = da.from_array(np.zeros(organoid.shape[0].compute()))
-# primary['Type'] = da.from_array(np.ones(primary.shape[0].compute()))
 
 organoid = organoid.assign(
     Type=da.ones(organoid.shape[0].compute())
@@ -83,7 +81,7 @@ for neighbor, dist in itertools.product(params['n_neighbors'], params['min_dist'
 
     comb_df = umap_calc(comb, neighbor, dist).compute()
     org_df = umap_calc(organoid, neighbor, dist).compute()
-    prim_df = umap_calc(organoid, neighbor, dist).compute()
+    prim_df = umap_calc(primary, neighbor, dist).compute()
 
     # Generate UMAP plot
     plot_umap(comb_df, f'comb_umap_nneigh_{neighbor}_{dist}')

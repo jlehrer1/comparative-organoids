@@ -14,7 +14,7 @@ from helper import upload
 
 @dask.delayed
 def dask_cluster(data):
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=50)
     return clusterer.fit(primary)
 
 here = pathlib.Path(__file__).parent.absolute()
@@ -40,5 +40,3 @@ np.savetext('organoid_labels.csv', org_labels, delimiter=',')
 print('Uploading to S3')
 upload('primary_labels.csv')
 upload('organoid_labels.csv')
-
-

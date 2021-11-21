@@ -1,3 +1,5 @@
 data/interim/*
 data/raw/*
 data/processed/*
+
+reduction_params.sh

@@ -18,7 +18,7 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["sleep 1000000"]
+        args: ["src/data/download_data.y && sleep 1000000"]
         resources:
           limits:
             memory: 100Gi

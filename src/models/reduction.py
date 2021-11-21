@@ -25,11 +25,10 @@ parser.add_argument(
 parser.add_argument(
     '-components', 
     type=int, 
-    help='Number of neighbors for UMAP', 
+    help='Number of components for UMAP', 
     required=False,
     default=50
 )
-
 
 args = parser.parse_args()
 
@@ -50,14 +49,27 @@ def umap_calc(data, n_neighbors, n_components):
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in primary data')
-primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
+primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), assume_missing=True)
 
 print('Reading in organoid data')
-organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'))
+organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), assume_missing=True)
 
 print(f'Calculating UMAP reduction with n_components={N_COMP} and n_neighbors={NEIGHBORS}')
-primary_umap = pd.DataFrame(umap_calc(primary, NEIGHBORS, N_COMP).compute())
-organoid_umap = pd.DataFrame(umap_calc(organoid, NEIGHBORS, N_COMP).compute())
+primary_umap = (pd.DataFrame(
+    umap_calc(
+        data=primary, 
+        n_neighbors=NEIGHBORS, 
+        n_components=N_COMP).compute()
+    )
+)
+
+organoid_umap = (pd.DataFrame(
+    umap_calc(
+        data=organoid,
+        n_neighbors=NEIGHBORS,
+        n_components=N_COMP).compute()
+    )
+)
 
 print('Writing to csv')
 primary_umap.to_csv(f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv')

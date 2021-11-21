@@ -1,10 +1,6 @@
-import pandas as pd 
 import dask.dataframe as da
 from dask.diagnostics import ProgressBar
-import numpy as np
 import pathlib 
-from tqdm import tqdm
-import boto3 
 import os 
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -31,10 +27,16 @@ if not os.path.isfile(os.path.join(here, '..', '..', 'data', 'interim', 'primary
     )
 
 print('Reading in raw organoid data with Dask')
-organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'), assume_missing=True).set_index('gene')
+organoid = (da.read_csv(
+    os.path.join(here, '..', '..', 'data', 'interim', 'organoid_T.csv'), 
+    assume_missing=True)
+)
 
 print('Reading in raw primary data with Dask')
-primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'), assume_missing=True).set_index('gene')
+primary = (da.read_csv(
+    os.path.join(here, '..', '..', 'data', 'interim', 'primary_T.csv'), 
+    assume_missing=True)
+)
 
 # Fix gene expression names in organoid data
 print('Fixing organoid column names')
@@ -49,7 +51,7 @@ primary.index = primary.index.rename('cell')
 print('Calculating gene intersection')
 subgenes = list(set(organoid.columns).intersection(primary.columns))
 
-print(f'Length of subgenes is {len(subgenes)}')
+print(f'Number of intersecting genes is {len(subgenes)}')
 print(f'Type of organoid and primary is {type(organoid)}, {type(primary)}')
 
 # Just keep those genes
@@ -67,10 +69,10 @@ primary = primary.persist()
 
 # Write out files 
 print('Writing out clean organoid data to csv')
-organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), single_file=True)
+organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), single_file=True, index=False)
 
 print('Writing out clean primary data to csv')
-primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), single_file=True)
+primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), single_file=True, index=False)
 
 print('Uploading files to S3')
 upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), 'primary.csv')
