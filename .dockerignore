@@ -1,5 +1,3 @@
-data/interim/organoid_T.csv
-data/interim/primary_T.csv
-data/processed/organoid.csv
-data/processed/primary.csv
+data/interim/*
 data/raw/*
+data/processed/*

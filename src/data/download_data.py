@@ -13,7 +13,7 @@ def download_clean():
         print('Downloading clean organoid data from S3')
 
         download(
-            os.path.join('transposed_data', 'clean', 'organoid.csv'), 
+            os.path.join('organoid.csv'), 
             os.path.join(data_path, 'organoid.csv')
         )
 
@@ -21,16 +21,12 @@ def download_clean():
         print('Downloading raw primary data from S3')
 
         download(
-            os.path.join('transposed_data', 'clean', 'primary.csv'), 
+            os.path.join('primary.csv'), 
             os.path.join(data_path, 'primary.csv')
         )
 
 def download_reduced():
-    if not os.path.isfile(os.path.join(data_path, 'organoid_reduced.csv')):
-        pass
-    
-    if not os.path.isfile(os.path.join(data_path, 'primary_reduced.csv')):
-        pass
+    pass
 
 if __name__ == "__main__":
     download_clean()

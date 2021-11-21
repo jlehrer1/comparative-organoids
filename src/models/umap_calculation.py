@@ -7,15 +7,17 @@ import dask.dataframe as dd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import itertools
-import dask.dataframe as da
+import dask.dataframe as dd
+import dask.array as da
 import dask
+
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload
 
 # Not sure if this works distributed
 from dask.diagnostics import ProgressBar
-pbar = ProgressBar()                
+pbar = ProgressBar()
 pbar.register() # global registration
 
 def plot_umap(umap_data, title):
@@ -48,17 +50,25 @@ def umap_calc(data, n_neighbors, min_dist, n_components):
 here = pathlib.Path(__file__).parent.absolute()
 
 print('Reading in organoid data')
-organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'))
+organoid = dd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'))
 
 print('Reading in primary data')
-primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
+primary = dd.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'))
 
 print('Setting type column, requires Dask computation of shape')
-organoid['Type'] = np.zeros(organoid.shape[0].compute())
-primary['Type'] = np.ones(primary.shape[0].compute())
+# organoid['Type'] = da.from_array(np.zeros(organoid.shape[0].compute()))
+# primary['Type'] = da.from_array(np.ones(primary.shape[0].compute()))
+
+organoid = organoid.assign(
+    Type=da.ones(organoid.shape[0].compute())
+)
+
+primary = primary.assign(
+    Type=da.zeros(primary.shape[0].compute())
+)
 
 print('Joining DataFrames')
-comb = da.multi.concat([organoid, primary])
+comb = dd.multi.concat([organoid, primary])
 
 params = {
     'n_neighbors': [15, 100, 1000, comb.shape[0]//4, comb.shape[0]//3],

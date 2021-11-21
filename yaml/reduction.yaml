@@ -1,31 +1,31 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-reduction-more-mem
+  name: rna-seq-reduction-${N}-neighbors
 spec:
   backoffLimit: 5
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-reduction-more-mem
+        k8s-app: rna-seq-reduction-${N}-neighbors
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-reduction-more-mem
+      - name: rna-seq-reduction-${N}-neighbors
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/data/download_data.py && python src/models/reduction.py"]
+        args: ["python src/data/download_data.py && python src/models/reduction.py -neighbors=${N}"]
         resources:
           limits:
-            memory: 100Gi
+            memory: 250Gi
             cpu: "32"
           requests:
-            memory: 72Gi
-            cpu: "32"
+            memory: 250Gi
+            cpu: "8"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

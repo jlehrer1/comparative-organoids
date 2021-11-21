@@ -67,10 +67,10 @@ primary = primary.persist()
 
 # Write out files 
 print('Writing out clean organoid data to csv')
-organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), index=False, single_file=True)
+organoid.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), single_file=True)
 
 print('Writing out clean primary data to csv')
-primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), index=False, single_file=True)
+primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), single_file=True)
 
 print('Uploading files to S3')
 upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), 'primary.csv')
