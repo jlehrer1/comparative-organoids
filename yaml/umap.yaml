@@ -18,13 +18,13 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/data/download_data.py -type=interim && python src/models/umap_calc.py -neighbors=${N} -components=${COMP}"]
+        args: ["python src/data/download_data.py -type='clean' && python src/models/umap_calc.py -neighbors=${N} -components=${COMP}"]
         resources:
           limits:
             memory: 250Gi
             cpu: "32"
           requests:
-            memory: 150Gi
+            memory: 250Gi
             cpu: "8"
         volumeMounts:
         - name: ephemeral
