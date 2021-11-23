@@ -18,14 +18,14 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/models/hdbscan_clustering.py"]
+        args: ["python src/models/cluster_test.py"]
         resources:
           limits:
             memory: 100Gi
             cpu: "24"
           requests:
-            memory: 16Gi
-            cpu: "4"
+            memory: 64Gi
+            cpu: "8"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

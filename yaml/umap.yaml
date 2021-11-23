@@ -1,31 +1,31 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-umap-w-dist
+  name: rna-seq-reduction-${N}-neighbors-${COMP}-components
 spec:
-  backoffLimit: 0
+  backoffLimit: 1
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-umap-w-dist-set-state
+        k8s-app: rna-seq-reduction-${N}-neighbors-${COMP}-components
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-umap-w-dist-set-state
+      - name: rna-seq-reduction-${N}-neighbors-${COMP}-components
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/data/download_data.py && python src/models/umap_calculation.py"]
+        args: ["python src/data/download_data.py -type=interim && python src/models/umap_calc.py -neighbors=${N} -components=${COMP}"]
         resources:
           limits:
-            memory: 100Gi
-            cpu: "24"
+            memory: 250Gi
+            cpu: "32"
           requests:
-            memory: 16Gi
-            cpu: "4"
+            memory: 150Gi
+            cpu: "8"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

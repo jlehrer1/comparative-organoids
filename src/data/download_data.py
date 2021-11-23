@@ -6,7 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import download
 
 here = pathlib.Path(__file__).parent.absolute()
-data_path = os.path.join(here, '..', '..', 'data', 'processed')
+data_path = os.path.join(here, '..', '..', 'data')
 
 def download_clean():
     if not os.path.isfile(os.path.join(data_path, 'organoid.csv')):
@@ -14,7 +14,7 @@ def download_clean():
 
         download(
             os.path.join('organoid.csv'), 
-            os.path.join(data_path, 'organoid.csv')
+            os.path.join(data_path, 'processed', 'organoid.csv')
         )
 
     if not os.path.isfile(os.path.join(data_path, 'primary.csv')):
@@ -22,7 +22,7 @@ def download_clean():
 
         download(
             os.path.join('primary.csv'), 
-            os.path.join(data_path, 'primary.csv')
+            os.path.join(data_path, 'processed', 'primary.csv')
         )
 
 def download_reduced():
@@ -33,24 +33,23 @@ def download_raw():
 
 def download_interim():
     if not os.path.isfile(os.path.join(data_path, 'organoid_T.csv')):
-        print('Downloading clean organoid data from S3')
+        print('Downloading interim organoid data from S3')
 
         download(
             os.path.join('transposed_data', 'organoid_T.csv'), 
-            os.path.join(data_path, 'organoid.csv')
+            os.path.join(data_path, 'interim', 'organoid_T.csv')
         )
 
     if not os.path.isfile(os.path.join(data_path, 'primary_T.csv')):
-        print('Downloading raw primary data from S3')
+        print('Downloading interim primary data from S3')
 
         download(
             os.path.join('transposed_data', 'primary_T.csv'), 
-            os.path.join(data_path, 'primary.csv')
+            os.path.join(data_path, 'interim', 'primary_T.csv')
         )
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-type',
