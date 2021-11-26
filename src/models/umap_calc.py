@@ -35,6 +35,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        '-file',
+        type=str,
+        help='One of organoid or primary, which dataset to run umap dimensionality reduction on.',
+        choices=['organoid', 'primary'],
+        required=True, # We do need to specify!
+    )
+
+    parser.add_argument(
         '-components', 
         type=int, 
         help='Number of components for UMAP', 
@@ -46,43 +54,27 @@ if __name__ == "__main__":
 
     N_COMP = args.components
     NEIGHBORS = args.neighbors
+    FILE = args.file
 
     here = pathlib.Path(__file__).parent.absolute()
 
-    print('Reading in primary data')
-    primary = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), assume_missing=True) # To read in all columns as floats
-
-    print('Reading in organoid data')
-    organoid = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), assume_missing=True)
+    print(f'Reading in {FILE} data')
+    data = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', f'{FILE}.csv'), assume_missing=True) # To read in all columns as floats
 
     print(f'Calculating UMAP reduction with n_components={N_COMP} and n_neighbors={NEIGHBORS}')
-    primary_umap = (pd.DataFrame(
+    umap_reduction = (pd.DataFrame(
         umap_calc(
-            data=primary, 
+            data=data, 
             n_neighbors=NEIGHBORS, 
             n_components=N_COMP).compute()
         )
     )
 
-    organoid_umap = (pd.DataFrame(
-        umap_calc(
-            data=organoid,
-            n_neighbors=NEIGHBORS,
-            n_components=N_COMP).compute()
-        )
-    )
-
-    print('Writing to csv')
-    primary_umap.to_csv(f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv', index=False)
-    organoid_umap.to_csv(f'organoid_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv', index=False)
+    print(f'Writing {FILE} umap data to csv')
+    umap_reduction.to_csv(f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv', index=False)
 
     print('Uploading to S3')
     upload(
-        f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv',
-        os.path.join('reduced_data', f'primary_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
-    )
-
-    upload(
-    f'organoid_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv',
-    os.path.join('reduced_data', f'organoid_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv') 
+        f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv',
+        os.path.join('reduced_data', f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
     )

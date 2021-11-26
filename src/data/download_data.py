@@ -11,7 +11,6 @@ data_path = os.path.join(here, '..', '..', 'data')
 def download_clean():
     if not os.path.isfile(os.path.join(data_path, 'organoid.csv')):
         print('Downloading clean organoid data from S3')
-
         download(
             os.path.join('organoid.csv'), 
             os.path.join(data_path, 'processed', 'organoid.csv')
@@ -19,7 +18,6 @@ def download_clean():
 
     if not os.path.isfile(os.path.join(data_path, 'primary.csv')):
         print('Downloading raw primary data from S3')
-
         download(
             os.path.join('primary.csv'), 
             os.path.join(data_path, 'processed', 'primary.csv')
