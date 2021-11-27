@@ -1,5 +1,7 @@
 import boto3
 import os 
+import matplotlib.pyplot as plt 
+import seaborn as sns 
 
 s3 = boto3.resource(
     's3',
@@ -25,6 +27,23 @@ def download(remote_name, file_name=None):
         Key=os.path.join('jlehrer', remote_name),
         Filename=file_name
     )
+
+def umap_plot(data, title):
+    fig, ax = plt.subplots(figsize=(15, 10))
+
+    sns.scatterplot(
+        x='0', 
+        y='1',
+        data=data,
+        hue='label',
+        legend='full',
+        ax=ax,
+        s=1,
+        palette='bright'
+    )
+
+    plt.title(f'UMAP Projection: {title}')
+    plt.savefig(f'umap_cluster_{title}.png', dpi=300)
 
 if __name__ == "__main__":
     pass

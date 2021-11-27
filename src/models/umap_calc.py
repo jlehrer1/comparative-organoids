@@ -7,7 +7,7 @@ import dask
 import sys
 import argparse 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from helper import upload
+from helper import upload, umap_plot
 
 # Not sure if this works distributed
 from dask.diagnostics import ProgressBar
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     here = pathlib.Path(__file__).parent.absolute()
 
     print(f'Reading in {FILE} data')
-    data = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', f'{FILE}.csv'), assume_missing=True) # To read in all columns as floats
+    data = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', f'{FILE}.csv'), assume_missing=True)
 
     print(f'Calculating UMAP reduction with n_components={N_COMP} and n_neighbors={NEIGHBORS}')
     umap_reduction = (pd.DataFrame(
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     print(f'Writing {FILE} umap data to csv')
     umap_reduction.to_csv(f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv', index=False)
 
-    print('Uploading to S3')
+    print('Uploading data to S3')
     upload(
         f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv',
         os.path.join('reduced_data', f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 

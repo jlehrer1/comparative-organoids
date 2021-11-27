@@ -19,7 +19,7 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py -type='clean' && \
+          "python src/data/download_data.py -type='clean' && \ 
           python src/models/umap_calc.py -neighbors=${N} -components=${COMP} -file=${FILE}"
         ]
         resources:
@@ -27,8 +27,8 @@ spec:
             memory: 500Gi
             cpu: "32"
           requests:
-            memory: 250Gi
-            cpu: "24"
+            memory: 150Gi
+            cpu: "32"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

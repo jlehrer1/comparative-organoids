@@ -1,5 +1,7 @@
 data/interim/*
 data/raw/*
 data/processed/*
-
+notebooks/*
+remote/*
+yaml/*
 reduction_params.sh
