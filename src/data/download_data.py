@@ -9,21 +9,22 @@ here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
 
 def download_clean():
+    """
+    Downloads the cleaned organoid and primary cell dataset
+    """
     if not os.path.isfile(os.path.join(data_path, 'organoid.csv')):
         print('Downloading clean organoid data from S3')
         download(
-            os.path.join('organoid.csv'), 
+            os.path.join('jlehrer', 'organoid.csv'), 
             os.path.join(data_path, 'processed', 'organoid.csv')
         )
 
     if not os.path.isfile(os.path.join(data_path, 'primary.csv')):
         print('Downloading raw primary data from S3')
         download(
-            os.path.join('primary.csv'), 
+            os.path.join('jlehrer', 'primary.csv'), 
             os.path.join(data_path, 'processed', 'primary.csv')
         )
-
-    
 
 def download_reduced():
     pass
@@ -36,7 +37,7 @@ def download_interim():
         print('Downloading interim organoid data from S3')
 
         download(
-            os.path.join('transposed_data', 'organoid_T.csv'), 
+            os.path.join('jlehrer', 'transposed_data', 'organoid_T.csv'), 
             os.path.join(data_path, 'interim', 'organoid_T.csv')
         )
 
@@ -44,10 +45,9 @@ def download_interim():
         print('Downloading interim primary data from S3')
 
         download(
-            os.path.join('transposed_data', 'primary_T.csv'), 
+            os.path.join('jlehrer', 'transposed_data', 'primary_T.csv'), 
             os.path.join(data_path, 'interim', 'primary_T.csv')
         )
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

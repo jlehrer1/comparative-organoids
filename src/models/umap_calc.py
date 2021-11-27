@@ -76,5 +76,5 @@ if __name__ == "__main__":
     print('Uploading data to S3')
     upload(
         f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv',
-        os.path.join('reduced_data', f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
+        os.path.join('jlehrer', 'reduced_data', f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
     )
