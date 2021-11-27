@@ -79,6 +79,3 @@ def list_objects(prefix: str) -> list:
     """
     objs = s3.Bucket('braingeneersdev').objects.filter(Prefix=prefix)
     return [x.key for x in objs]
-
-if __name__ == "__main__":
-    pass

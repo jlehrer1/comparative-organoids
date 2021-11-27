@@ -3,7 +3,7 @@ import os
 import sys
 import argparse
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from helper import download
+from helper import download, list_objects
 
 here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
@@ -27,7 +27,13 @@ def download_clean():
         )
 
 def download_reduced():
-    pass
+    reduced_files = list_objects(os.path.join('jlehrer', 'reduced_data'))
+
+    for f in reduced_files:
+        download(
+            f,
+            os.path.join(data_path, 'processed', f.split('/')[-1])
+        )
 
 def download_raw():
     pass
