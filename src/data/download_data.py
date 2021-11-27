@@ -27,12 +27,15 @@ def download_clean():
         )
 
 def download_reduced():
+    """
+    Downloads all the UMAP projections of the primary and organoid data
+    """
     reduced_files = list_objects(os.path.join('jlehrer', 'reduced_data'))
 
     for f in reduced_files:
         download(
             f,
-            os.path.join(data_path, 'processed', f.split('/')[-1])
+            os.path.join(data_path, 'processed', f.split('/')[-1]) # Just the file name in the list of objects
         )
 
 def download_raw():
@@ -62,6 +65,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default='clean',
+        choices=['clean', 'interim', 'raw', 'reduced'],
         help="Type of data to download. Can be one of ['clean', 'interim', 'raw', 'reduced']"
     )
     args = parser.parse_args()
@@ -73,7 +77,5 @@ if __name__ == "__main__":
         download_interim()
     elif type == 'raw':
         download_raw()
-    elif type == 'reduced':
-        download_reduced()
     else:
-        raise ValueError("Invalid value for type. Can be one of ['clean', 'interim', 'raw', 'reduced']")
+        download_reduced()

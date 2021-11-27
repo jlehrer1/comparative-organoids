@@ -27,7 +27,7 @@ spec:
             memory: 500Gi
             cpu: "32"
           requests:
-            memory: 150Gi
+            memory: 250Gi
             cpu: "32"
         volumeMounts:
         - name: ephemeral
