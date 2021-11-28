@@ -2,7 +2,7 @@
 
 for FILE in 'organoid' 'primary'
 do
-	for N in 5000 10000
+	for N in 10000
 	do
 		for COMP in 2 3 50 100
 		do

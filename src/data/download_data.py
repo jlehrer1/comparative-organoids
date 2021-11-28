@@ -8,55 +8,44 @@ from helper import download, list_objects
 here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
 
-def download_clean():
+def download_clean() -> None:
     """
     Downloads the cleaned organoid and primary cell dataset
     """
-    if not os.path.isfile(os.path.join(data_path, 'organoid.csv')):
-        print('Downloading clean organoid data from S3')
-        download(
-            os.path.join('jlehrer', 'organoid.csv'), 
-            os.path.join(data_path, 'processed', 'organoid.csv')
-        )
+    for f in 'organoid.csv', 'primary.csv':
+        if not os.path.isfile(os.path.join(data_path, 'processed', f)):
+            print(f'Downloading {f} from S3')
+            download(
+                os.path.join('jlehrer', f), 
+                os.path.join(data_path, 'processed', f)
+            )
 
-    if not os.path.isfile(os.path.join(data_path, 'primary.csv')):
-        print('Downloading raw primary data from S3')
-        download(
-            os.path.join('jlehrer', 'primary.csv'), 
-            os.path.join(data_path, 'processed', 'primary.csv')
-        )
-
-def download_reduced():
+def download_reduced() -> None:
     """
-    Downloads all the UMAP projections of the primary and organoid data
+    Downloads all the UMAP projections of the primary and organoid data from the braingeneersdev S3 bucket
     """
     reduced_files = list_objects(os.path.join('jlehrer', 'reduced_data'))
 
     for f in reduced_files:
-        download(
-            f,
-            os.path.join(data_path, 'processed', f.split('/')[-1]) # Just the file name in the list of objects
-        )
+        if not os.path.isfile(os.path.join(data_path, 'processed', f.split('/')[-1])):
+            download(
+                f,
+                os.path.join(data_path, 'processed', f.split('/')[-1]) # Just the file name in the list of objects
+            )
 
 def download_raw():
     pass
 
-def download_interim():
-    if not os.path.isfile(os.path.join(data_path, 'organoid_T.csv')):
-        print('Downloading interim organoid data from S3')
+def download_interim() -> None:
+    """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned."""
 
-        download(
-            os.path.join('jlehrer', 'transposed_data', 'organoid_T.csv'), 
-            os.path.join(data_path, 'interim', 'organoid_T.csv')
-        )
-
-    if not os.path.isfile(os.path.join(data_path, 'primary_T.csv')):
-        print('Downloading interim primary data from S3')
-
-        download(
-            os.path.join('jlehrer', 'transposed_data', 'primary_T.csv'), 
-            os.path.join(data_path, 'interim', 'primary_T.csv')
-        )
+    for f in 'organoid_T.csv', 'primary_T.csv':
+        if not os.path.isfile(os.path.join(data_path, 'interim', f)):
+            print(f'Downloading {f} data from S3')
+            download(
+                os.path.join('jlehrer', 'transposed_data', f), 
+                os.path.join(data_path, 'interim', f)
+            )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

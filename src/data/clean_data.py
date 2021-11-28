@@ -10,7 +10,6 @@ from download_data import download_interim
 pbar = ProgressBar()
 pbar.register() # global registration
 
-
 if __name__ == "__main__":
     download_interim()
     here = pathlib.Path(__file__).parent.absolute()
