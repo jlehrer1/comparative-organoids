@@ -6,7 +6,7 @@ do
 	do
 	for M in 50 100 250
 		do
-			kubectl delete job rna-seq-cluster-n-${N}-comp-${COMP}
+			kubectl delete job rna-seq-cluster-n-${N}-comp-${COMP}-min-cluster-size-${M}
 		done
 	done
 done

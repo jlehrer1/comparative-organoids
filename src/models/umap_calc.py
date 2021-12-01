@@ -14,6 +14,8 @@ from dask.diagnostics import ProgressBar
 pbar = ProgressBar()                
 pbar.register() # global registration
 
+S3_UMAP_PATH = os.path.join('jlehrer', 'reduced_data')
+
 @dask.delayed
 def umap_calc(data, n_neighbors, n_components):
     fit = umap.UMAP(
@@ -76,5 +78,5 @@ if __name__ == "__main__":
     print('Uploading data to S3')
     upload(
         f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv',
-        os.path.join('jlehrer', 'reduced_data', f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
+        os.path.join(S3_UMAP_PATH, f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
     )

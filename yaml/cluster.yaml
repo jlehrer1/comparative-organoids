@@ -18,7 +18,10 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/data/download_data.py -type='reduced' && python src/models/cluster.py -N=${N} -COMP=${COMP} -M=${M}"]
+        args: [
+          "python src/data/download_data.py -type='reduced' && \
+          python src/models/cluster.py -N=${N} -COMP=${COMP} -M=${M}"
+        ]
         resources:
           limits:
             memory: 100Gi

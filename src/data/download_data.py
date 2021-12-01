@@ -33,8 +33,22 @@ def download_reduced() -> None:
                 os.path.join(data_path, 'processed', f.split('/')[-1]) # Just the file name in the list of objects
             )
 
+def download_labels() -> None:
+    """
+    Downloads the cluster labels for primary data
+    """
+
+    label_files = list_objects(os.path.join('jlehrer', 'primary_cluster_labels'))
+
+    for f in label_files:
+        if not os.path.isfile(os.path.join(data_path, 'processed', f.split('/')[-1])):
+            download(
+                f,
+                os.path.join(data_path, 'processed', f.split('/')[-1]) # Just the file name in the list of objects
+            )
+    
 def download_raw():
-    pass
+    raise NotImplementedError()
 
 def download_interim() -> None:
     """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned."""
@@ -54,8 +68,8 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default='clean',
-        choices=['clean', 'interim', 'raw', 'reduced'],
-        help="Type of data to download. Can be one of ['clean', 'interim', 'raw', 'reduced']"
+        choices=['clean', 'interim', 'raw', 'reduced', 'labels'],
+        help="Type of data to download. Can be one of ['clean', 'interim', 'raw', 'reduced', 'labels']"
     )
     args = parser.parse_args()
     type = args.type
@@ -66,5 +80,7 @@ if __name__ == "__main__":
         download_interim()
     elif type == 'raw':
         download_raw()
+    elif type == 'labels':
+        download_labels()
     else:
         download_reduced()

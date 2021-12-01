@@ -10,6 +10,8 @@ from download_data import download_interim
 pbar = ProgressBar()
 pbar.register() # global registration
 
+S3_CLEAN_DATA_PATH = 'jlehrer'
+
 if __name__ == "__main__":
     download_interim()
     here = pathlib.Path(__file__).parent.absolute()
@@ -63,5 +65,5 @@ if __name__ == "__main__":
     primary.to_csv(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), single_file=True, index=False)
 
     print('Uploading clean data to S3')
-    upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), os.path.join('jlehrer', 'primary.csv'))
-    upload(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), os.path.join('jlehrer', 'organoid.csv'))
+    upload(os.path.join(here, '..', '..', 'data', 'processed', 'primary.csv'), os.path.join(S3_CLEAN_DATA_PATH, 'primary.csv'))
+    upload(os.path.join(here, '..', '..', 'data', 'processed', 'organoid.csv'), os.path.join(S3_CLEAN_DATA_PATH, 'organoid.csv'))
