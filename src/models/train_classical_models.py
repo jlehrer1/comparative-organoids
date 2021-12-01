@@ -11,12 +11,12 @@ import argparse
 
 from dask_ml.model_selection import train_test_split, RandomizedSearchCV
 
-class GCDaskEst:
-    def __init__(self, est, params) -> None:
+class GeneClassifier:
+    def __init__(self, est, params):
         self.est = est
         self.params = params
-    
-    def generate_model(self, X, y, n_iter=10):
+        
+    def generate_models(self, X, y, n_iter=10):
         grid = RandomizedSearchCV(
             n_iter=n_iter,
             estimator=self.est,
@@ -25,7 +25,7 @@ class GCDaskEst:
         )
 
         result = grid.fit(X, y)
-        return result.best_score_, result.best_params_
+        return result.best_score_, result.best_params_    
 
 if __name__ == "__main__":
     here = pathlib.Path(__file__).parent.absolute()
@@ -62,15 +62,41 @@ if __name__ == "__main__":
 
     X = dd.read_csv(os.path.join(data_path, 'processed', 'primary.csv'))
     y = dd.read_csv(os.path.join(data_path, 'processed', f'primary_labels_neighbors_{N}_components_{COMP}.csv'))
-    y = y + 1 # Don't want -1 as a label class, 0 is now indexed as the "noise" class
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
     if model == 'svc':
-        pass
-    elif model == 'tree':
-        pass
-    else: # model == logistic
-        pass
+        from sklearn.svm import SVC
+        params = {
+            'C' : np.linspace(1, 1000, 100),
+            'kernel' : ['linear', 'poly', 'rbf', 'sigmoid'],
+            'class_weight' : ['balanced']
+        }
+        svc_est = GeneClassifier(SVC(), params)
+        svc_est = svc_est.generate_models(X_train.values, y_train.values)
+        print(svc_est)
 
+    elif model == 'tree':
+        from xgboost import XGBClassifier
+
+        params = {
+            'eta' : np.linspace(0, 1, 20),
+            'gamma': np.linspace(0, 1000, 20),
+            'max_depth': np.linspace(0, 1000, 20, dtype=int),
+        }
+
+        xgb_est = GeneClassifier(XGBClassifier(), params)
+        xgb_est = xgb_est.generate_model(X_train.values, y_train.values, n_iter=2)
+        print(xgb_est)
+
+    else: # model == 'logistic'
+        from dask_ml.linear_model import LogisticRegression
+        param_distributions = {
+            'penalty' : ['l1', 'l2'],
+            'C' : np.linspace(0.1, 100, 50)
+        }
+
+        logistic_est = GeneClassifier(LogisticRegression(), param_distributions)
+        logistic_est = logistic_est.generate_model(X_train.values, y_train.values, n_iter=2)
+        print(logistic_est)
 
