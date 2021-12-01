@@ -58,6 +58,7 @@ if __name__ == "__main__":
     FILE = args.file
 
     here = pathlib.Path(__file__).parent.absolute()
+    fname = f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'
 
     print(f'Reading in {FILE} data')
     data = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', f'{FILE}.csv'), assume_missing=True)
@@ -72,10 +73,10 @@ if __name__ == "__main__":
     )
 
     print(f'Writing {FILE} umap data to csv')
-    umap_reduction.to_csv(f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv', index=False)
+    umap_reduction.to_csv(fname, index=False)
 
     print('Uploading data to S3')
     upload(
-        f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv',
-        os.path.join(S3_UMAP_PATH, f'{FILE}_reduction_neighbors_{NEIGHBORS}_components_{N_COMP}.csv'), 
+        fname,
+        os.path.join(S3_UMAP_PATH, fname), 
     )

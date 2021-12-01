@@ -16,9 +16,10 @@ def cluster(data, min_cluster_size):
 def generate_labels(N, COMP, min_cluster_size):
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
+    fname = f'primary_reduction_neighbors_{N}_components_{COMP}_clust_size_{min_cluster_size}.csv'
 
     print('Reading in primary data with Dask')
-    primary = pd.read_csv(os.path.join(data_path, f'primary_reduction_neighbors_{N}_components_{COMP}.csv'))
+    primary = pd.read_csv(os.path.join(data_path, fname))
 
     print('Computing primary clusters')
     prim_clusters = cluster(primary, min_cluster_size)
@@ -26,12 +27,12 @@ def generate_labels(N, COMP, min_cluster_size):
     print('Getting labels and writing to csv')
     prim_labels = np.array(prim_clusters.labels_)
 
-    np.savetxt(f'primary_labels_neighbors_{N}_components_{COMP}.csv', prim_labels, delimiter=',')
+    np.savetxt(fname, prim_labels, delimiter=',', header='label')
 
     print('Uploading to S3')
     upload(
-        f'primary_labels_neighbors_{N}_components_{COMP}.csv', 
-        os.path.join(S3_CLUSTER_LABEL_PATH, f'primary_labels_neighbors_{N}_components_{COMP}.csv')
+        fname,
+        os.path.join(S3_CLUSTER_LABEL_PATH, fname)
     )
 
 if __name__ == "__main__":
