@@ -4,13 +4,12 @@ import pathlib
 import os 
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from helper import upload
+from helper import upload, S3_CLEAN_DATA_PATH
 from download_data import download_interim
 
 pbar = ProgressBar()
 pbar.register() # global registration
 
-S3_CLEAN_DATA_PATH = 'jlehrer'
 
 if __name__ == "__main__":
     download_interim()

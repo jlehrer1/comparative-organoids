@@ -7,9 +7,7 @@ import dask.dataframe as da
 import sys
 import argparse
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from helper import upload
-
-S3_LABEL_PATH = os.path.join('jlehrer', 'primary_cluster_labels')
+from helper import upload, S3_CLUSTER_LABEL_PATH
 
 def cluster(data, min_cluster_size):
     clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, core_dist_n_jobs=1)
@@ -33,7 +31,7 @@ def generate_labels(N, COMP, min_cluster_size):
     print('Uploading to S3')
     upload(
         f'primary_labels_neighbors_{N}_components_{COMP}.csv', 
-        os.path.join(S3_LABEL_PATH, f'primary_labels_neighbors_{N}_components_{COMP}.csv')
+        os.path.join(S3_CLUSTER_LABEL_PATH, f'primary_labels_neighbors_{N}_components_{COMP}.csv')
     )
 
 if __name__ == "__main__":

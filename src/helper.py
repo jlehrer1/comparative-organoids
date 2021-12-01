@@ -3,6 +3,10 @@ import os
 import matplotlib.pyplot as plt 
 import seaborn as sns 
 
+S3_CLUSTER_LABEL_PATH = os.path.join('jlehrer', 'primary_cluster_labels')
+S3_CLEAN_DATA_PATH = 'jlehrer'
+S3_UMAP_PATH = os.path.join('jlehrer', 'reduced_data')
+
 s3 = boto3.resource(
     's3',
     endpoint_url="https://s3.nautilus.optiputer.net",

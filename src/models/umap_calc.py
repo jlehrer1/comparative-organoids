@@ -7,14 +7,13 @@ import dask
 import sys
 import argparse 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from helper import upload, umap_plot
+from helper import upload, S3_UMAP_PATH
 
 # Not sure if this works distributed
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()                
 pbar.register() # global registration
 
-S3_UMAP_PATH = os.path.join('jlehrer', 'reduced_data')
 
 @dask.delayed
 def umap_calc(data, n_neighbors, n_components):
