@@ -19,8 +19,8 @@ class GCDaskEst:
     def generate_model(self, X, y, n_iter=10):
         grid = RandomizedSearchCV(
             n_iter=n_iter,
-            estimator=self.svc,
-            param_distributions=self.parameters,
+            estimator=self.est,
+            param_distributions=self.params,
             scoring='balanced_accuracy'
         )
 
@@ -62,6 +62,7 @@ if __name__ == "__main__":
 
     X = dd.read_csv(os.path.join(data_path, 'processed', 'primary.csv'))
     y = dd.read_csv(os.path.join(data_path, 'processed', f'primary_labels_neighbors_{N}_components_{COMP}.csv'))
+    y = y + 1 # Don't want -1 as a label class, 0 is now indexed as the "noise" class
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
