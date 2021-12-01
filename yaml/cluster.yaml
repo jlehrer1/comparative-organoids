@@ -1,24 +1,24 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-cluster-n-${N}-comp-${COMP}
+  name: rna-seq-cluster-n-${N}-comp-${COMP}-min-cluster-size-${M}
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-cluster-n-${N}-comp-${COMP}
+        k8s-app: rna-seq-cluster-n-${N}-comp-${COMP}-min-cluster-size-${M}
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-cluster-n-${N}-comp-${COMP}
+      - name: rna-seq-cluster-n-${N}-comp-${COMP}-min-cluster-size-${M}
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/data/download_data -type='reduced' && python src/models/cluster.py -N=${N} -COMP=${COMP}"]
+        args: ["python src/data/download_data.py -type='reduced' && python src/models/cluster.py -N=${N} -COMP=${COMP} -M=${M}"]
         resources:
           limits:
             memory: 100Gi
