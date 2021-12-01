@@ -27,11 +27,5 @@ spec:
             memory: 500Gi
             cpu: "32"
           requests:
-            memory: 500Gi
+            memory: 400Gi
             cpu: "32"
-        volumeMounts:
-        - name: ephemeral
-          mountPath: "/data"
-      volumes:
-      - name: ephemeral
-        emptyDir: {}

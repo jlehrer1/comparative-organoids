@@ -18,7 +18,7 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/models/cluster_test.py"]
+        args: ["python src/data/download_data -type='reduced' && python src/models/clustering.py"]
         resources:
           limits:
             memory: 100Gi
