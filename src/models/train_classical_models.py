@@ -1,12 +1,10 @@
 import numpy as np
 import dask.dataframe as dd
 import pathlib 
-import os 
-import torch
+import os
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.svm import SVC
-import dask
 import argparse
 
 from dask_ml.model_selection import train_test_split, RandomizedSearchCV
@@ -16,7 +14,7 @@ class GeneClassifier:
         self.est = est
         self.params = params
         
-    def generate_models(self, X, y, n_iter=10):
+    def generate_model(self, X, y, n_iter=10):
         grid = RandomizedSearchCV(
             n_iter=n_iter,
             estimator=self.est,
@@ -24,8 +22,16 @@ class GeneClassifier:
             scoring='balanced_accuracy'
         )
 
-        result = grid.fit(X, y)
-        return result.best_score_, result.best_params_    
+        self.grid = grid.fit(X, y)
+    
+    def best_score(self):
+        return self.grid.best_score_
+    
+    def best_model(self):
+        return self.grid.best_estimator_
+    
+    def best_params(self):
+        return self.grid.best_params_
 
 if __name__ == "__main__":
     here = pathlib.Path(__file__).parent.absolute()
@@ -55,13 +61,31 @@ if __name__ == "__main__":
         default=100,
     )
 
+    argparse.add_argument(
+        '--minclust',
+        required=False,
+        type=int,
+        help='Min cluster size from HDBSCAN',
+        default=250,
+    )
+
     args = argparse.parse_args()
     model = args.model 
     N = args.neighbors 
-    COMP = args
+    COMP = args.components
+    MIN_CLUST_SIZE = args.minclust
+    
+    X = dd.read_csv(
+        os.path.join(data_path, 'processed', 'primary.csv')
+    )
 
-    X = dd.read_csv(os.path.join(data_path, 'processed', 'primary.csv'))
-    y = dd.read_csv(os.path.join(data_path, 'processed', f'primary_labels_neighbors_{N}_components_{COMP}.csv'))
+    y = dd.read_csv(
+        os.path.join(
+            data_path, 
+            'processed', 
+            f'primary_labels_neighbors_{N}_components_{COMP}_clust_size_{MIN_CLUST_SIZE}.csv'
+        )
+    )
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
@@ -87,7 +111,7 @@ if __name__ == "__main__":
 
         xgb_est = GeneClassifier(XGBClassifier(), params)
         xgb_est = xgb_est.generate_model(X_train.values, y_train.values, n_iter=2)
-        print(xgb_est)
+        print(xgb_est.best_score(), xgb_est.best_params())
 
     else: # model == 'logistic'
         from dask_ml.linear_model import LogisticRegression

@@ -1,24 +1,27 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-umap
+  name: rna-seq-train-model-type-${TYPE}
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-umap
+        k8s-app: rna-train-model-type-${TYPE}
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-umap
+      - name: rna-seq-umap-train-model-type-${TYPE}
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/models/train_model.py"]
+        args: [
+          "python src/data/download_data -type='clean' && \
+          python src/data/download_data -type='reduced' && \
+          python src/models/train_classical_model.py --model=${TYPE}"]
         resources:
           limits:
             memory: 100Gi

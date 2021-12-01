@@ -28,6 +28,7 @@ def download_reduced() -> None:
 
     for f in reduced_files:
         if not os.path.isfile(os.path.join(data_path, 'processed', f.split('/')[-1])):
+            print(f'Downloading {f} from S3')
             download(
                 f,
                 os.path.join(data_path, 'processed', f.split('/')[-1]) # Just the file name in the list of objects

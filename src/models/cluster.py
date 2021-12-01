@@ -16,10 +16,10 @@ def cluster(data, min_cluster_size):
 def generate_labels(N, COMP, min_cluster_size):
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
-    fname = f'primary_reduction_neighbors_{N}_components_{COMP}_clust_size_{min_cluster_size}.csv'
+    fname = f'primary_labels_neighbors_{N}_components_{COMP}_clust_size_{min_cluster_size}.csv'
 
     print('Reading in primary data with Dask')
-    primary = pd.read_csv(os.path.join(data_path, fname))
+    primary = pd.read_csv(os.path.join(data_path, f'primary_reduction_neighbors_{N}_components_{COMP}.csv'))
 
     print('Computing primary clusters')
     prim_clusters = cluster(primary, min_cluster_size)
