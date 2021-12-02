@@ -19,8 +19,8 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data -type='clean' && \
-          python src/data/download_data -type='reduced' && \
+          "python src/data/download_data.py -type='clean' && \
+          python src/data/download_data.py -type='reduced' && \
           python src/models/train_classical_model.py --model=${TYPE}"]
         resources:
           limits:

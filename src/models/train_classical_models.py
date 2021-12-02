@@ -91,11 +91,13 @@ if __name__ == "__main__":
 
     if model == 'svc':
         from sklearn.svm import SVC
+        
         params = {
             'C' : np.linspace(1, 1000, 100),
             'kernel' : ['linear', 'poly', 'rbf', 'sigmoid'],
             'class_weight' : ['balanced']
         }
+
         svc_est = GeneClassifier(SVC(), params)
         svc_est = svc_est.generate_models(X_train.values, y_train.values)
         print(svc_est)
