@@ -30,8 +30,20 @@ if __name__ == '__main__':
     )
 
     here = pathlib.Path(__file__).parent.absolute()
+    data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
     args = parser.parse_args()
-    n_components = args.n 
+    COMP = args.n 
+    FILE = args.file
 
-    organoid = dd.read_csv(os.p)
+    data = dd.read_csv(os.path.join(data_path, f'{FILE}.csv'), assume_missing=True)
+
+    pca_data = pca(data, COMP)
+
+    fname = f'pca_components_{COMP}_{FILE}.csv'
+    pca_data.to_csv(fname, single_file=True, index=False)
+    
+    upload(
+        fname,
+        os.path.join('jlehrer', 'pca_data', fname)
+    )
