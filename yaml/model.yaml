@@ -20,7 +20,7 @@ spec:
           value: "1"
         args: [
           "python src/data/download_data.py -type='clean' && \
-          python src/data/download_data.py -type='reduced' && \
+          python src/data/download_data.py -type='labels' && \
           python src/models/train_neural_network.py"]
         resources:
           limits:
@@ -28,6 +28,7 @@ spec:
             cpu: "16"
           requests:
             memory: 72Gi
+            gpu: "8"
             cpu: "16"
         volumeMounts:
         - name: ephemeral

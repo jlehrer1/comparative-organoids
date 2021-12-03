@@ -75,12 +75,12 @@ if __name__ == "__main__":
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
-    fix_labels(os.path.join(data_path, 'primary_labels_neighbors_500_components_100_clust_size_250.csv'), here)
-    fixed_labels = pd.read_csv(os.path.join(here, 'fixed_primary_labels_neighbors_500_components_100_clust_size_250.csv'))
+    fix_labels(os.path.join(data_path, 'primary_labels_neighbors_50_components_50_clust_size_100.csv'), here)
+    fixed_labels = pd.read_csv(os.path.join(here, 'fixed_primary_labels_neighbors_50_components_50_clust_size_100.csv'))
 
     t = GeneExpressionData(
-        filename=os.path.join(data_path, 'primary_reduction_neighbors_500_components_100.csv'),
-        labelname=os.path.join(here, 'fixed_primary_labels_neighbors_500_components_100_clust_size_250.csv')
+        filename=os.path.join(data_path, 'primary.csv'),
+        labelname=os.path.join(here, 'fixed_primary_labels_neighbors_50_components_50_clust_size_100.csv')
     )
 
     train_size = int(0.8 * len(t))

@@ -19,8 +19,9 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py -type='reduced' && \
-          python src/models/pca.py --file=${FILE} --n=${N}"
+          "python src/data/download_data.py -type='clean' && \
+          python src/data/download_data.py -type='labels' && \
+          python src/models/pca_calc.py --file=${FILE} --n=${N}"
         ]
         resources:
           limits:

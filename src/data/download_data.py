@@ -8,17 +8,30 @@ from helper import download, list_objects
 here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
 
-def download_clean() -> None:
+def download_clean(type=None) -> None:
     """
     Downloads the cleaned organoid and primary cell dataset
     """
-    for f in 'organoid.csv', 'primary.csv':
-        if not os.path.isfile(os.path.join(data_path, 'processed', f)):
-            print(f'Downloading {f} from S3')
-            download(
-                os.path.join('jlehrer', f), 
-                os.path.join(data_path, 'processed', f)
-            )
+    if type == 'organoid':
+        print(f'Downloading organoid from S3')
+        download(
+            os.path.join('jlehrer', 'organoid.csv'), 
+            os.path.join(data_path, 'processed', 'organoid.csv')
+        )
+    elif type == 'primary':
+        print(f'Downloading primary from S3')
+        download(
+            os.path.join('jlehrer', 'primary.csv'), 
+            os.path.join(data_path, 'processed', 'primary.csv')
+        )
+    else:
+        for f in 'organoid.csv', 'primary.csv':
+            if not os.path.isfile(os.path.join(data_path, 'processed', f)):
+                print(f'Downloading {f} from S3')
+                download(
+                    os.path.join('jlehrer', f), 
+                    os.path.join(data_path, 'processed', f)
+                )
 
 def download_reduced() -> None:
     """

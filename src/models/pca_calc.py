@@ -6,7 +6,6 @@ import pathlib
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload
 
-
 def pca(data, n_components):
     est = PCA(n_components=n_components)
     return dd.from_array(est.fit_transform(data.values.compute_chunk_sizes()))
@@ -19,7 +18,7 @@ if __name__ == '__main__':
         help='Which of the files to compute the PCA on',
         required=True,
         type=str,
-        # choices=['organoid', 'primary']
+        choices=['organoid', 'primary']
     )
 
     parser.add_argument(
