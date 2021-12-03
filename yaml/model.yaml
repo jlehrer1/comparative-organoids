@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-train-model-type-${TYPE}
+  name: rna-seq-train-deep-model
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-train-model-type-${TYPE}
+        k8s-app: rna-seq-train-deep-model
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-umap-train-model-type-${TYPE}
+      - name: rna-seq-train-deep-model
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -21,7 +21,7 @@ spec:
         args: [
           "python src/data/download_data.py -type='clean' && \
           python src/data/download_data.py -type='reduced' && \
-          python src/models/train_classical_model.py --model=${TYPE}"]
+          python src/models/train_neural_network.py"]
         resources:
           limits:
             memory: 100Gi
