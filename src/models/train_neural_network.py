@@ -91,7 +91,7 @@ if __name__ == "__main__":
     model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.08)
     loss_arr = []
     epochs = 1000000
 

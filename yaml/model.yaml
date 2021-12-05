@@ -1,36 +1,37 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-train-deep-model-gpu-simple
+  name: rna-seq-model
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-train-deep-model-gpu-simple
+        k8s-app: rna-seq-model
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-train-deep-model-gpu-simple
+      - name: rna-seq-model
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py -type='clean' && \
+          "python src/data/download_data.py -type='primary' && \
           python src/data/download_data.py -type='labels' && \
-          python src/models/train_neural_network.py"]
+          python src/models/train_neural_network.py"
+        ]
         resources:
           limits:
             memory: 100Gi
             cpu: "16"
-            nvidia.com/gpu: "2"
+            nvidia.com/gpu: "1"
           requests:
-            memory: 72Gi
+            memory: 32Gi
             cpu: "16"
-            nvidia.com/gpu: "2"
+            nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"
@@ -38,3 +39,7 @@ spec:
       # Ephemeral storage
       - name: ephemeral
         emptyDir: {}
+
+# "python src/data/download_data.py -type='primary' && \
+#           python src/data/download_data.py -type='labels' && \
+#           python src/models/train_neural_network.py"
