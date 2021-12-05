@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-train-deep-model
+  name: rna-seq-train-deep-model-gpu-simple
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-train-deep-model
+        k8s-app: rna-seq-train-deep-model-gpu-simple
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-train-deep-model
+      - name: rna-seq-train-deep-model-gpu-simple
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -26,10 +26,11 @@ spec:
           limits:
             memory: 100Gi
             cpu: "16"
+            nvidia.com/gpu: "2"
           requests:
             memory: 72Gi
-            gpu: "8"
             cpu: "16"
+            nvidia.com/gpu: "2"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

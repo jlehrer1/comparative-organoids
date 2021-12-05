@@ -20,12 +20,9 @@ class GeneExpressionData(Dataset):
         with open(filename, "r") as f:
             self._total_data = len(f.readlines()) - 1
     
-    def __getitem__(self, idx):
-        if idx == 0:
-            return self.__getitem__(1)
-        
-        line = linecache.getline(self._filename, idx + 1)
-        label = linecache.getline(self._labelname, idx + 1)
+    def __getitem__(self, idx):        
+        line = linecache.getline(self._filename, idx + 2)
+        label = linecache.getline(self._labelname, idx + 2)
         
         csv_data = csv.reader([line])
         csv_label = csv.reader([label])
@@ -50,28 +47,24 @@ def fix_labels(file, path):
 
 class NN(nn.Module):
     def __init__(self, N_features, N_labels):
-        super().__init__()
-        
-        self.network = nn.Sequential(
-            nn.BatchNorm1d(num_features=N_features),
-            nn.Linear(in_features=N_features, out_features=16),
+        super(NN, self).__init__()
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(N_features, 512),
             nn.ReLU(),
-            nn.Linear(in_features=16, out_features=32),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(in_features=32, out_features=500),
-            nn.ReLU(),
-            nn.Linear(in_features=500, out_features=200),
-            nn.ReLU(),
-            nn.Linear(in_features=200, out_features=32),
-            nn.ReLU(),
-            nn.Linear(in_features=32, out_features=N_labels),
+            nn.Linear(512, N_labels),
         )
-        
-    def forward(self, x):
-        return self.network(x)
 
+    def forward(self, x):
+        x = self.flatten(x)
+        logits = self.linear_relu_stack(x)
+        return logits
 
 if __name__ == "__main__":
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
@@ -95,9 +88,10 @@ if __name__ == "__main__":
         N_features=t.num_features(),
         N_labels=t.num_labels()
     )
+    model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr = 0.01)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
     loss_arr = []
     epochs = 1000000
 
@@ -105,6 +99,7 @@ if __name__ == "__main__":
         model.train()
 
         for X, y in traindata:
+            X, y = X.to(device), y.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
 
@@ -116,4 +111,4 @@ if __name__ == "__main__":
             
             loss_arr.append(loss.item())
             
-        print(f'Epoch {i} is {loss_arr[i]}')
+        print(f'Loss at epoch {i} is {loss_arr[i]}')

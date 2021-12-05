@@ -2,7 +2,7 @@
 
 for FILE in 'organoid' 'primary'
 do
-	for N in 15 50 100 500
+	for N in 2 3
 	do
 		export N=${N} FILE=${FILE} && envsubst < yaml/pca.yaml | kubectl create -f - 
 	done

@@ -18,14 +18,16 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["src/data/download_data.y && sleep 1000000"]
+        args: ["sleep 1000000"]
         resources:
           limits:
             memory: 100Gi
             cpu: "16"
+            nvidia.com/gpu: "1"
           requests:
-            memory: 72Gi
-            cpu: "16"
+            memory: 2Gi
+            cpu: "1"
+            nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"
