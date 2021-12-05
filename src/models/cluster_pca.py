@@ -13,13 +13,13 @@ def cluster(data, min_cluster_size):
     clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, core_dist_n_jobs=1)
     return clusterer.fit(data)
 
-def generate_labels(N, COMP, min_cluster_size):
+def generate_labels(COMP, min_cluster_size):
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
-    fname = f'primary_labels_neighbors_{N}_components_{COMP}_clust_size_{min_cluster_size}.csv'
+    fname = f'primary_labels_pca_components_{COMP}_clust_size_{min_cluster_size}.csv'
 
     print('Reading in primary data with Dask')
-    primary = pd.read_csv(os.path.join(data_path, f'primary_reduction_neighbors_{N}_components_{COMP}.csv'))
+    primary = pd.read_csv(os.path.join(data_path, f'pca_components_{COMP}_primary.csv'))
 
     print('Computing primary clusters')
     prim_clusters = cluster(primary, min_cluster_size)
@@ -38,17 +38,14 @@ def generate_labels(N, COMP, min_cluster_size):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-N', type=int, required=False, default=500, help='Number of neighbors for UMAP data')
     parser.add_argument('-COMP', type=int, required=False, default=100, help='Number of components for UMAP data')
     parser.add_argument('-M', type=int, required=False, default=250, help='Min cluster size for HDBSCAN')
     args = parser.parse_args()
 
-    N = args.N
+    M = args.M
     COMP = args.COMP
-    MIN_CLUST_SIZE = args.M
 
     generate_labels(
-        N=N, 
         COMP=COMP, 
-        min_cluster_size=MIN_CLUST_SIZE
+        min_cluster_size=M
     )
