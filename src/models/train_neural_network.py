@@ -58,7 +58,15 @@ class NN(pl.LightningModule):
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(512, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
@@ -80,15 +88,14 @@ class NN(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
-        print(loss)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
         return loss
     
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         val_loss = F.cross_entropy(y_hat, y)
-        self.log("val_loss", val_loss)
+        self.log("val_loss", val_loss, on_step=True, on_epoch=True, logger=True)
         return val_loss
 
 if __name__ == "__main__":
@@ -120,6 +127,5 @@ if __name__ == "__main__":
     )
 
     epochs = 10000
-
     trainer = pl.Trainer(devices=1, accelerator="gpu", auto_lr_find=True, max_epochs=epochs)
     trainer.fit(model, traindata, valdata)
