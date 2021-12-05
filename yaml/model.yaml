@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model
+  name: rna-seq-model-deeper-gpu
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-model
+        k8s-app: rna-seq-model-deeper-gpu
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-model
+      - name: rna-seq-model-deeper-gpu
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -29,7 +29,7 @@ spec:
             cpu: "16"
             nvidia.com/gpu: "1"
           requests:
-            memory: 32Gi
+            memory: 64Gi
             cpu: "16"
             nvidia.com/gpu: "1"
         volumeMounts:

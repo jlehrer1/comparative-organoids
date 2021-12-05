@@ -54,7 +54,33 @@ class NN(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(512, N_labels),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 64),
+            nn.ReLU(),
+            nn.Linear(64, N_labels),
         )
 
     def forward(self, x):
@@ -64,7 +90,8 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
+    print(f'Device = {device}')
+
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
