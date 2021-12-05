@@ -6,9 +6,11 @@ import csv
 import numpy as np
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from dask_ml.model_selection import train_test_split, HyperbandSearchCV
 import argparse
 import pathlib, os 
+import torch.nn.functional as F
+import pytorch_lightning as pl
+
 torch.manual_seed(0)
 
 class GeneExpressionData(Dataset):
@@ -45,7 +47,7 @@ def fix_labels(file, path):
     labels['# label'] = labels['# label'].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
 
-class NN(nn.Module):
+class NN(pl.LightningModule):
     def __init__(self, N_features, N_labels):
         super(NN, self).__init__()
         self.flatten = nn.Flatten()
@@ -69,6 +71,25 @@ class NN(nn.Module):
         x = self.flatten(x)
         logits = self.linear_relu_stack(x)
         return logits
+    
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+    
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = F.cross_entropy(y_hat, y)
+        print(loss)
+        self.log("train_loss", loss)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        val_loss = F.cross_entropy(y_hat, y)
+        self.log("val_loss", val_loss)
+        return val_loss
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -90,34 +111,15 @@ if __name__ == "__main__":
 
     train, test = torch.utils.data.random_split(t, [train_size, test_size])
 
-    traindata = DataLoader(train, batch_size = 8, num_workers = 6)
-    valdata = DataLoader(test, batch_size = 8, num_workers = 6)
+    traindata = DataLoader(train, batch_size=8, num_workers=8)
+    valdata = DataLoader(test, batch_size=8, num_workers=8)
 
     model = NN(
         N_features=t.num_features(),
         N_labels=t.num_labels()
     )
-    model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.08)
-    loss_arr = []
-    epochs = 1000000
+    epochs = 10000
 
-    for i in range(epochs):
-        model.train()
-
-        for X, y in traindata:
-            X, y = X.to(device), y.to(device)
-            # zero the parameter gradients
-            optimizer.zero_grad()
-
-            # forward + backward + optimize
-            outputs = model(X)
-            loss = criterion(outputs, y)
-            loss.backward()
-            optimizer.step()
-            
-            loss_arr.append(loss.item())
-            
-        print(f'Loss at epoch {i} is {loss_arr[i]}')
+    trainer = pl.Trainer(devices=1, accelerator="gpu", auto_lr_find=True, max_epochs=epochs)
+    trainer.fit(model, traindata, valdata)
