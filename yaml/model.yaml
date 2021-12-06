@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-deepest-complexity-gpu
+  name: rna-seq-model-30-layer-complexity-weighted
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-model-deepest-complexity-gpu
+        k8s-app: rna-seq-model-30-layer-complexity-weighted
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-model-deepest-complexity-gpu
+      - name: rna-seq-model-30-layer-complexity-weighted
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -27,11 +27,11 @@ spec:
           limits:
             memory: 100Gi
             cpu: "16"
-            nvidia.com/gpu: "2"
+            nvidia.com/gpu: "1"
           requests:
             memory: 64Gi
             cpu: "16"
-            nvidia.com/gpu: "2"
+            nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

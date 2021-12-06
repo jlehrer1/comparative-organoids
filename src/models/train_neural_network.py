@@ -1,3 +1,4 @@
+import comet_ml
 import dask.dataframe as dd
 import pandas as pd 
 import torch
@@ -10,6 +11,8 @@ import argparse
 import pathlib, os 
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import CometLogger
+from sklearn.utils.class_weight import compute_class_weight
 
 torch.manual_seed(0)
 
@@ -47,28 +50,21 @@ def fix_labels(file, path):
     labels['# label'] = labels['# label'].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
 
+layers = [nn.Linear(1024, 1024), nn.ReLU()]
+layers = layers*20
+
 class NN(pl.LightningModule):
-    def __init__(self, N_features, N_labels):
+    def __init__(self, N_features, N_labels, weights):
         super(NN, self).__init__()
+        self.weights = weights
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(N_features, 512),
             nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
             nn.Linear(512, 1024),
             nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
+            *layers,
             nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
             nn.ReLU(),
             nn.Linear(512, 64),
             nn.ReLU(),
@@ -87,16 +83,33 @@ class NN(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = F.cross_entropy(y_hat, y)
+        loss = F.cross_entropy(y_hat, y, weight=self.weights)
         self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
         return loss
     
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        val_loss = F.cross_entropy(y_hat, y)
+        val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         self.log("val_loss", val_loss, on_step=True, on_epoch=True, logger=True)
         return val_loss
+
+def class_weights(label_df):
+    label_df = pd.read_csv(label_df)
+
+    weights = compute_class_weight(
+        class_weight='balanced', 
+        classes=np.unique(label_df), 
+        y=label_df.values.reshape(-1))    
+
+    weights = torch.from_numpy(weights)
+
+    return weights.float().to('cuda')
+
+def acc(y_hat, y):
+    y_hat = torch.argmax(y_hat, dim=1)
+    accuracy = torch.sum(y == y_hat).item() / (len(y) * 1.0)
+    return torch.tensor(accuracy)
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -113,6 +126,12 @@ if __name__ == "__main__":
         labelname=os.path.join(here, 'fixed_primary_labels_neighbors_50_components_50_clust_size_100.csv')
     )
 
+    comet_logger = CometLogger(
+        api_key="neMNyjJuhw25ao48JEWlJpKRR",
+        project_name="gene-expression-classification",  # Optional
+        experiment_name='Gene Classifier, 25 Layer w/ Class Weights'
+    )
+
     train_size = int(0.8 * len(t))
     test_size = len(t) - train_size
 
@@ -121,11 +140,14 @@ if __name__ == "__main__":
     traindata = DataLoader(train, batch_size=8, num_workers=8)
     valdata = DataLoader(test, batch_size=8, num_workers=8)
 
+    weights = class_weights(os.path.join(here, 'fixed_primary_labels_neighbors_50_components_50_clust_size_100.csv'))
+
     model = NN(
         N_features=t.num_features(),
-        N_labels=t.num_labels()
+        N_labels=t.num_labels(),
+        weights=weights
     )
 
-    epochs = 10000
-    trainer = pl.Trainer(devices=1, accelerator="gpu", auto_lr_find=True, max_epochs=epochs)
+    epochs = 100000
+    trainer = pl.Trainer(devices=1, accelerator="gpu", auto_lr_find=True, max_epochs=epochs, logger=comet_logger)
     trainer.fit(model, traindata, valdata)

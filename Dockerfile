@@ -13,6 +13,6 @@ RUN apt-get --allow-releaseinfo-change update && \
 
 RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy 
 RUN conda install -c conda-forge python-kaleido dask-xgboost hdbscan dask-xgboost 
-RUN pip install matplotlib umap-learn dask dask-ml pynndescent seaborn imbalanced-learn xgboost pytorch-lightning
+RUN pip install matplotlib umap-learn dask dask-ml pynndescent seaborn imbalanced-learn xgboost pytorch-lightning comet_ml 
 
 COPY . .
