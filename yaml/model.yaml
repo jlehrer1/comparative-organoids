@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-30-layer-complexity-weighted
+  name: rna-seq-model-20-layer-complexity-weighted-sparse
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-model-30-layer-complexity-weighted
+        k8s-app: rna-seq-model-5-layer-complexity-weighted
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-model-30-layer-complexity-weighted
+      - name: rna-seq-model-5-layer-complexity-weighted
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -39,7 +39,3 @@ spec:
       # Ephemeral storage
       - name: ephemeral
         emptyDir: {}
-
-# "python src/data/download_data.py -type='primary' && \
-#           python src/data/download_data.py -type='labels' && \
-#           python src/models/train_neural_network.py"
