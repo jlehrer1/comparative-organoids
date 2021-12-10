@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-weighting
+  name: rna-seq-model-weighting-width-${WIDTH}-layers-${LAYERS}
 spec:
   backoffLimit: 0
   completions: 1
@@ -21,17 +21,17 @@ spec:
         args: [
           "python src/data/download_data.py -type='primary' && \
           python src/data/download_data.py -type='labels' && \
-          python src/models/train_neural_network.py"
+          python src/models/train_neural_network.py --width=${WIDTH} --layers=${LAYERS}"
         ]
         resources:
           limits:
             memory: 100Gi
             cpu: "16"
-            nvidia.com/gpu: "2"
+            nvidia.com/gpu: "1"
           requests:
             memory: 64Gi
             cpu: "16"
-            nvidia.com/gpu: "2"
+            nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

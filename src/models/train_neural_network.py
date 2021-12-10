@@ -14,6 +14,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import CometLogger
 from sklearn.utils.class_weight import compute_class_weight
 from torchmetrics import Accuracy
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
 
 torch.manual_seed(0)
@@ -58,7 +60,7 @@ class GeneExpressionData(Dataset):
             y=label_df.values.reshape(-1))    
 
         weights = torch.from_numpy(weights)
-        return weights
+        return weights.float().to('cuda')
 
 class GeneClassifier(pl.LightningModule):
     def __init__(self, N_features, N_labels, weights, layers):
@@ -103,8 +105,8 @@ class GeneClassifier(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
-        self.log("train_accuracy", acc, on_step=True, on_epoch=True, logger=True)
+        self.log("train_loss", loss, on_step=False, on_epoch=True, logger=True)
+        self.log("train_accuracy", acc, on_step=False, on_epoch=True, logger=True)
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -113,25 +115,31 @@ class GeneClassifier(pl.LightningModule):
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.log("val_loss", val_loss, on_step=True, on_epoch=True, logger=True)
-        self.log("val_accuracy", acc, on_step=True, on_epoch=True, logger=True)
+        self.log("val_loss", val_loss, on_step=False, on_epoch=True, logger=True)
+        self.log("val_accuracy", acc, on_step=False, on_epoch=True, logger=True)
         return val_loss
 
 class UploadCallback(pl.callbacks.Callback):
+    def __init__(self, path, WIDTH, LAYERS) -> None:
+        super().__init__()
+        self.path = path 
+        self.width = WIDTH
+        self.layers = LAYERS
+
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
         if epoch % 100 == 0: # since we're only saving every 100 epochs
             # Add upload here
-            pass
+            upload(
+                os.path.join(self.path, f'classifier-checkpoint-{epoch}-{self.width}-{self.layers}')
+            )
 
 def fix_labels(file, path):
     labels = pd.read_csv(file)
     labels['# label'] = labels['# label'].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
 
-
 def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
-
     layers = [
         nn.Linear(WIDTH, WIDTH),
         nn.ReLU(),
@@ -144,17 +152,17 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
     label_file = 'primary_labels_neighbors_50_components_50_clust_size_100.csv'
 
     fix_labels(os.path.join(data_path, label_file), here)
-    fixed_labels = pd.read_csv(os.path.join(here, f'fixed_{label_file}'))
 
     dataset = GeneExpressionData(
         filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(fixed_labels)
+        labelname=os.path.join(os.path.join(here, f'fixed_{label_file}'))
     )
 
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
         project_name="gene-expression-classification",  # Optional
-        experiment_name=f'Gene Classifier, {LAYERS*3 + 5} Layers w/ Early Stopping'
+        experiment_name=f'{LAYERS + 5} Layers, {WIDTH} Width'
+
     )
 
     train_size = int(0.8 * len(dataset))
@@ -165,15 +173,21 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
     traindata = DataLoader(train, batch_size=8, num_workers=8)
     valdata = DataLoader(test, batch_size=8, num_workers=8)
 
-    earlystopping = pl.callbacks.early_stopping.EarlyStopping(
+    earlystoppingcallback = pl.callbacks.early_stopping.EarlyStopping(
         monitor='val_loss_epoch',
         patience=50,
     )
     
-    checkpoint = pl.callbacks.ModelCheckpoint(
+    checkpointcallback = pl.callbacks.ModelCheckpoint(
         dirpath=os.path.join(here, 'checkpoints'),
-        filename='classifier-checkpoint-{epoch:02d}',
+        filename='classifier-checkpoint-{epoch}',
         every_n_epochs=100,
+    )
+
+    uploadcallback = UploadCallback(
+        path=os.path.join(here, 'checkpoints'),
+        WIDTH=WIDTH,
+        LAYERS=LAYERS
     )
 
     model = GeneClassifier(
@@ -185,12 +199,15 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
     
     print(model)
     trainer = pl.Trainer(
-        gpus=2, 
-        accelerator="ddp",
+        gpus=1, 
         auto_lr_find=True, 
         max_epochs=EPOCHS, 
         logger=comet_logger,
-        callbacks=[earlystopping],
+        callbacks=[
+            earlystoppingcallback,
+            checkpointcallback,
+            uploadcallback
+        ],
     )
 
     return trainer, model, traindata, valdata 
@@ -204,25 +221,28 @@ if __name__ == "__main__":
         required=False,
         default=1024,
         help='Width of deep layers in feedforward neural network',
+        type=int,
     )
 
     parser.add_argument(
         '--layers',
         required=False,
         default=5,
-        help='Number of deep layers in feedforward neural network'
+        help='Number of deep layers in feedforward neural network',
+        type=int,
     )
 
     parser.add_argument(
         '--epochs',
         required=False,
         default=200000,
-        help='Total number of allowable epochs the model is allowed to train for'
+        help='Total number of allowable epochs the model is allowed to train for',
+        type=int,
     )
 
     args = parser.parse_args()
 
-    WIDTH, LAYERS, EPOCHS = args.width, args.layers, args.epochs 
+    WIDTH, LAYERS, EPOCHS = args.width, args.layers, args.epochs # Divide by 2 since each layers consists of a linear layer and a dropout layer
     
     trainer, model, traindata, valdata = generate_trainer(here, WIDTH, LAYERS, EPOCHS)
     trainer.fit(model, traindata, valdata)
