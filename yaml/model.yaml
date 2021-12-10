@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-20-layer-complexity-weighted-sparse
+  name: rna-seq-model-weighting
 spec:
   backoffLimit: 0
   completions: 1
@@ -27,11 +27,11 @@ spec:
           limits:
             memory: 100Gi
             cpu: "16"
-            nvidia.com/gpu: "1"
+            nvidia.com/gpu: "2"
           requests:
             memory: 64Gi
             cpu: "16"
-            nvidia.com/gpu: "1"
+            nvidia.com/gpu: "2"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

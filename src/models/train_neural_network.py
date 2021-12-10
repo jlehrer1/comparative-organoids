@@ -13,9 +13,12 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CometLogger
 from sklearn.utils.class_weight import compute_class_weight
+from torchmetrics import Accuracy
+from helper import upload 
 
 torch.manual_seed(0)
-LAYERS = 5
+LAYERS = 100
+WIDTH = 2048 
 
 class GeneExpressionData(Dataset):
     def __init__(self, filename, labelname):
@@ -46,55 +49,49 @@ class GeneExpressionData(Dataset):
     def num_features(self):
         return len(self.__getitem__(0)[0])
 
-def fix_labels(file, path):
-    labels = pd.read_csv(file)
-    labels['# label'] = labels['# label'].astype(int) + 1
-    labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
+    def compute_class_weights(self):
+        label_df = pd.read_csv(self._labelname)
 
-layers = [
-    nn.Linear(1024, 1024),
-    nn.ReLU(),
-    nn.Dropout(np.random.choice([0.1, 0.25, 0.5])), 
-]
+        weights = compute_class_weight(
+            class_weight='balanced', 
+            classes=np.unique(label_df), 
+            y=label_df.values.reshape(-1))    
 
-layers = layers*LAYERS
+        weights = torch.from_numpy(weights)
+        return weights
 
 class GeneClassifier(pl.LightningModule):
-    def __init__(self, N_features, N_labels, weights=None):
+    def __init__(self, N_features, N_labels, weights, layers):
         """
         Initialize the gene classifier neural network
 
         Parameters:
         N_features: Number of features in the inpute matrix 
         N_labels: Number of classes 
-        weights: Class weights in the case of an unbalanced dataset
         """
 
         super(GeneClassifier, self).__init__()
-        self.weights = weights
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(N_features, 512),
             nn.ReLU(),
-            nn.Linear(512, 1024),
+            nn.Linear(512, WIDTH),
             nn.ReLU(),
             *layers,
-            nn.Linear(1024, 512),
+            nn.Linear(WIDTH, 512),
             nn.ReLU(),
             nn.Linear(512, 64),
             nn.ReLU(),
             nn.Linear(64, N_labels),
         )
+        
+        self.accuracy = Accuracy()
+        self.weights = weights
 
     def forward(self, x):
         x = self.flatten(x)
         logits = self.linear_relu_stack(x)
         return logits
-
-    def accuracy(self, y_hat, y):
-        y_hat = torch.argmax(y_hat, dim=1)
-        accuracy = torch.sum(y == y_hat).item() / (len(y) * 1.0)
-        return torch.tensor(accuracy)
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=1e-3, momentum=0.8)
@@ -104,7 +101,7 @@ class GeneClassifier(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
-        acc = self.accuracy(y_hat, y)
+        acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
         self.log("train_loss", loss, on_step=True, on_epoch=True, logger=True)
         self.log("train_accuracy", acc, on_step=True, on_epoch=True, logger=True)
@@ -114,61 +111,119 @@ class GeneClassifier(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
-        acc = self.accuracy(y_hat, y)
+        acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
         self.log("val_loss", val_loss, on_step=True, on_epoch=True, logger=True)
         self.log("val_accuracy", acc, on_step=True, on_epoch=True, logger=True)
         return val_loss
 
-def class_weights(label_df):
-    label_df = pd.read_csv(label_df)
+class UploadCallback(pl.callbacks.Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        epoch = trainer.current_epoch
+        if epoch % 100 == 0: # since we're only saving every 100 epochs
+            # Add upload here
+            pass
 
-    weights = compute_class_weight(
-        class_weight='balanced', 
-        classes=np.unique(label_df), 
-        y=label_df.values.reshape(-1))    
-
-    weights = torch.from_numpy(weights)
-    return weights.float().to('cuda')
+def fix_labels(file, path):
+    labels = pd.read_csv(file)
+    labels['# label'] = labels['# label'].astype(int) + 1
+    labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
 
 
-if __name__ == "__main__":
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f'Device = {device}')
+def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
 
-    here = pathlib.Path(__file__).parent.absolute()
+    layers = [
+        nn.Linear(WIDTH, WIDTH),
+        nn.ReLU(),
+        nn.Dropout(0.5), 
+    ]
+
+    layers = layers*LAYERS
+
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
+    label_file = 'primary_labels_neighbors_50_components_50_clust_size_100.csv'
 
-    fix_labels(os.path.join(data_path, 'primary_labels_neighbors_50_components_50_clust_size_100.csv'), here)
-    fixed_labels = pd.read_csv(os.path.join(here, 'fixed_primary_labels_neighbors_50_components_50_clust_size_100.csv'))
+    fix_labels(os.path.join(data_path, label_file), here)
+    fixed_labels = pd.read_csv(os.path.join(here, f'fixed_{label_file}'))
 
-    t = GeneExpressionData(
+    dataset = GeneExpressionData(
         filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(here, 'fixed_primary_labels_neighbors_50_components_50_clust_size_100.csv')
+        labelname=os.path.join(fixed_labels)
     )
 
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
         project_name="gene-expression-classification",  # Optional
-        experiment_name=f'Gene Classifier, {LAYERS*3 + 5} Layers w/ Class Weights & Dropout'
+        experiment_name=f'Gene Classifier, {LAYERS*3 + 5} Layers w/ Early Stopping'
     )
 
-    train_size = int(0.8 * len(t))
-    test_size = len(t) - train_size
+    train_size = int(0.8 * len(dataset))
+    test_size = len(dataset) - train_size
 
-    train, test = torch.utils.data.random_split(t, [train_size, test_size])
+    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
     traindata = DataLoader(train, batch_size=8, num_workers=8)
     valdata = DataLoader(test, batch_size=8, num_workers=8)
 
-    weights = class_weights(os.path.join(here, 'fixed_primary_labels_neighbors_50_components_50_clust_size_100.csv'))
-
-    model = GeneClassifier(
-        N_features=t.num_features(),
-        N_labels=t.num_labels(),
-        weights=weights
+    earlystopping = pl.callbacks.early_stopping.EarlyStopping(
+        monitor='val_loss_epoch',
+        patience=50,
+    )
+    
+    checkpoint = pl.callbacks.ModelCheckpoint(
+        dirpath=os.path.join(here, 'checkpoints'),
+        filename='classifier-checkpoint-{epoch:02d}',
+        every_n_epochs=100,
     )
 
-    epochs = 2000000 # 2 million
-    trainer = pl.Trainer(gpus=1, auto_lr_find=True, max_epochs=epochs, logger=comet_logger)
+    model = GeneClassifier(
+        N_features=dataset.num_features(),
+        N_labels=dataset.num_labels(),
+        weights=dataset.compute_class_weights(),
+        layers=layers
+    )
+    
+    print(model)
+    trainer = pl.Trainer(
+        gpus=2, 
+        accelerator="ddp",
+        auto_lr_find=True, 
+        max_epochs=EPOCHS, 
+        logger=comet_logger,
+        callbacks=[earlystopping],
+    )
+
+    return trainer, model, traindata, valdata 
+
+if __name__ == "__main__":
+    here = pathlib.Path(__file__).parent.absolute()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--width',
+        required=False,
+        default=1024,
+        help='Width of deep layers in feedforward neural network',
+    )
+
+    parser.add_argument(
+        '--layers',
+        required=False,
+        default=5,
+        help='Number of deep layers in feedforward neural network'
+    )
+
+    parser.add_argument(
+        '--epochs',
+        required=False,
+        default=200000,
+        help='Total number of allowable epochs the model is allowed to train for'
+    )
+
+    args = parser.parse_args()
+
+    WIDTH, LAYERS, EPOCHS = args.width, args.layers, args.epochs 
+    
+    trainer, model, traindata, valdata = generate_trainer(here, WIDTH, LAYERS, EPOCHS)
     trainer.fit(model, traindata, valdata)
+

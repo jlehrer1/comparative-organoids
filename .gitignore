@@ -105,3 +105,4 @@ organoid_T.tsv
 primary_T.tsv
 remote/*
 */lightning_logs/*
+notebooks/poster*
