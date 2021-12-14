@@ -5,4 +5,3 @@ do
         kubectl delete job rna-seq-model-weighting-width-${WIDTH}-layers-${LAYERS}
     done
 done
-    

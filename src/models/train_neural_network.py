@@ -76,6 +76,7 @@ class GeneClassifier(pl.LightningModule):
             nn.Linear(N_features, 512),
             nn.ReLU(),
             nn.Linear(512, width),
+            nn.Dropout(0.5),
             nn.ReLU(),
             *layers,
             nn.Linear(width, 512),
@@ -126,10 +127,14 @@ class UploadCallback(pl.callbacks.Callback):
 
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
-        if epoch % 100 == 0: # since we're only saving every 100 epochs
-            # Add upload here
+        if epoch % 10 == 0: # Save every ten epochs
+            checkpoint = f'checkpoint-{epoch}-width-{self.width}-layers-{self.layers}.ckpt'
+            trainer.save_checkpoint(os.path.join(self.path, checkpoint))
+
+            print(f'Uploading checkpoint at epoch {epoch}')
             upload(
-                os.path.join(self.path, f'classifier-checkpoint-{epoch}-{self.width}-{self.layers}')
+                os.path.join(self.path, checkpoint),
+                os.path.join('jlehrer', 'model_checkpoints', checkpoint)
             )
 
 def fix_labels(file, path):
@@ -138,14 +143,6 @@ def fix_labels(file, path):
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
 
 def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
-    layers = [
-        nn.Linear(WIDTH, WIDTH),
-        nn.ReLU(),
-        nn.Dropout(0.5), 
-    ]
-
-    layers = layers*LAYERS
-
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
     label_file = 'primary_labels_neighbors_50_components_50_clust_size_100.csv'
 
@@ -176,23 +173,21 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
         patience=50,
     )
     
-    checkpointcallback = pl.callbacks.ModelCheckpoint(
-        dirpath=os.path.join(here, 'checkpoints'),
-        filename='classifier-checkpoint-{epoch}',
-        every_n_epochs=100,
-    )
-
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
         WIDTH=WIDTH,
-        LAYERS=LAYERS
+        LAYERS=LAYERS,
     )
 
     model = GeneClassifier(
         N_features=dataset.num_features(),
         N_labels=dataset.num_labels(),
         weights=dataset.compute_class_weights(),
-        layers=layers,
+        layers=LAYERS*[
+            nn.Linear(WIDTH, WIDTH),
+            nn.ReLU(),
+            nn.Dropout(0.5), 
+        ],
         width=WIDTH,
     )
     
@@ -203,8 +198,7 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
         max_epochs=EPOCHS, 
         logger=comet_logger,
         callbacks=[
-            checkpointcallback,
-            uploadcallback
+            uploadcallback,
         ],
     )
 
@@ -240,8 +234,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    WIDTH, LAYERS, EPOCHS = args.width, args.layers, args.epochs # Divide by 2 since each layers consists of a linear layer and a dropout layer
-    
+    WIDTH, LAYERS, EPOCHS = args.width, args.layers, args.epochs
+
     trainer, model, traindata, valdata = generate_trainer(here, WIDTH, LAYERS, EPOCHS)
     trainer.fit(model, traindata, valdata)
 
