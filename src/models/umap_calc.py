@@ -68,7 +68,9 @@ if __name__ == "__main__":
         umap_calc(
             data=data, 
             n_neighbors=NEIGHBORS, 
-            n_components=N_COMP).compute()
+            n_components=N_COMP,
+            min_dist=0,
+            ).compute()
         )
     )
 

@@ -8,7 +8,7 @@ import numpy as np
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import argparse
-import pathlib, os 
+import pathlib, os
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CometLogger
@@ -19,8 +19,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
 
 torch.manual_seed(0)
-LAYERS = 100
-WIDTH = 2048 
 
 class GeneExpressionData(Dataset):
     def __init__(self, filename, labelname):
@@ -63,7 +61,7 @@ class GeneExpressionData(Dataset):
         return weights.float().to('cuda')
 
 class GeneClassifier(pl.LightningModule):
-    def __init__(self, N_features, N_labels, weights, layers):
+    def __init__(self, N_features, N_labels, weights, layers, width):
         """
         Initialize the gene classifier neural network
 
@@ -77,10 +75,10 @@ class GeneClassifier(pl.LightningModule):
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(N_features, 512),
             nn.ReLU(),
-            nn.Linear(512, WIDTH),
+            nn.Linear(512, width),
             nn.ReLU(),
             *layers,
-            nn.Linear(WIDTH, 512),
+            nn.Linear(width, 512),
             nn.ReLU(),
             nn.Linear(512, 64),
             nn.ReLU(),
@@ -174,7 +172,7 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
     valdata = DataLoader(test, batch_size=8, num_workers=8)
 
     earlystoppingcallback = pl.callbacks.early_stopping.EarlyStopping(
-        monitor='val_loss_epoch',
+        monitor='val_loss',
         patience=50,
     )
     
@@ -194,7 +192,8 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
         N_features=dataset.num_features(),
         N_labels=dataset.num_labels(),
         weights=dataset.compute_class_weights(),
-        layers=layers
+        layers=layers,
+        width=WIDTH,
     )
     
     print(model)
@@ -204,7 +203,6 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
         max_epochs=EPOCHS, 
         logger=comet_logger,
         callbacks=[
-            earlystoppingcallback,
             checkpointcallback,
             uploadcallback
         ],
