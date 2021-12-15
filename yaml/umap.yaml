@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: rna-seq-reduction-${N}-neighbors-${COMP}-components-${FILE}
 spec:
-  backoffLimit: 0
+  backoffLimit: 1
   completions: 1
   template:
     metadata:

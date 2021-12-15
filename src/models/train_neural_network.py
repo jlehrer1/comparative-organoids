@@ -86,7 +86,7 @@ class GeneClassifier(pl.LightningModule):
             nn.Linear(64, N_labels),
         )
         
-        self.accuracy = Accuracy()
+        self.accuracy = Accuracy(average='weighted')
         self.weights = weights
 
     def forward(self, x):
@@ -95,7 +95,7 @@ class GeneClassifier(pl.LightningModule):
         return logits
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.parameters(), lr=1e-3, momentum=0.8)
+        optimizer = torch.optim.SGD(self.parameters(), lr=1e-3, momentum=0.8, weight_decay=0.01)
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -156,10 +156,9 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
         project_name="gene-expression-classification",  # Optional
         experiment_name=f'{LAYERS + 5} Layers, {WIDTH} Width'
-
     )
 
-    train_size = int(0.8 * len(dataset))
+    train_size = int(0.80 * len(dataset))
     test_size = len(dataset) - train_size
 
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
