@@ -20,6 +20,7 @@ def umap_calc(data, n_neighbors, n_components):
     fit = umap.UMAP(
         n_neighbors=n_neighbors,
         n_components=n_components,
+        min_dist=0,
         verbose=True,
         random_state=42,
     )
@@ -69,7 +70,6 @@ if __name__ == "__main__":
             data=data, 
             n_neighbors=NEIGHBORS, 
             n_components=N_COMP,
-            min_dist=0,
             ).compute()
         )
     )

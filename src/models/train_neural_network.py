@@ -130,7 +130,6 @@ class UploadCallback(pl.callbacks.Callback):
         if epoch % 10 == 0: # Save every ten epochs
             checkpoint = f'checkpoint-{epoch}-width-{self.width}-layers-{self.layers}.ckpt'
             trainer.save_checkpoint(os.path.join(self.path, checkpoint))
-
             print(f'Uploading checkpoint at epoch {epoch}')
             upload(
                 os.path.join(self.path, checkpoint),
