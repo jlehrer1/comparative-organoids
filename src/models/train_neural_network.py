@@ -1,9 +1,13 @@
-import comet_ml
 import dask.dataframe as dd
 import pandas as pd 
 import torch
 import linecache 
 import csv
+from ray import tune
+from ray.tune import CLIReporter
+from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
+from ray.tune.integration.pytorch_lightning import TuneReportCallback, \
+    TuneReportCheckpointCallback
 import numpy as np
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -61,7 +65,7 @@ class GeneExpressionData(Dataset):
         return weights.float().to('cuda')
 
 class GeneClassifier(pl.LightningModule):
-    def __init__(self, N_features, N_labels, weights, layers, width):
+    def __init__(self, N_features, N_labels, weights, params):
         """
         Initialize the gene classifier neural network
 
@@ -70,23 +74,27 @@ class GeneClassifier(pl.LightningModule):
         N_labels: Number of classes 
         """
 
+        self.width = params['width']
+        self.layers = params['layers']
+        self.lr = params['lr']
+        self.momentum = params['momentum']
+        self.weight_decay = params['weight_decay']
+
+        layers = self.layers*[
+            nn.Linear(self.width, self.width),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+        ]
+
         super(GeneClassifier, self).__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(N_features, 512),
-            nn.ReLU(),
-            nn.Linear(512, width),
-            nn.Dropout(0.5),
-            nn.ReLU(),
+            nn.Linear(N_features, self.width),
             *layers,
-            nn.Linear(width, 512),
-            nn.ReLU(),
-            nn.Linear(512, 64),
-            nn.ReLU(),
-            nn.Linear(64, N_labels),
+            nn.Linear(self.width, N_labels),
         )
         
-        self.accuracy = Accuracy(average='weighted')
+        self.accuracy = Accuracy()
         self.weights = weights
 
     def forward(self, x):
@@ -95,7 +103,12 @@ class GeneClassifier(pl.LightningModule):
         return logits
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.parameters(), lr=1e-3, momentum=0.8, weight_decay=0.01)
+        optimizer = torch.optim.SGD(
+            self.parameters(), 
+            lr=self.lr, 
+            momentum=self.momentum, 
+            weight_decay=self.weight_decay,
+        )
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -141,7 +154,11 @@ def fix_labels(file, path):
     labels['# label'] = labels['# label'].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
 
-def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
+def generate_trainer(here, params):
+    width = params['width']
+    epochs = params['epochs']
+    layers = params['layers']
+
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
     label_file = 'primary_labels_neighbors_50_components_50_clust_size_100.csv'
 
@@ -155,7 +172,7 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
         project_name="gene-expression-classification",  # Optional
-        experiment_name=f'{LAYERS + 5} Layers, {WIDTH} Width'
+        experiment_name=f'{layers + 5} Layers, {width} Width'
     )
 
     train_size = int(0.80 * len(dataset))
@@ -173,38 +190,32 @@ def generate_trainer(here, WIDTH, LAYERS, EPOCHS):
     
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
-        WIDTH=WIDTH,
-        LAYERS=LAYERS,
+        WIDTH=width,
+        LAYERS=layers,
     )
 
     model = GeneClassifier(
         N_features=dataset.num_features(),
         N_labels=dataset.num_labels(),
         weights=dataset.compute_class_weights(),
-        layers=LAYERS*[
-            nn.Linear(WIDTH, WIDTH),
-            nn.ReLU(),
-            nn.Dropout(0.5), 
-        ],
-        width=WIDTH,
+        params=params,
     )
     
     print(model)
     trainer = pl.Trainer(
         gpus=1, 
         auto_lr_find=True, 
-        max_epochs=EPOCHS, 
+        max_epochs=epochs, 
         logger=comet_logger,
         callbacks=[
             uploadcallback,
+            earlystoppingcallback,
         ],
     )
 
     return trainer, model, traindata, valdata 
 
-if __name__ == "__main__":
-    here = pathlib.Path(__file__).parent.absolute()
-
+def add_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--width',
@@ -230,10 +241,40 @@ if __name__ == "__main__":
         type=int,
     )
 
+    parser.add_argument(
+        '--lr',
+        required=False,
+        default=1e-4,
+        help='Learning rate for model optimizer',
+        type=float,
+    )
+
+    parser.add_argument(
+        '--momentum',
+        required=False,
+        default=0.1,
+        help='Momentum for model optimizer',
+        type=float,
+    )
+
+    parser.add_argument(
+        '--weight-decay',
+        required=False,
+        default=1e-4,
+        help='Weight decay for model optimizer',
+        type=float,
+    )
+
+    return parser
+
+if __name__ == "__main__":
+    here = pathlib.Path(__file__).parent.absolute()
+
+    parser = add_args()
     args = parser.parse_args()
 
-    WIDTH, LAYERS, EPOCHS = args.width, args.layers, args.epochs
-
-    trainer, model, traindata, valdata = generate_trainer(here, WIDTH, LAYERS, EPOCHS)
+    params = vars(args)
+    
+    trainer, model, traindata, valdata = generate_trainer(here, params)
     trainer.fit(model, traindata, valdata)
 

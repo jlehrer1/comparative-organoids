@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-weighting-width-${WIDTH}-layers-${LAYERS}
+  name: rna-seq-model-weighting-width-${WIDTH}-layers-${LAYERS}-${I}
 spec:
   backoffLimit: 0
   completions: 1
@@ -21,7 +21,9 @@ spec:
         args: [
           "python src/data/download_data.py -type='primary' && \
           python src/data/download_data.py -type='labels' && \
-          python src/models/train_neural_network.py --width=${WIDTH} --layers=${LAYERS}"
+          python src/models/train_neural_network.py \
+          --width=${WIDTH} --layers=${LAYERS} \
+          --lr=${LR} --momentum=${MOMENTUM} --weight-decay=${WEIGHT_DECAY}"
         ]
         resources:
           limits:

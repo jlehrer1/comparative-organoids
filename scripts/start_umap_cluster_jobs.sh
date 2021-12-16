@@ -6,7 +6,7 @@ do
 	do
 	for M in 50 100 250
 		do
-			export N=${N} COMP=${COMP} M=${M} && envsubst < yaml/cluster.yaml | kubectl create -f -
+			export N=${N} COMP=${COMP} M=${M} && envsubst < yaml/cluster_umap.yaml | kubectl create -f -
 		done
 	done
 done

@@ -12,8 +12,8 @@ push:
 run:
 	docker run -it $(CONTAINER) /bin/bash
 
-all:
-	kubectl create -f yaml/reduction.yaml && kubectl create -f yaml/umap.yaml
+go:
+	make build && make push
 
-stop:
-	kubectl delete job rna-seq-generate-transpose; kubectl delete job rna-seq-umap; 
+train:
+	./scripts/stop_training_jobs.sh; ./scripts/start_training_jobs.sh
