@@ -16,4 +16,4 @@ go:
 	make build && make push
 
 train:
-	./scripts/stop_training_jobs.sh; ./scripts/start_training_jobs.sh
+	python scripts/run_model_search.py

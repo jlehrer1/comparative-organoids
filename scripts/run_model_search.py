@@ -5,7 +5,6 @@ import pathlib
 import subprocess
 import os 
 
-
 NUM_SAMPLES = 50
 here = pathlib.Path(__file__).parent.absolute()
 yaml_path = os.path.join(here, '..', 'yaml', 'model.yaml')

@@ -67,7 +67,10 @@ class GeneClassifier(pl.LightningModule):
         N_features: Number of features in the inpute matrix 
         N_labels: Number of classes 
         """
+        # Record entire dict for logging
+        self._hyperparams = params
 
+        # Set hyperparameters
         self.width = params['width']
         self.layers = params['layers']
         self.lr = params['lr']
@@ -104,6 +107,13 @@ class GeneClassifier(pl.LightningModule):
             weight_decay=self.weight_decay,
         )
         return optimizer
+
+    def on_train_start(self):
+        self.logger.log_hyperparams(self.width)
+        self.logger.log_hyperparams(self.layers)
+        self.logger.log_hyperparams(self.lr)
+        self.logger.log_hyperparams(self.momentum)
+        self.logger.log_hyperparams(self.weight_decay)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
