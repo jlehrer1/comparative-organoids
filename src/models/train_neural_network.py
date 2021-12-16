@@ -1,13 +1,9 @@
-import dask.dataframe as dd
+import comet_ml
+from pytorch_lightning.loggers import CometLogger
 import pandas as pd 
 import torch
 import linecache 
 import csv
-from ray import tune
-from ray.tune import CLIReporter
-from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
-from ray.tune.integration.pytorch_lightning import TuneReportCallback, \
-    TuneReportCheckpointCallback
 import numpy as np
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -15,7 +11,6 @@ import argparse
 import pathlib, os
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import CometLogger
 from sklearn.utils.class_weight import compute_class_weight
 from torchmetrics import Accuracy
 import sys
@@ -23,7 +18,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
 
 torch.manual_seed(0)
-
 class GeneExpressionData(Dataset):
     def __init__(self, filename, labelname):
         self._filename = filename
@@ -204,12 +198,10 @@ def generate_trainer(here, params):
     print(model)
     trainer = pl.Trainer(
         gpus=1, 
-        auto_lr_find=True, 
         max_epochs=epochs, 
         logger=comet_logger,
         callbacks=[
             uploadcallback,
-            earlystoppingcallback,
         ],
     )
 
