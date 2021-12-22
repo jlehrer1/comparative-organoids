@@ -123,12 +123,13 @@ class GeneClassifier(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.logger.log_metric("train_loss", loss, on_step=False, on_epoch=True, logger=True)
-        self.logger.log_metric("train_accuracy", acc, on_step=False, on_epoch=True, logger=True)
-        self.logger.log_confusion_matrix(
+        self.logger.experiment.log_metric("train_loss", loss, on_step=False, on_epoch=True, logger=True)
+        self.logger.experiment.log_metric("train_accuracy", acc, on_step=False, on_epoch=True, logger=True)
+        self.logger.experiment.log_confusion_matrix(
             title="train_confusion_matrix",
             matrix=self.confusion(y_hat.softmax(dim=-1), y)
         )
+        
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -137,10 +138,10 @@ class GeneClassifier(pl.LightningModule):
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.logger.log_metric("val_loss", val_loss)
-        self.logger.log_metric("val_accuracy", acc)
+        self.logger.experiment.log_metric("val_loss", val_loss)
+        self.logger.experiment.log_metric("val_accuracy", acc)
 
-        self.logger.log_confusion_matrix(
+        self.logger.experiment.log_confusion_matrix(
             title="val_confusion_matrix",
             matrix=self.confusion(y_hat.softmax(dim=-1), y)
         )
