@@ -91,7 +91,7 @@ class GeneClassifier(pl.LightningModule):
             nn.Linear(self.width, N_labels),
         )
         
-        self.accuracy = Accuracy()
+        self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
         self.weights = weights
 
     def forward(self, x):
@@ -208,10 +208,12 @@ def generate_trainer(here, params):
     print(model)
     trainer = pl.Trainer(
         gpus=1, 
+        auto_lr_find=True,
         max_epochs=epochs, 
         logger=comet_logger,
         callbacks=[
             uploadcallback,
+            # earlystoppingcallback,
         ],
     )
 

@@ -17,3 +17,6 @@ go:
 
 train:
 	python scripts/run_model_search.py
+
+stop:
+	kubectl delete job $(kubectl get jobs | grep rna-seq | awk '{print $1}')

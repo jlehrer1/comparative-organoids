@@ -99,7 +99,7 @@ if __name__ == "__main__":
         }
 
         svc_est = GeneClassifier(SVC(), params)
-        svc_est = svc_est.generate_models(X_train.values, y_train.values)
+        svc_est = svc_est.generate_model(X_train.values, y_train.values)
         print(svc_est)
 
     elif model == 'tree':
@@ -117,6 +117,7 @@ if __name__ == "__main__":
 
     else: # model == 'logistic'
         from dask_ml.linear_model import LogisticRegression
+        print('Running logistic model')
         param_distributions = {
             'penalty' : ['l1', 'l2'],
             'C' : np.linspace(0.1, 100, 50)

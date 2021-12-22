@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: rna-seq-model-weighting-width-${WIDTH}-layers-${LAYERS}-${I}
 spec:
-  backoffLimit: 0
+  backoffLimit: 5
   completions: 1
   template:
     metadata:
@@ -31,8 +31,8 @@ spec:
             cpu: "16"
             nvidia.com/gpu: "1"
           requests:
-            memory: 64Gi
-            cpu: "16"
+            memory: 32Gi
+            cpu: "12"
             nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral
@@ -41,3 +41,18 @@ spec:
       # Ephemeral storage
       - name: ephemeral
         emptyDir: {}
+      tolerations:
+        - key: "nautilus.io/chase-ci"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #       - matchExpressions:
+      #         - key: kubernetes.io/hostname
+      #           operator: NotIn
+      #           values:
+      #             - k8s-gpu-1.ucr.edu                # 9nov: GPU sync failed
+      #             - fiona8-2.calit2.uci.edu       # 16nov: Driver error timeout

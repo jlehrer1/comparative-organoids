@@ -106,3 +106,5 @@ primary_T.tsv
 remote/*
 */lightning_logs/*
 notebooks/poster*
+notebooks/*/*.png
+notebooks/*.png
