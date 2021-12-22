@@ -123,13 +123,8 @@ class GeneClassifier(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.logger.experiment.log_metric("train_loss", loss, on_step=False, on_epoch=True, logger=True)
-        self.logger.experiment.log_metric("train_accuracy", acc, on_step=False, on_epoch=True, logger=True)
-        self.logger.experiment.log_confusion_matrix(
-            title="train_confusion_matrix",
-            matrix=self.confusion(y_hat.softmax(dim=-1), y)
-        )
-        
+        self.logger.experiment.log_metric("train_loss", loss)
+        self.logger.experiment.log_metric("train_accuracy", acc)
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -137,16 +132,19 @@ class GeneClassifier(pl.LightningModule):
         y_hat = self(x)
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
+        matrix = self.confusion(y_hat.softmax(dim=-1), y).cpu().detach().numpy()
 
         self.logger.experiment.log_metric("val_loss", val_loss)
         self.logger.experiment.log_metric("val_accuracy", acc)
-
         self.logger.experiment.log_confusion_matrix(
             title="val_confusion_matrix",
-            matrix=self.confusion(y_hat.softmax(dim=-1), y)
+            matrix=matrix
         )
 
         return val_loss
+
+    def validation_epoch_end(self, out):
+        pass 
 
 class UploadCallback(pl.callbacks.Callback):
     def __init__(self, path, WIDTH, LAYERS) -> None:
