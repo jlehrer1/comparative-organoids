@@ -12,7 +12,8 @@ import pathlib, os
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from sklearn.utils.class_weight import compute_class_weight
-from torchmetrics import Accuracy
+from torchmetrics import Accuracy, ConfusionMatrix 
+
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
@@ -92,6 +93,7 @@ class GeneClassifier(pl.LightningModule):
         )
         
         self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
+        self.confusion = ConfusionMatrix(num_classes=N_labels)
         self.weights = weights
 
     def forward(self, x):
@@ -121,8 +123,12 @@ class GeneClassifier(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.log("train_loss", loss, on_step=False, on_epoch=True, logger=True)
-        self.log("train_accuracy", acc, on_step=False, on_epoch=True, logger=True)
+        self.logger.log_metric("train_loss", loss, on_step=False, on_epoch=True, logger=True)
+        self.logger.log_metric("train_accuracy", acc, on_step=False, on_epoch=True, logger=True)
+        self.logger.log_confusion_matrix(
+            title="train_confusion_matrix",
+            matrix=self.confusion(y_hat.softmax(dim=-1), y)
+        )
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -131,8 +137,14 @@ class GeneClassifier(pl.LightningModule):
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.log("val_loss", val_loss, on_step=False, on_epoch=True, logger=True)
-        self.log("val_accuracy", acc, on_step=False, on_epoch=True, logger=True)
+        self.logger.log_metric("val_loss", val_loss)
+        self.logger.log_metric("val_accuracy", acc)
+
+        self.logger.log_confusion_matrix(
+            title="val_confusion_matrix",
+            matrix=self.confusion(y_hat.softmax(dim=-1), y)
+        )
+
         return val_loss
 
 class UploadCallback(pl.callbacks.Callback):
