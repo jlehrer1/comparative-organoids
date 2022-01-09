@@ -108,3 +108,4 @@ remote/*
 notebooks/poster*
 notebooks/*/*.png
 notebooks/*.png
+credentials

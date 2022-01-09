@@ -18,7 +18,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
 
-torch.manual_seed(0)
+# torch.manual_seed(0)
 class GeneExpressionData(Dataset):
     def __init__(self, filename, labelname):
         self._filename = filename
@@ -28,7 +28,7 @@ class GeneExpressionData(Dataset):
         with open(filename, "r") as f:
             self._total_data = len(f.readlines()) - 1
     
-    def __getitem__(self, idx):        
+    def __getitem__(self, idx):
         line = linecache.getline(self._filename, idx + 2)
         label = linecache.getline(self._labelname, idx + 2)
         
@@ -80,8 +80,9 @@ class GeneClassifier(pl.LightningModule):
 
         layers = self.layers*[
             nn.Linear(self.width, self.width),
-            nn.Dropout(0.5),
             nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.BatchNorm1d(self.width),
         ]
 
         super(GeneClassifier, self).__init__()
@@ -91,9 +92,9 @@ class GeneClassifier(pl.LightningModule):
             *layers,
             nn.Linear(self.width, N_labels),
         )
-        
+        self.accuracy = Accuracy()
         self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
-        self.confusion = ConfusionMatrix(num_classes=N_labels)
+        # self.confusion = ConfusionMatrix(num_classes=N_labels)
         self.weights = weights
 
     def forward(self, x):
@@ -103,7 +104,7 @@ class GeneClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(
-            self.parameters(), 
+            self.parameters(),
             lr=self.lr, 
             momentum=self.momentum, 
             weight_decay=self.weight_decay,
@@ -123,8 +124,9 @@ class GeneClassifier(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.logger.experiment.log_metric("train_loss", loss)
-        self.logger.experiment.log_metric("train_accuracy", acc)
+        self.log("train_loss", loss, logger=True, on_epoch=True)
+        self.log("train_accuracy", acc, logger=True, on_epoch=True)
+
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -132,19 +134,16 @@ class GeneClassifier(pl.LightningModule):
         y_hat = self(x)
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
-        matrix = self.confusion(y_hat.softmax(dim=-1), y).cpu().detach().numpy()
+        # matrix = self.confusion(y_hat.softmax(dim=-1), y).cpu().detach().numpy()
 
-        self.logger.experiment.log_metric("val_loss", val_loss)
-        self.logger.experiment.log_metric("val_accuracy", acc)
-        self.logger.experiment.log_confusion_matrix(
-            title="val_confusion_matrix",
-            matrix=matrix
-        )
+        self.log("val_loss", val_loss, logger=True, on_epoch=True)
+        self.log("val_accuracy", acc, logger=True, on_epoch=True)
+        # self.logger.experiment.log_confusion_matrix(
+        #     title="val_confusion_matrix",
+        #     matrix=matrix
+        # )
 
         return val_loss
-
-    def validation_epoch_end(self, out):
-        pass 
 
 class UploadCallback(pl.callbacks.Callback):
     def __init__(self, path, WIDTH, LAYERS) -> None:
@@ -186,7 +185,8 @@ def generate_trainer(here, params):
 
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
-        project_name="gene-expression-classification",  # Optional
+        project_name="gene-expression-classification-weighted",  # Optional
+        workspace="jlehrer1",
         experiment_name=f'{layers + 5} Layers, {width} Width'
     )
 
@@ -195,8 +195,8 @@ def generate_trainer(here, params):
 
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    traindata = DataLoader(train, batch_size=8, num_workers=8)
-    valdata = DataLoader(test, batch_size=8, num_workers=8)
+    traindata = DataLoader(train, batch_size=8, num_workers=100)
+    valdata = DataLoader(test, batch_size=8, num_workers=100)
 
     earlystoppingcallback = pl.callbacks.early_stopping.EarlyStopping(
         monitor='val_loss',

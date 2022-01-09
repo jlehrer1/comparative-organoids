@@ -27,5 +27,5 @@ spec:
             memory: 500Gi
             cpu: "32"
           requests:
-            memory: 250Gi
+            memory: 350Gi
             cpu: "32"

@@ -63,6 +63,17 @@ if __name__ == "__main__":
 
     print(f'Reading in {FILE} data')
     data = da.read_csv(os.path.join(here, '..', '..', 'data', 'processed', f'{FILE}.csv'), assume_missing=True)
+    data.columns = [c.lower() for c in data.columns]
+
+    # Drop all the ribosomal and mitochondrial genes
+    to_remove = []
+
+    for c in data.columns:
+        if c.startswith('mt') or c.startswith('rp'):
+            to_remove.append(c)
+
+    print('Dropping ribosomal and mitochondrial genes before performing UMAP.')
+    data = data.drop(to_remove, axis=1)
 
     print(f'Calculating UMAP reduction with n_components={N_COMP} and n_neighbors={NEIGHBORS}')
     umap_reduction = (pd.DataFrame(

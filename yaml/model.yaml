@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-weighting-width-${WIDTH}-layers-${LAYERS}-${I}
+  name: rna-seq-model-width-${WIDTH}-layers-${LAYERS}-${I}
 spec:
   backoffLimit: 5
   completions: 1
@@ -37,22 +37,18 @@ spec:
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"
+        # SystemV shared memory
+        - name: "dshm"
+          mountPath: "/dev/shm"
       volumes:
       # Ephemeral storage
       - name: ephemeral
         emptyDir: {}
+      - name: dshm
+        emptyDir:
+          medium: Memory
       tolerations:
         - key: "nautilus.io/chase-ci"
           operator: "Equal"
           value: "true"
           effect: "NoSchedule"
-      # affinity:
-      #   nodeAffinity:
-      #     requiredDuringSchedulingIgnoredDuringExecution:
-      #       nodeSelectorTerms:
-      #       - matchExpressions:
-      #         - key: kubernetes.io/hostname
-      #           operator: NotIn
-      #           values:
-      #             - k8s-gpu-1.ucr.edu                # 9nov: GPU sync failed
-      #             - fiona8-2.calit2.uci.edu       # 16nov: Driver error timeout

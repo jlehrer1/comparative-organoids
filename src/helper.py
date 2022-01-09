@@ -2,16 +2,21 @@ import boto3
 import os 
 import matplotlib.pyplot as plt 
 import seaborn as sns 
+import pathlib 
 
 S3_CLUSTER_LABEL_PATH = os.path.join('jlehrer', 'primary_cluster_labels')
 S3_CLEAN_DATA_PATH = 'jlehrer'
 S3_UMAP_PATH = os.path.join('jlehrer', 'reduced_data')
+here = pathlib.Path(__file__).parent.absolute()
+
+with open(os.path.join(here, '..', 'credentials')) as f:
+    key, access = [line.rstrip() for line in f.readlines()]
 
 s3 = boto3.resource(
     's3',
     endpoint_url="https://s3.nautilus.optiputer.net",
-    aws_access_key_id="EFIE1S59OR5CHDC4KCHK",
-    aws_secret_access_key="DRXgeKsTLctfFX9udqfT04go8JpxG3qWxj0OKHVU",
+    aws_access_key_id=key,
+    aws_secret_access_key=access,
 )
    
 def upload(file_name, remote_name=None) -> None:
