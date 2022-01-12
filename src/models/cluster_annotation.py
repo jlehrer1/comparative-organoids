@@ -5,13 +5,13 @@ import os
 import dask.dataframe as dd
 import pathlib 
 import dask.dataframe as dd
-
-from helper import primary_genes
-from helper import upload
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from helper import primary_genes, upload
 
 here = pathlib.Path(__file__).parent.absolute()
-path = os.path.join(here, '..', '..', 'processed')
-files = [f.rstrip for f in os.listdir(os.path.join(path, 'labels'))]
+path = os.path.join(here, '..', '..', 'data', 'processed')
+files = [f.rstrip() for f in os.listdir(path) if f.startswith('primary_labels')]
 cols = primary_genes()
 
 # Generate the list of mitochondrial and ribosomal genes to remove 
@@ -26,13 +26,14 @@ for label_file in files:
     cluster_df = pd.DataFrame()
 
     for clust in labels.value_counts().index:
+        print(f'Calculating for cluster {clust}')
         rows = labels[labels['# label'] == clust].index
-        df = pd.read_csv('../data/processed/primary.csv', skiprows = lambda x: x not in rows, names=cols)
+        df = pd.read_csv(os.path.join(path, 'primary.csv'), skiprows = lambda x: x not in rows, names=cols)
         df.columns = [c.lower() for c in df.columns]
         df = df.drop(to_remove, axis=1)
-
         cluster_df.loc[:, clust] = df.sum().nlargest(1000).index
-    
+        print(cluster_df)
+
     print(f'Saving and uploading top genes for cluster run')
     cluster_df.to_csv(f'annotation_{label_file}')
     upload(
