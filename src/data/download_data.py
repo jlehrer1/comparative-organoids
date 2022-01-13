@@ -84,6 +84,11 @@ def download_interim() -> None:
                 os.path.join(data_path, 'interim', f)
             )
 
+def download_annotations() -> None:
+    """Downloads the annotation csv's (top 1000 genes in each cluster)"""
+
+    _download_from_key(os.path.join('jlehrer', 'cluster_annotation'), 'annotations')
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -111,5 +116,7 @@ if __name__ == "__main__":
         download_labels()
     elif type == 'pca':
         download_pca()
+    elif type == 'annotation' or type == 'annotations':
+        download_annotations()
     else:
         download_reduced()
