@@ -1,4 +1,4 @@
-# *CellClass*: A Deep Learning Model for Classifying Cortical Cells
+# *CerebalCell*: A Deep Learning Model for Classifying Cortical Cells
 
 This codebase serves as the main repository for my work at the [One Brain](https://mostajo-radji.com/) group at the UCSC Genomics Insitute, where I'm using deep learning to classifying single cells from RNA-seq expression data. 
 

@@ -224,7 +224,6 @@ def generate_trainer(here, params):
         logger=comet_logger,
         callbacks=[
             uploadcallback,
-            # earlystoppingcallback,
         ],
     )
 
