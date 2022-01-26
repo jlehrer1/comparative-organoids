@@ -30,6 +30,7 @@ def umap_viz_2d(reduced, save_path, palette='bright') -> None:
     )
     
     plt.savefig(save_path)
+    plt.clf()
 
 def pairplot(reduced, primary, of_interest, subplot_shape, save_path) -> None:
     """
@@ -70,7 +71,6 @@ if __name__ == '__main__':
     ann_files = [f.rstrip() for f in os.listdir(os.path.join(data_path, 'annotations')) if f.startswith('annotation_primary_labels_neighbors')] # To make sure we're only considering the UMAP-based clustering, not the PCA 
     clust_files = [f.rstrip() for f in os.listdir(os.path.join(data_path, 'labels')) if f.startswith('primary_labels')]
 
-    print(clust_files)
     reduced = pd.read_csv(os.path.join(data_path, 'umap', 'primary_reduction_neighbors_100_components_2.csv')) # For cluster visualization
 
     for file in clust_files:
@@ -85,11 +85,23 @@ if __name__ == '__main__':
         
     of_interest = ['id2', 'sox5', 'tbr1', 'sox2', 'dcx', 'fezf2', 'plxnd1', 'gfra2', 'gad1']
 
-    pairplot(
-        reduced=reduced,
-        primary=primary_path,
-        of_interest=of_interest,
-        subplot_shape=(3,3),
-        save_path=os.path.join(here, 'atlas_gene_plot.png')
-    )
+    viz_files = [
+    'primary_reduction_neighbors_10_components_2.csv', 
+    'primary_reduction_neighbors_15_components_2.csv', 
+    'primary_reduction_neighbors_50_components_2.csv', 
+    'primary_reduction_neighbors_100_components_2.csv'
+    'primary_reduction_neighbors_500_components_2.csv',
+    'primary_reduction_neighbors_5000_components_2.csv'
+    ]
+
+    for f in viz_files:
+        reduced = pd.read_csv(os.path.join(data_path, 'umap', f))
+        fname = f.split('.')[0]
+        pairplot(
+            reduced=reduced,
+            primary=primary_path,
+            of_interest=of_interest,
+            subplot_shape=(3,3),
+            save_path=os.path.join(here, f'atlas_{fname}.png')
+        )
 
