@@ -109,3 +109,4 @@ notebooks/poster*
 notebooks/*/*.png
 notebooks/*.png
 credentials
+src/visualization/*.png
