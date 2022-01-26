@@ -20,6 +20,13 @@ from helper import upload
 
 # torch.manual_seed(0)
 class GeneExpressionData(Dataset):
+    """
+    Defines a PyTorch Dataset for a CSV too large to fit in memory. 
+
+    Parameters:
+    filename: Path to csv data file, where rows are samples and columns are features
+    labelname: Path to label file, where column '# labels' defines classification labels
+    """
     def __init__(self, filename, labelname):
         self._filename = filename
         self._labelname = labelname
@@ -66,7 +73,9 @@ class GeneClassifier(pl.LightningModule):
 
         Parameters:
         N_features: Number of features in the inpute matrix 
-        N_labels: Number of classes 
+        N_labels: Number of classes
+        weights: Weights to use in accuracy calculation, so we can calculate balanced accuracy to account for uneven class sizes
+        params: Dictionary of hyperparameters to use, includes width, layers, lr, momentum, weight_decay
         """
         # Record entire dict for logging
         self._hyperparams = params
@@ -146,29 +155,53 @@ class GeneClassifier(pl.LightningModule):
         return val_loss
 
 class UploadCallback(pl.callbacks.Callback):
-    def __init__(self, path, WIDTH, LAYERS) -> None:
+    """Custom PyTorch callback for uploading model checkpoints to the braingeneers S3 bucket.
+    
+    Parameters:
+    path: Local path to folder where model checkpoints are saved
+    desc: Description of checkpoint that is appended to checkpoint file name on save
+    upload_path: Subpath in braingeneersdev/jlehrer/ to upload model checkpoints to
+    """
+    def __init__(self, path, desc, upload_path='model_checkpoints') -> None:
         super().__init__()
         self.path = path 
-        self.width = WIDTH
-        self.layers = LAYERS
+        self.desc = desc
+        self.upload_path = upload_path
 
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
         if epoch % 10 == 0: # Save every ten epochs
-            checkpoint = f'checkpoint-{epoch}-width-{self.width}-layers-{self.layers}.ckpt'
+            checkpoint = f'checkpoint-{epoch}-desc-{self.desc}.ckpt'
             trainer.save_checkpoint(os.path.join(self.path, checkpoint))
             print(f'Uploading checkpoint at epoch {epoch}')
             upload(
                 os.path.join(self.path, checkpoint),
-                os.path.join('jlehrer', 'model_checkpoints', checkpoint)
+                os.path.join('jlehrer', self.upload_path, checkpoint)
             )
 
 def fix_labels(file, path):
+    """
+    Fixes label output from HDBSCAN to be non-negative, since noise points are classified with label -1. PyTorch requires indexing from 0. 
+
+    Parameters:
+    file: Path to label file
+    path: Path to write corrected label file to
+    """
     labels = pd.read_csv(file)
     labels['# label'] = labels['# label'].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
 
 def generate_trainer(here, params):
+    """
+    Generates PyTorch Lightning trainer and datasets for model training.
+
+    Parameters:
+    here: Absolute path to __file__
+    params: Dictionary of hyperparameters for model training
+
+    Returns:
+    Tuple[trainer, model, traindata, valdata]: Tuple of PyTorch-Lightning trainer, model instance, and train and validation dataloaders for training.
+    """
     width = params['width']
     epochs = params['epochs']
     layers = params['layers']
@@ -205,8 +238,7 @@ def generate_trainer(here, params):
     
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
-        WIDTH=width,
-        LAYERS=layers,
+        desc=f'width-{width}-layers-{layers}'
     )
 
     model = GeneClassifier(
@@ -230,6 +262,9 @@ def generate_trainer(here, params):
     return trainer, model, traindata, valdata 
 
 def add_args():
+    """
+    Sets up the argparser for model training
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--width',

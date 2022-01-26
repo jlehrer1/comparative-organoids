@@ -23,11 +23,9 @@ spec:
           limits:
             memory: 100Gi
             cpu: "16"
-            nvidia.com/gpu: "1"
           requests:
-            memory: 2Gi
-            cpu: "1"
-            nvidia.com/gpu: "1"
+            memory: 64Gi
+            cpu: "4"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"

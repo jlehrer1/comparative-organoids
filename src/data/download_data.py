@@ -16,6 +16,12 @@ def _download_from_key(key, localpath=''):
     key: S3 folder (key) to start downloading recursively from
     localpath: Optional argument, downloads to a subfolder under the data/processed/ folder # TODO add folder generation
     """
+
+    if localpath != '':
+        print(f'Making path {localpath}')
+        pathlib.Path(os.path.join(data_path, 'processed', localpath), exist_ok=True)
+
+    print(f'Key is {key}')
     reduced_files = list_objects(key)
 
     for f in reduced_files:
@@ -68,6 +74,7 @@ def download_labels() -> None:
     """
     Downloads the cluster labels for primary data
     """
+
     _download_from_key(os.path.join('jlehrer', 'primary_cluster_labels'))
     
 def download_raw():
@@ -87,7 +94,7 @@ def download_interim() -> None:
 def download_annotations() -> None:
     """Downloads the annotation csv's (top 1000 genes in each cluster)"""
 
-    _download_from_key(os.path.join('jlehrer', 'cluster_annotation'), 'annotations')
+    _download_from_key(os.path.join('jlehrer', 'cluster_annotation'))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

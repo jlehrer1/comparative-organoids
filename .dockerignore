@@ -5,6 +5,7 @@ notebooks/*
 remote/*
 yaml/*
 reduction_params.sh
+src/visualization/*.png
 .git/*
 .git*
 __pycache__/*/*

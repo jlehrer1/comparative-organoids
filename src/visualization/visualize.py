@@ -68,9 +68,10 @@ if __name__ == '__main__':
     primary_path = os.path.join(data_path, 'primary.csv')
 
     ann_files = [f.rstrip() for f in os.listdir(os.path.join(data_path, 'annotations')) if f.startswith('annotation_primary_labels_neighbors')] # To make sure we're only considering the UMAP-based clustering, not the PCA 
-    clust_files = [f.rstrip() for f in os.listdir(os.path.join(data_path, 'labels')) if f.startswith('primary')]
+    clust_files = [f.rstrip() for f in os.listdir(os.path.join(data_path, 'labels')) if f.startswith('primary_labels')]
+
     print(clust_files)
-    reduced = pd.read_csv(os.path.join(data_path, 'umap', 'primary_reduction_neighbors_500_components_2.csv')) # For cluster visualization
+    reduced = pd.read_csv(os.path.join(data_path, 'umap', 'primary_reduction_neighbors_100_components_2.csv')) # For cluster visualization
 
     for file in clust_files:
         clusters = pd.read_csv(os.path.join(data_path, 'labels', file)).loc[:, '# label']
