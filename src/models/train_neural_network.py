@@ -27,10 +27,11 @@ class GeneExpressionData(Dataset):
     filename: Path to csv data file, where rows are samples and columns are features
     labelname: Path to label file, where column '# labels' defines classification labels
     """
-    def __init__(self, filename, labelname):
+    def __init__(self, filename, labelname, class_label):
         self._filename = filename
         self._labelname = pd.read_csv(labelname)
         self._total_data = 0
+        self._class_label = class_label
         
         with open(filename, "r") as f:
             self._total_data = len(f.readlines()) - 1
@@ -40,14 +41,14 @@ class GeneExpressionData(Dataset):
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
         
-        label = self._labelname.loc[idx, '# label']
+        label = self._labelname.loc[idx, self._class_label]
         return torch.from_numpy(np.array([float(x) for x in data])).float(), label
     
     def __len__(self):
         return self._total_data
     
     def num_labels(self):
-        return self._labelname['# label'].nunique()
+        return self._labelname[self._class_label].nunique()
     
     def num_features(self):
         return len(self.__getitem__(0)[0])
@@ -55,8 +56,8 @@ class GeneExpressionData(Dataset):
     def compute_class_weights(self):
         weights = compute_class_weight(
             class_weight='balanced', 
-            classes=np.unique(self._labelname['# label'].values), 
-            y=self._labelname['# label'].values
+            classes=np.unique(self._labelname[self._class_label].values), 
+            y=self._labelname[self._class_label].values
         )
 
         weights = torch.from_numpy(weights)
@@ -174,7 +175,7 @@ class UploadCallback(pl.callbacks.Callback):
                 os.path.join('jlehrer', self.upload_path, checkpoint)
             )
 
-def fix_labels(file, path):
+def fix_labels(file, path, class_label='# label'):
     """
     Fixes label output from HDBSCAN to be non-negative, since noise points are classified with label -1. PyTorch requires indexing from 0. 
 
@@ -183,7 +184,7 @@ def fix_labels(file, path):
     path: Path to write corrected label file to
     """
     labels = pd.read_csv(file)
-    labels['# label'] = labels['# label'].astype(int) + 1
+    labels[class_label] = labels[class_label].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]))
 
 def generate_trainer(here, params):
@@ -197,6 +198,7 @@ def generate_trainer(here, params):
     Returns:
     Tuple[trainer, model, traindata, valdata]: Tuple of PyTorch-Lightning trainer, model instance, and train and validation dataloaders for training.
     """
+
     width = params['width']
     epochs = params['epochs']
     layers = params['layers']
@@ -208,15 +210,13 @@ def generate_trainer(here, params):
 
     dataset = GeneExpressionData(
         filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(os.path.join(data_path, label_file))
+        labelname=os.path.join(os.path.join(data_path, label_file)),
+        class_label='# label'
     )
-
-    for i in range(0,10):
-        print(dataset.__getitem__(i))
 
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
-        project_name="gene-expression-classification-weighted",  # Optional
+        project_name="gene-expression-",  # Optional
         workspace="jlehrer1",
         experiment_name=f'{layers + 5} Layers, {width} Width'
     )
