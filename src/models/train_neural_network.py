@@ -13,6 +13,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from sklearn.utils.class_weight import compute_class_weight
 from torchmetrics import Accuracy, ConfusionMatrix 
+from typing import *
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -61,11 +62,15 @@ class GeneExpressionData(Dataset):
         )
 
         weights = torch.from_numpy(weights)
-        return weights
-        # return weights.float().to('cuda')
+        return weights.float().to('cuda')
 
 class GeneClassifier(pl.LightningModule):
-    def __init__(self, N_features, N_labels, weights, params):
+    def __init__(self, 
+        N_features: int, 
+        N_labels: int, 
+        weights: List[torch.Tensor], 
+        params: Dict[str, float],
+    ):
         """
         Initialize the gene classifier neural network
 
@@ -115,6 +120,7 @@ class GeneClassifier(pl.LightningModule):
             momentum=self.momentum, 
             weight_decay=self.weight_decay,
         )
+
         return optimizer
 
     def on_train_start(self):
@@ -176,7 +182,11 @@ class UploadCallback(pl.callbacks.Callback):
                 os.path.join('jlehrer', self.upload_path, checkpoint)
             )
 
-def fix_labels(file, path, class_label='# label'):
+def fix_labels(
+    file: str, 
+    path: str, 
+    class_label: str='# label',
+):
     """
     Fixes label output from HDBSCAN to be non-negative, since noise points are classified with label -1. PyTorch requires indexing from 0. 
 
@@ -188,7 +198,13 @@ def fix_labels(file, path, class_label='# label'):
     labels[class_label] = labels[class_label].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]))
 
-def generate_trainer(here, params, class_label='Subtype'):
+def generate_trainer(
+    here :str, 
+    params: Dict[str, float], 
+    label_file: str='meta_primary_labels.csv',
+    class_label: str='Subtype',
+    num_workers: int=100,
+):
     """
     Generates PyTorch Lightning trainer and datasets for model training.
 
@@ -205,9 +221,6 @@ def generate_trainer(here, params, class_label='Subtype'):
     layers = params['layers']
 
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
-    label_file = 'meta_primary_labels.csv'
-
-    # fix_labels(os.path.join(data_path, label_file), here) # dont need to fix when using meta primary labels
 
     dataset = GeneExpressionData(
         filename=os.path.join(data_path, 'primary.csv'),
@@ -227,17 +240,12 @@ def generate_trainer(here, params, class_label='Subtype'):
 
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    traindata = DataLoader(train, batch_size=8, num_workers=100)
-    valdata = DataLoader(test, batch_size=8, num_workers=100)
+    traindata = DataLoader(train, batch_size=8, num_workers=num_workers)
+    valdata = DataLoader(test, batch_size=8, num_workers=num_workers)
 
-    # earlystoppingcallback = pl.callbacks.early_stopping.EarlyStopping(
-    #     monitor='val_loss',
-    #     patience=50,
-    # )
-    
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
-        desc=f'width-{width}-layers-{layers}'
+        desc=f'width-{width}-layers-{layers}-label-{class_label}'
     )
 
     model = GeneClassifier(
@@ -249,7 +257,7 @@ def generate_trainer(here, params, class_label='Subtype'):
     
     print(model)
     trainer = pl.Trainer(
-        # gpus=1,
+        gpus=1,
         auto_lr_find=True,
         max_epochs=epochs, 
         logger=comet_logger,
@@ -320,7 +328,6 @@ if __name__ == "__main__":
 
     parser = add_args()
     args = parser.parse_args()
-
     params = vars(args)
     
     trainer, model, traindata, valdata = generate_trainer(here, params)
