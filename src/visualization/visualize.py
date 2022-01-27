@@ -62,6 +62,7 @@ def pairplot(reduced, primary, of_interest, subplot_shape, save_path) -> None:
         ax.set_title(of_interest[i])
 
     plt.savefig(save_path)
+    plt.clf()
 
 if __name__ == '__main__':
     here = pathlib.Path(__file__).parent.absolute()
@@ -73,28 +74,29 @@ if __name__ == '__main__':
 
     reduced = pd.read_csv(os.path.join(data_path, 'umap', 'primary_reduction_neighbors_100_components_2.csv')) # For cluster visualization
 
-    for file in clust_files:
-        clusters = pd.read_csv(os.path.join(data_path, 'labels', file)).loc[:, '# label']
-        reduced['label'] = clusters 
+    # for file in clust_files:
+    #     clusters = pd.read_csv(os.path.join(data_path, 'labels', file)).loc[:, '# label']
+    #     reduced['label'] = clusters 
 
-        name = file.split('.')[0]
-        umap_viz_2d(
-            reduced=reduced,
-            save_path=os.path.join(here, f'{name}_visualization.png')
-        )
+    #     name = file.split('.')[0]
+    #     umap_viz_2d(
+    #         reduced=reduced,
+    #         save_path=os.path.join(here, f'{name}_visualization.png')
+    #     )
         
     of_interest = ['id2', 'sox5', 'tbr1', 'sox2', 'dcx', 'fezf2', 'plxnd1', 'gfra2', 'gad1']
 
     viz_files = [
-    'primary_reduction_neighbors_10_components_2.csv', 
-    'primary_reduction_neighbors_15_components_2.csv', 
-    'primary_reduction_neighbors_50_components_2.csv', 
-    'primary_reduction_neighbors_100_components_2.csv'
-    'primary_reduction_neighbors_500_components_2.csv',
-    'primary_reduction_neighbors_5000_components_2.csv'
+        'primary_reduction_neighbors_10_components_2.csv', 
+        'primary_reduction_neighbors_15_components_2.csv', 
+        'primary_reduction_neighbors_50_components_2.csv', 
+        'primary_reduction_neighbors_100_components_2.csv',
+        'primary_reduction_neighbors_500_components_2.csv',
+        'primary_reduction_neighbors_5000_components_2.csv'
     ]
 
-    for f in viz_files:
+    for f in viz_files[3:]:
+        print(f'Generating plot for {f}')
         reduced = pd.read_csv(os.path.join(data_path, 'umap', f))
         fname = f.split('.')[0]
         pairplot(
@@ -104,4 +106,3 @@ if __name__ == '__main__':
             subplot_shape=(3,3),
             save_path=os.path.join(here, f'atlas_{fname}.png')
         )
-

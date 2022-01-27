@@ -29,7 +29,7 @@ class GeneExpressionData(Dataset):
     """
     def __init__(self, filename, labelname):
         self._filename = filename
-        self._labelname = labelname
+        self._labelname = pd.read_csv(labelname)
         self._total_data = 0
         
         with open(filename, "r") as f:
@@ -37,31 +37,27 @@ class GeneExpressionData(Dataset):
     
     def __getitem__(self, idx):
         line = linecache.getline(self._filename, idx + 2)
-        label = linecache.getline(self._labelname, idx + 2)
-        
         csv_data = csv.reader([line])
-        csv_label = csv.reader([label])
-        
         data = [x for x in csv_data][0]
-        label = [x for x in csv_label][0]
-        return torch.from_numpy(np.array([float(x) for x in data])).float(), [int(float(x)) for x in label][0]
+        
+        label = self._labelname.loc[idx, '# label']
+        return torch.from_numpy(np.array([float(x) for x in data])).float(), label
     
     def __len__(self):
         return self._total_data
     
     def num_labels(self):
-        return pd.read_csv(self._labelname)['# label'].nunique()
+        return self._labelname['# label'].nunique()
     
     def num_features(self):
         return len(self.__getitem__(0)[0])
 
     def compute_class_weights(self):
-        label_df = pd.read_csv(self._labelname)
-
         weights = compute_class_weight(
             class_weight='balanced', 
-            classes=np.unique(label_df), 
-            y=label_df.values.reshape(-1))    
+            classes=np.unique(self._labelname['# label'].values), 
+            y=self._labelname['# label'].values
+        )
 
         weights = torch.from_numpy(weights)
         return weights.float().to('cuda')
@@ -101,9 +97,8 @@ class GeneClassifier(pl.LightningModule):
             *layers,
             nn.Linear(self.width, N_labels),
         )
-        self.accuracy = Accuracy()
+
         self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
-        # self.confusion = ConfusionMatrix(num_classes=N_labels)
         self.weights = weights
 
     def forward(self, x):
@@ -189,7 +184,7 @@ def fix_labels(file, path):
     """
     labels = pd.read_csv(file)
     labels['# label'] = labels['# label'].astype(int) + 1
-    labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]), index=False)
+    labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]))
 
 def generate_trainer(here, params):
     """
@@ -207,14 +202,17 @@ def generate_trainer(here, params):
     layers = params['layers']
 
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
-    label_file = 'primary_labels_neighbors_50_components_50_clust_size_100.csv'
+    label_file = 'meta_primary_labels.csv'
 
-    fix_labels(os.path.join(data_path, label_file), here)
+    # fix_labels(os.path.join(data_path, label_file), here) # dont need to fix when using meta primary labels
 
     dataset = GeneExpressionData(
         filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(os.path.join(here, f'fixed_{label_file}'))
+        labelname=os.path.join(os.path.join(data_path, label_file))
     )
+
+    for i in range(0,10):
+        print(dataset.__getitem__(i))
 
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
