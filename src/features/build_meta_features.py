@@ -9,9 +9,8 @@ meta_primary = pd.read_csv(os.path.join(data_path, 'meta', 'meta_primary.tsv'), 
 meta_trainable = pd.DataFrame()
 
 le = LabelEncoder()
-le = le.fit(meta_primary['Subtype'])
 
-meta_trainable['# label'] = le.transform(meta_primary['Subtype'])
-meta_trainable['Subtype'] = le.inverse_transform(meta_trainable['# label'])
+for col in 'Class', 'State', 'Type', 'Subtype':
+    meta_trainable[col] = le.fit_transform(meta_primary.loc[:, col])
 
-meta_trainable.to_csv(os.path.join(data_path, 'processed', 'labels', 'meta_primary_labels.csv'), sep=',')
+meta_trainable.to_csv(os.path.join(data_path, 'processed', 'meta_primary_labels.csv'), sep=',')

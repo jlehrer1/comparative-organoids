@@ -61,7 +61,8 @@ class GeneExpressionData(Dataset):
         )
 
         weights = torch.from_numpy(weights)
-        return weights.float().to('cuda')
+        return weights
+        # return weights.float().to('cuda')
 
 class GeneClassifier(pl.LightningModule):
     def __init__(self, N_features, N_labels, weights, params):
@@ -187,7 +188,7 @@ def fix_labels(file, path, class_label='# label'):
     labels[class_label] = labels[class_label].astype(int) + 1
     labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]))
 
-def generate_trainer(here, params):
+def generate_trainer(here, params, class_label='Subtype'):
     """
     Generates PyTorch Lightning trainer and datasets for model training.
 
@@ -211,12 +212,12 @@ def generate_trainer(here, params):
     dataset = GeneExpressionData(
         filename=os.path.join(data_path, 'primary.csv'),
         labelname=os.path.join(os.path.join(data_path, label_file)),
-        class_label='# label'
+        class_label=class_label
     )
 
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
-        project_name="gene-expression-",  # Optional
+        project_name=f"cell-classifier-{class_label}",  # Optional
         workspace="jlehrer1",
         experiment_name=f'{layers + 5} Layers, {width} Width'
     )
@@ -229,10 +230,10 @@ def generate_trainer(here, params):
     traindata = DataLoader(train, batch_size=8, num_workers=100)
     valdata = DataLoader(test, batch_size=8, num_workers=100)
 
-    earlystoppingcallback = pl.callbacks.early_stopping.EarlyStopping(
-        monitor='val_loss',
-        patience=50,
-    )
+    # earlystoppingcallback = pl.callbacks.early_stopping.EarlyStopping(
+    #     monitor='val_loss',
+    #     patience=50,
+    # )
     
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
@@ -248,7 +249,7 @@ def generate_trainer(here, params):
     
     print(model)
     trainer = pl.Trainer(
-        gpus=1, 
+        # gpus=1,
         auto_lr_find=True,
         max_epochs=epochs, 
         logger=comet_logger,
