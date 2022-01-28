@@ -105,7 +105,8 @@ class GeneClassifier(pl.LightningModule):
             nn.Linear(self.width, N_labels),
         )
 
-        self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
+        self.accuracy = Accuracy()
+        # self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
         self.weights = weights
 
     def forward(self, x):
@@ -146,14 +147,9 @@ class GeneClassifier(pl.LightningModule):
         y_hat = self(x)
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
-        # matrix = self.confusion(y_hat.softmax(dim=-1), y).cpu().detach().numpy()
 
         self.log("val_loss", val_loss, logger=True, on_epoch=True)
         self.log("val_accuracy", acc, logger=True, on_epoch=True)
-        # self.logger.experiment.log_confusion_matrix(
-        #     title="val_confusion_matrix",
-        #     matrix=matrix
-        # )
 
         return val_loss
 
@@ -204,6 +200,7 @@ def generate_trainer(
     label_file: str='meta_primary_labels.csv',
     class_label: str='Subtype',
     num_workers: int=100,
+    batch_size: int = 8,
 ):
     """
     Generates PyTorch Lightning trainer and datasets for model training.
@@ -240,8 +237,8 @@ def generate_trainer(
 
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    traindata = DataLoader(train, batch_size=8, num_workers=num_workers)
-    valdata = DataLoader(test, batch_size=8, num_workers=num_workers)
+    traindata = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
+    valdata = DataLoader(test, batch_size=batch_size, num_workers=num_workers)
 
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
@@ -258,7 +255,7 @@ def generate_trainer(
     print(model)
     trainer = pl.Trainer(
         gpus=1,
-        auto_lr_find=True,
+        auto_lr_find=False,
         max_epochs=epochs, 
         logger=comet_logger,
         callbacks=[
@@ -330,6 +327,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
     params = vars(args)
     
-    trainer, model, traindata, valdata = generate_trainer(here, params)
+    trainer, model, traindata, valdata = generate_trainer(
+        here=here, 
+        params=params,
+        label_file='meta_primary_labels.csv',
+        class_label='Class',
+        num_workers=100,
+        batch_size=32,
+    )
     trainer.fit(model, traindata, valdata)
 
