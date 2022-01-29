@@ -19,7 +19,6 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
 
-# torch.manual_seed(0)
 class GeneExpressionData(Dataset):
     """
     Defines a PyTorch Dataset for a CSV too large to fit in memory. 
@@ -62,7 +61,6 @@ class GeneExpressionData(Dataset):
         )
 
         weights = torch.from_numpy(weights)
-
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         return weights.float().to(device)
 
@@ -337,5 +335,5 @@ if __name__ == "__main__":
         num_workers=100,
         batch_size=4,
     )
+    
     trainer.fit(model, traindata, valdata)
-
