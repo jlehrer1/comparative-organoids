@@ -62,7 +62,9 @@ class GeneExpressionData(Dataset):
         )
 
         weights = torch.from_numpy(weights)
-        return weights.float().to('cuda')
+
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        return weights.float().to(device)
 
 class GeneClassifier(pl.LightningModule):
     def __init__(self, 
@@ -105,8 +107,8 @@ class GeneClassifier(pl.LightningModule):
             nn.Linear(self.width, N_labels),
         )
 
-        self.accuracy = Accuracy()
-        # self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
+        # self.accuracy = Accuracy()
+        self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
         self.weights = weights
 
     def forward(self, x):
@@ -331,9 +333,9 @@ if __name__ == "__main__":
         here=here, 
         params=params,
         label_file='meta_primary_labels.csv',
-        class_label='Class',
+        class_label='Subtype',
         num_workers=100,
-        batch_size=32,
+        batch_size=4,
     )
     trainer.fit(model, traindata, valdata)
 
