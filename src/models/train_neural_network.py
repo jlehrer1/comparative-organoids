@@ -1,3 +1,4 @@
+from ssl import Options
 import comet_ml
 from pytorch_lightning.loggers import CometLogger
 import pandas as pd 
@@ -161,6 +162,7 @@ class UploadCallback(pl.callbacks.Callback):
     desc: Description of checkpoint that is appended to checkpoint file name on save
     upload_path: Subpath in braingeneersdev/jlehrer/ to upload model checkpoints to
     """
+    
     def __init__(self, path, desc, upload_path='model_checkpoints') -> None:
         super().__init__()
         self.path = path 
@@ -177,22 +179,6 @@ class UploadCallback(pl.callbacks.Callback):
                 os.path.join(self.path, checkpoint),
                 os.path.join('jlehrer', self.upload_path, checkpoint)
             )
-
-def fix_labels(
-    file: str, 
-    path: str, 
-    class_label: str='# label',
-):
-    """
-    Fixes label output from HDBSCAN to be non-negative, since noise points are classified with label -1. PyTorch requires indexing from 0. 
-
-    Parameters:
-    file: Path to label file
-    path: Path to write corrected label file to
-    """
-    labels = pd.read_csv(file)
-    labels[class_label] = labels[class_label].astype(int) + 1
-    labels.to_csv(os.path.join(path, 'fixed_' + file.split('/')[-1]))
 
 def generate_trainer(
     here :str, 
@@ -318,6 +304,15 @@ def add_args():
         type=float,
     )
 
+    parser.add_argument(
+        '--class-label',
+        required=False,
+        default='Subtype',
+        choices=['Subtype', 'Class', 'Type', 'State'],
+        type=str,
+        help='Class label to train classifier on'
+    )
+
     return parser
 
 if __name__ == "__main__":
@@ -326,12 +321,13 @@ if __name__ == "__main__":
     parser = add_args()
     args = parser.parse_args()
     params = vars(args)
+    class_label = params['class_label']
     
     trainer, model, traindata, valdata = generate_trainer(
         here=here, 
         params=params,
         label_file='meta_primary_labels.csv',
-        class_label='Subtype',
+        class_label=class_label,
         num_workers=100,
         batch_size=4,
     )

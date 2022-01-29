@@ -22,8 +22,12 @@ spec:
           "python src/data/download_data.py -type='primary' && \
           python src/data/download_data.py -type='labels' && \
           python src/models/train_neural_network.py \
-          --width=${WIDTH} --layers=${LAYERS} \
-          --lr=${LR} --momentum=${MOMENTUM} --weight-decay=${WEIGHT_DECAY}"
+          --width=${WIDTH} \
+          --layers=${LAYERS} \
+          --lr=${LR} \
+          --momentum=${MOMENTUM} \
+          --weight-decay=${WEIGHT_DECAY} \ 
+          --class-label=${CLASS_LABEL}" 
         ]
         resources:
           limits:

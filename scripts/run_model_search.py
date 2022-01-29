@@ -7,29 +7,30 @@ import argparse
 from scipy.stats import loguniform
 
 
-def run_search(num):
+def run_search(num, class_label):
     here = pathlib.Path(__file__).parent.absolute()
     yaml_path = os.path.join(here, '..', 'yaml', 'model.yaml')
 
+    class_label = [class_label]
     epochs = [100000]
-    lr = loguniform.rvs(1e-4, 1e-1, size=5)
-    momentum = loguniform.rvs(1e-2, 0.8, size=5)
-    weight_decay = loguniform.rvs(1e-5, 1e-1, size=10)
+    lr = np.linspace(0.001, 0.1, 10)
+    momentum = np.linspace(0.001, 0.9, 10)
+    weight_decay = loguniform.rvs(0.001, 0.1, size=10)
     width = [64, 128, 1024, 2048]
     layers = np.arange(10, 25, 5)
 
-    params = list(product(width, layers, epochs, lr, momentum, weight_decay))
-    param_samples = random.sample(params, num)
-    param_names = [('width', 'layers', 'epochs', 'lr', 'momentum', 'weight_decay')]*num
-
-    for i, (name_sample, param_sample) in enumerate(zip(param_names, param_samples)):
+    params = list(product(width, layers, epochs, lr, momentum, weight_decay, class_label))
+    param_names = [('width', 'layers', 'epochs', 'lr', 'momentum', 'weight_decay', 'class_label')]*num
+    param_iter = zip(param_names, random.sample(params, num))
+    
+    for i, (name_sample, param_sample) in enumerate(param_iter):
         for n, p in zip(name_sample, param_sample):
             os.environ[n.upper()] = str(p)
         os.environ['I'] = str(i)
         os.system(f'envsubst < {yaml_path} | kubectl create -f -')
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(usage='Run random hyperparameter / architecture search')
+    parser = argparse.ArgumentParser(usage='Run random hyperparameter search')
 
     parser.add_argument(
         '--N',
@@ -39,5 +40,13 @@ if __name__ == "__main__":
         default=100,
     )
 
+    parser.add_argument(
+        '--class-label',
+        help='Class to train classifer on',
+        required=False,
+        default='Subtype',
+    )
+
     args = parser.parse_args()
-    run_search(args.N)
+
+    run_search(args.N, args.class_label)
