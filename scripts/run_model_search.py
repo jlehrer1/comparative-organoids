@@ -6,7 +6,6 @@ import os
 import argparse
 from scipy.stats import loguniform
 
-
 def run_search(num, class_label):
     here = pathlib.Path(__file__).parent.absolute()
     yaml_path = os.path.join(here, '..', 'yaml', 'model.yaml')
@@ -20,17 +19,17 @@ def run_search(num, class_label):
     layers = np.arange(10, 25, 5)
 
     params = list(product(width, layers, epochs, lr, momentum, weight_decay, class_label))
-    param_names = [('width', 'layers', 'epochs', 'lr', 'momentum', 'weight_decay', 'class_label')]*num
-    param_iter = zip(param_names, random.sample(params, num))
+    param_names = ['width', 'layers', 'epochs', 'lr', 'momentum', 'weight_decay', 'class_label']
     
-    for i, (name_sample, param_sample) in enumerate(param_iter):
-        for n, p in zip(name_sample, param_sample):
+    for i, params in enumerate(random.sample(params, num)):
+        for n, p in zip(param_names, params):
             os.environ[n.upper()] = str(p)
+            
         os.environ['I'] = str(i)
         os.system(f'envsubst < {yaml_path} | kubectl create -f -')
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(usage='Run random hyperparameter search')
+    parser = argparse.ArgumentParser(usage='Hyperparameter tune with random search.')
 
     parser.add_argument(
         '--N',

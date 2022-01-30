@@ -308,9 +308,8 @@ def add_args():
         '--class-label',
         required=False,
         default='Subtype',
-        choices=['Subtype', 'Class', 'Type', 'State'],
         type=str,
-        help='Class label to train classifier on'
+        help='Class label to train classifier on',
     )
 
     return parser
@@ -322,7 +321,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     params = vars(args)
     class_label = params['class_label']
-    
+
     trainer, model, traindata, valdata = generate_trainer(
         here=here, 
         params=params,
