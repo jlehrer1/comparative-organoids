@@ -15,10 +15,16 @@ import pytorch_lightning as pl
 from sklearn.utils.class_weight import compute_class_weight
 from torchmetrics import Accuracy, ConfusionMatrix 
 from typing import *
+import random
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
+
+# Set all seeds for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
 
 class GeneExpressionData(Dataset):
     """
@@ -180,6 +186,11 @@ class UploadCallback(pl.callbacks.Callback):
                 os.path.join('jlehrer', self.upload_path, checkpoint)
             )
 
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+
 def generate_trainer(
     here :str, 
     params: Dict[str, float], 
@@ -223,8 +234,24 @@ def generate_trainer(
 
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    traindata = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
-    valdata = DataLoader(test, batch_size=batch_size, num_workers=num_workers)
+    g = torch.Generator()
+    g.manual_seed(0)
+
+    traindata = DataLoader(
+        train, 
+        batch_size=batch_size, 
+        num_workers=num_workers,
+        worker_init_fn=seed_worker,
+        generator=g,    
+    )
+
+    valdata = DataLoader(
+        test, 
+        batch_size=batch_size, 
+        num_workers=num_workers
+        worker_init_fn=seed_worker,
+        generator=g,
+    )
 
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),

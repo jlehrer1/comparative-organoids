@@ -24,7 +24,7 @@ def run_search(num, class_label):
     for i, params in enumerate(random.sample(params, num)):
         for n, p in zip(param_names, params):
             os.environ[n.upper()] = str(p)
-            
+
         os.environ['I'] = str(i)
         os.system(f'envsubst < {yaml_path} | kubectl create -f -')
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         type=int,
         default=100,
     )
-
+    
     parser.add_argument(
         '--class-label',
         help='Class to train classifer on',
