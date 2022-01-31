@@ -46,6 +46,7 @@ if __name__ == "__main__":
         help='Class to train classifer on',
         required=False,
         default='Subtype',
+        type=str,
     )
 
     args = parser.parse_args()
