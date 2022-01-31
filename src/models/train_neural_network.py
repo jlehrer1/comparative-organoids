@@ -191,6 +191,35 @@ def seed_worker(worker_id):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
+def generate_datasets(data_path):
+    """Generates the training set for the classifier. Should be a combination of all GeneExpressionDatasets
+
+    Parameters:
+    data_path: Path to folder containing training and label sets
+    
+    Returns:
+    Tuple[Dataset, Dataset]: Training dataset and validation dataset, respectively
+    """
+
+    primary = GeneExpressionData(
+        filename=os.path.join(data_path, 'primary.csv'),
+        labelname=os.path.join(os.path.join(data_path, 'meta_primary_labels.csv')),
+        class_label=class_label
+    )
+
+    organoid = GeneExpressionData(
+        filename=os.path.join(data_path, 'primary.csv'),
+        labelname=os.path.join(os.path.join(data_path, 'meta_organoid_labels.csv')),
+        class_label=class_label
+    )
+
+    dataset = torch.utils.data.ConcatDataset([primary, organoid])
+    train_size = int(0.80 * len(dataset))
+    test_size = len(dataset) - train_size
+    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+    return train, test
+
 def generate_trainer(
     here :str, 
     params: Dict[str, float], 
@@ -216,12 +245,6 @@ def generate_trainer(
 
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
-    dataset = GeneExpressionData(
-        filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(os.path.join(data_path, label_file)),
-        class_label=class_label
-    )
-
     comet_logger = CometLogger(
         api_key="neMNyjJuhw25ao48JEWlJpKRR",
         project_name=f"cell-classifier-{class_label}",  # Optional
@@ -229,10 +252,7 @@ def generate_trainer(
         experiment_name=f'{layers + 5} Layers, {width} Width'
     )
 
-    train_size = int(0.80 * len(dataset))
-    test_size = len(dataset) - train_size
-
-    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
+    train, test = generate_datasets(data_path)
 
     g = torch.Generator()
     g.manual_seed(0)
