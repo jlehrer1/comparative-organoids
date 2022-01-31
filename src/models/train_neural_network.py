@@ -87,6 +87,8 @@ class GeneClassifier(pl.LightningModule):
         weights: Weights to use in accuracy calculation, so we can calculate balanced accuracy to account for uneven class sizes
         params: Dictionary of hyperparameters to use, includes width, layers, lr, momentum, weight_decay
         """
+        super(GeneClassifier, self).__init__()
+
         # Record entire dict for logging
         self._hyperparams = params
 
@@ -100,11 +102,10 @@ class GeneClassifier(pl.LightningModule):
         layers = self.layers*[
             nn.Linear(self.width, self.width),
             nn.ReLU(),
-            nn.Dropout(0.5),
+            # nn.Dropout(0.5),
             nn.BatchNorm1d(self.width),
         ]
 
-        super(GeneClassifier, self).__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(N_features, self.width),
@@ -112,7 +113,6 @@ class GeneClassifier(pl.LightningModule):
             nn.Linear(self.width, N_labels),
         )
 
-        # self.accuracy = Accuracy()
         self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
         self.weights = weights
 
@@ -242,13 +242,13 @@ def generate_trainer(
         batch_size=batch_size, 
         num_workers=num_workers,
         worker_init_fn=seed_worker,
-        generator=g,    
+        generator=g,
     )
 
     valdata = DataLoader(
         test, 
         batch_size=batch_size, 
-        num_workers=num_workers
+        num_workers=num_workers,
         worker_init_fn=seed_worker,
         generator=g,
     )
@@ -265,7 +265,6 @@ def generate_trainer(
         params=params,
     )
     
-    print(model)
     trainer = pl.Trainer(
         gpus=1,
         auto_lr_find=False,
