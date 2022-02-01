@@ -191,29 +191,36 @@ def seed_worker(worker_id):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
-def generate_datasets(data_path):
-    """Generates the training set for the classifier. Should be a combination of all GeneExpressionDatasets
+def generate_datasets(
+    dataset_files: List[str], 
+    label_files: List[str],
+    data_path: str,
+    class_label:str,
+):
+    """Generates the training / test set for the classifier. 
 
     Parameters:
-    data_path: Path to folder containing training and label sets
+    dataset_files: List of csv files under data_path/ that define cell x expression matrices
+    label_files: List of csv files under data_path/ that define cell x class matrices
+    data_path: Absolute path to folder containing both data and label files
+    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
     
     Returns:
     Tuple[Dataset, Dataset]: Training dataset and validation dataset, respectively
     """
 
-    primary = GeneExpressionData(
-        filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(os.path.join(data_path, 'meta_primary_labels.csv')),
-        class_label=class_label
-    )
+    datasets = []
 
-    organoid = GeneExpressionData(
-        filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(os.path.join(data_path, 'meta_organoid_labels.csv')),
-        class_label=class_label
-    )
+    for datafile, labelfile in zip(dataset_files, label_files):
+        subset = GeneExpressionData(
+            filename=os.path.join(data_path, datafile),
+            labelname=os.path.join(os.path.join(data_path, labelfile)),
+            class_label=class_label
+        )
 
-    dataset = torch.utils.data.ConcatDataset([primary, organoid])
+        datasets.append(subset)
+
+    dataset = torch.utils.data.ConcatDataset(datasets)
     train_size = int(0.80 * len(dataset))
     test_size = len(dataset) - train_size
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
@@ -252,10 +259,18 @@ def generate_trainer(
         experiment_name=f'{layers + 5} Layers, {width} Width'
     )
 
-    train, test = generate_datasets(data_path)
+    dataset = GeneExpressionData(
+        filename=os.path.join(data_path, 'primary.csv'),
+        labelname=os.path.join(os.path.join(data_path, label_file)),
+        class_label=class_label,
+    )
+
+    train_size = int(0.80 * len(dataset))
+    test_size = len(dataset) - train_size
+    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
     g = torch.Generator()
-    g.manual_seed(0)
+    g.manual_seed(42)
 
     traindata = DataLoader(
         train, 
@@ -289,6 +304,7 @@ def generate_trainer(
         gpus=1,
         auto_lr_find=False,
         max_epochs=epochs, 
+        gradient_clip_val=0.5,
         logger=comet_logger,
         callbacks=[
             uploadcallback,
