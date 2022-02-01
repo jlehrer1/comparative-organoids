@@ -27,7 +27,9 @@ def run_search(num, class_label):
         for n, p in zip(param_names, params):
             os.environ[n.upper()] = str(p)
 
-        os.environ['I'] = str(i)
+        # These two are to put in job name
+        os.environ['name'] = class_label.lower()
+        os.environ['I'] = str(i) 
         os.system(f'envsubst < {yaml_path} | kubectl create -f -')
 
 if __name__ == "__main__":

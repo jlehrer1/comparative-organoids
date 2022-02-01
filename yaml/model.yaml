@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-width-${WIDTH}-layers-${LAYERS}-${I}
+  name: rna-seq-model-width-${WIDTH}-layers-${LAYERS}-${I}-${NAME}
 spec:
   backoffLimit: 5
   completions: 1
