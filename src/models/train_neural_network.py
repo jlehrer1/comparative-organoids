@@ -1,24 +1,23 @@
 from ssl import Options
+import random
+import sys
+import argparse
+import pathlib
+import os
+from typing import *
+
 import comet_ml
-from pytorch_lightning.loggers import CometLogger
 import pandas as pd 
 import torch
-import linecache 
-import csv
 import numpy as np
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-import argparse
-import pathlib, os
-import torch.nn.functional as F
 import pytorch_lightning as pl
-from sklearn.utils.class_weight import compute_class_weight
-from torchmetrics import Accuracy, ConfusionMatrix 
-from typing import *
-import random
 
-import sys
+from pytorch_lightning.loggers import CometLogger
+from torch.utils.data import Dataset, DataLoader
+from sklearn.utils.class_weight import compute_class_weight
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from helper import upload 
 from lib.neural import GeneClassifier, GeneExpressionData
 
@@ -59,33 +58,55 @@ def seed_worker(worker_id):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
+def dataset_class_weights(
+    label_files: List[str],
+    class_label: str,
+):
+
+    """
+    Compute class weights for the entire label set of N labels. 
+
+    Parameters:
+    label_files: List of absolute paths to label files
+
+    Returns:
+    np.array: Array of class weights for classes 0,...,N-1
+    """
+
+    comb = np.array([pd.read_csv(file).loc[:, class_label].values for file in label_files]).flatten()
+
+    return compute_class_weight(
+        classes=np.unique(comb),
+        y=comb,
+        class_weight='balanced',
+    )
+
 def generate_datasets(
     dataset_files: List[str], 
     label_files: List[str],
-    data_path: str,
     class_label:str,
-) -> Tuple[Dataset, Dataset]:
+) -> Tuple[Dataset, Dataset, int, int]:
     """
     Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
     The assumption with all passed label files is that the number of classes in each dataset is the same. 
     Class labels are indexed from 0, so for N classes the labels are 0,...,N-1. 
 
     Parameters:
-    dataset_files: List of csv files under data_path/ that define cell x expression matrices
-    label_files: List of csv files under data_path/ that define cell x class matrices
-    data_path: Absolute path to folder containing both data and label files
+    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
+    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
     class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
     
     Returns:
-    Tuple[Dataset, Dataset]: Training dataset and validation dataset, respectively
+    Tuple[Dataset, Dataset, int, int, List[float]]: 
+    Returns training dataset, validation dataset, input tensor size, number of class labels, class_weights respectively
     """
 
     datasets = []
 
     for datafile, labelfile in zip(dataset_files, label_files):
         subset = GeneExpressionData(
-            filename=os.path.join(data_path, datafile),
-            labelname=os.path.join(os.path.join(data_path, labelfile)),
+            filename=datafile,
+            labelname=labelfile,
             class_label=class_label
         )
 
@@ -96,7 +117,72 @@ def generate_datasets(
     test_size = len(dataset) - train_size
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    return train, test
+    # Calculate input tensor size and # of class labels
+    input_size = len(train[0][0])
+    num_labels = max(pd.read_csv(label_files[0]).loc[:, class_label].values)
+
+    return train, test, input_size, num_labels, dataset_class_weights(label_files, class_label)
+
+def train_model(
+    model: GeneClassifier, 
+    params: Dict[str, Union[int, float]],
+    dataset_files,
+    label_files,
+    class_label,
+    num_workers: int=100,
+    batch_size: int=8,
+):
+    width = params['width']
+    epochs = params['epochs']
+    layers = params['layers']
+
+    train, test, input_size, num_labels, weights = generate_datasets(dataset_files, label_files, class_label)
+    g = torch.Generator()
+    g.manual_seed(42)
+
+    trainloader = DataLoader(
+        train, 
+        batch_size=batch_size, 
+        num_workers=num_workers,
+        worker_init_fn=seed_worker,
+        generator=g,
+    )
+
+    valloader = DataLoader(
+        test, 
+        batch_size=batch_size, 
+        num_workers=num_workers,
+        worker_init_fn=seed_worker,
+        generator=g,
+    )
+
+    # criterion = 
+    model = GeneClassifier()
+
+    # for e in range(epochs):
+    #     train_loss = 0.0
+    #     model.train()     # Optional when not using Model Specific layer
+    #     for data, labels in trainloader:
+    #         optimizer.zero_grad()
+    #         target = model(data)
+    #         loss = criterion(target,labels)
+    #         loss.backward()
+    #         optimizer.step()
+    #         train_loss += loss.item()
+        
+    #     valid_loss = 0.0
+    #     model.eval() # Optional when not using Model Specific layer
+    #     for data, labels in valloader:
+    #         target = model(data)
+    #         loss = criterion(target,labels)
+    #         valid_loss = loss.item() * data.size(0)
+
+    #     print(f'Epoch {e+1} \t\t Training Loss: {train_loss / len(trainloader)} \t\t Validation Loss: {valid_loss / len(validloader)}')
+    #     if min_valid_loss > valid_loss:
+    #         print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
+    #         min_valid_loss = valid_loss
+    #         # Saving State Dict
+    #         torch.save(model.state_dict(), 'saved_model.pth')
 
 def generate_trainer(
     here :str, 
@@ -117,6 +203,8 @@ def generate_trainer(
     Tuple[trainer, model, traindata, valdata]: Tuple of PyTorch-Lightning trainer, model instance, and train and validation dataloaders for training.
     """
 
+    device = ('cuda' if torch.cuda.is_available() else 'cpu')
+
     width = params['width']
     epochs = params['epochs']
     layers = params['layers']
@@ -128,6 +216,12 @@ def generate_trainer(
         project_name=f"cell-classifier-{class_label}",  # Optional
         workspace="jlehrer1",
         experiment_name=f'{layers + 5} Layers, {width} Width'
+    )
+
+    train, test, input_size, num_labels, class_weights = generate_datasets(
+        dataset_files=[os.path.join(data_path, 'primary.csv')], # TODO: add this list of files as a parameter that can be passed to the training script, test this for now 
+        label_files=[os.path.join(data_path, label_file)],
+        class_label=class_label,
     )
 
     dataset = GeneExpressionData(
@@ -165,14 +259,14 @@ def generate_trainer(
     )
 
     model = GeneClassifier(
-        N_features=dataset.num_features(),
-        N_labels=dataset.num_labels(),
-        weights=dataset.compute_class_weights(),
+        N_features=input_size,
+        N_labels=num_labels,
+        weights=torch.from_numpy(class_weights).to(device),
         params=params,
     )
     
     trainer = pl.Trainer(
-        gpus=1,
+        # gpus=1,
         auto_lr_find=False,
         max_epochs=epochs, 
         gradient_clip_val=0.5,

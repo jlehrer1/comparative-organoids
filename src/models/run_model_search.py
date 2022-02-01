@@ -28,7 +28,7 @@ def run_search(num, class_label):
             os.environ[n.upper()] = str(p)
 
         # These two are to put in job name
-        os.environ['name'] = class_label.lower()
+        os.environ['NAME'] = class_label[0].lower()
         os.environ['I'] = str(i) 
         os.system(f'envsubst < {yaml_path} | kubectl create -f -')
 
