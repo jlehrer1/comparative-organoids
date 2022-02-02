@@ -1,11 +1,12 @@
+import pathlib 
+import os 
+import sys
+import argparse
+
 import pandas as pd 
 import numpy as np
 import hdbscan 
-import pathlib 
-import os 
-import dask.dataframe as da 
-import sys
-import argparse
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload, S3_CLUSTER_LABEL_PATH
 

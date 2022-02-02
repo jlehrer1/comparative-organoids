@@ -1,11 +1,9 @@
-import pandas as pd 
-import numpy as np
-import matplotlib.pyplot as plt 
 import os
-import dask.dataframe as dd
 import pathlib 
-import dask.dataframe as dd
 import sys
+
+import pandas as pd 
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import primary_genes, upload
 

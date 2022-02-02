@@ -1,7 +1,7 @@
-from tkinter import Label
-import pandas as pd 
-import os, sys
+import os
 import pathlib 
+import pandas as pd 
+
 from sklearn.preprocessing import LabelEncoder
 
 here = pathlib.Path(__file__).parent.absolute()

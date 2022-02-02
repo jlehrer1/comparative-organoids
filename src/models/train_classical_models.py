@@ -1,11 +1,12 @@
-import numpy as np
-import dask.dataframe as dd
 import pathlib 
 import os
-import torch.nn as nn
-import torch.nn.functional as F
-from sklearn.svm import SVC
 import argparse
+
+import numpy as np
+import sklearn 
+
+import dask.dataframe as dd
+from sklearn.svm import SVC
 from dask_ml.model_selection import train_test_split, RandomizedSearchCV
 
 class GeneClassifier:

@@ -1,9 +1,10 @@
-import numpy as np 
 import random
-from itertools import product 
 import pathlib 
 import os 
 import argparse
+from itertools import product 
+
+import numpy as np 
 from scipy.stats import loguniform
 
 def run_search(num, class_label):
@@ -13,10 +14,10 @@ def run_search(num, class_label):
     class_label = [class_label]
     epochs = [100000]
     lr = np.linspace(0.001, 0.1, 10) #(start, stop, num)
-    # momentum = np.linspace(0.001, 0.9, 10)
-    momentum = [0]
-    # weight_decay = loguniform.rvs(0.001, 0.1, size=10)
-    weight_decay = [0]
+    momentum = np.linspace(0.001, 0.9, 10)
+    # momentum = [0]
+    weight_decay = loguniform.rvs(0.001, 0.1, size=10)
+    # weight_decay = [0]
     width = [64, 128, 1024, 2048]
     layers = np.arange(10, 25, 5)
 
