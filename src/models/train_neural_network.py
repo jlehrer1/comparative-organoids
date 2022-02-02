@@ -13,8 +13,7 @@ import numpy as np
 import pytorch_lightning as pl
 
 from pytorch_lightning.loggers import CometLogger
-from torch.utils.data import Dataset, DataLoader
-from sklearn.utils.class_weight import compute_class_weight
+from torch.utils.data import DataLoader
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
@@ -277,17 +276,32 @@ if __name__ == "__main__":
         help='Class label to train classifier on',
     )
 
+    parser.add_argument(
+        '--batch-size',
+        required=False,
+        default=4,
+        type=int,
+        help='Number of samples in minibatch'
+    )
+
+    parser.add_argument(
+        '--num-workers',
+        required=False,
+        default=64,
+        type=int,
+        help='Number of workers in DataLoaders'
+    )
+
     args = parser.parse_args()
     params = vars(args)
-    class_label = params['class_label']
 
     trainer, model, traindata, valdata = generate_trainer(
         here=here, 
         params=params,
         label_file='meta_primary_labels.csv',
-        class_label=class_label,
-        num_workers=0,
-        batch_size=4,
+        class_label=params['class_label'],
+        num_workers=params['num_workers'],
+        batch_size=params['batch_size'],
     )
     
     trainer.fit(model, traindata, valdata)

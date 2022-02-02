@@ -52,21 +52,10 @@ class GeneExpressionData(Dataset):
     def num_features(self):
         return len(self.__getitem__(0)[0])
 
-    def compute_class_weights(self):
-        weights = compute_class_weight(
-            class_weight='balanced', 
-            classes=np.unique(self._labelname[self._class_label].values), 
-            y=self._labelname[self._class_label].values
-        )
-
-        weights = torch.from_numpy(weights)
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        return weights.float().to(device)
-
 def _dataset_class_weights(
     label_files: List[str],
     class_label: str,
-):
+) -> Tensor:
     """
     Compute class weights for the entire label set of N labels. 
 
@@ -89,7 +78,7 @@ def generate_datasets(
     dataset_files: List[str], 
     label_files: List[str],
     class_label:str,
-) -> Tuple[Dataset, Dataset, int, int, Tensor[float]]:
+) -> Tuple[Dataset, Dataset, int, int, Tensor]:
     """
     Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
     The assumption with all passed label files is that the number of classes in each dataset is the same. 
