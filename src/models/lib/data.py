@@ -35,16 +35,12 @@ class GeneExpressionData(Dataset):
         class_label: str,
         indices: Union[np.array, List[int]]=None
     ):
-        
         self._filename = filename
         self._labelname = (pd.read_csv(labelname) if indices is None else pd.read_csv(labelname).iloc[indices, :])
         self._total_data = 0
         self._class_label = class_label
         self.index = indices
-        
-        with open(filename, "r") as f:
-            self._total_data = len(self.index)
-            
+                    
     def __getitem__(self, idx):
         # Get index in dataframe from integer index
         idx = self._labelname.iloc[idx].name
@@ -61,7 +57,7 @@ class GeneExpressionData(Dataset):
         return torch.from_numpy(np.array([float(x) for x in data])).float(), label
     
     def __len__(self):
-        return self._total_data
+        return len(self.index)
     
     def num_labels(self):
         return self._labelname[self._class_label].nunique()
