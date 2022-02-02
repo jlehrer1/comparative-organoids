@@ -19,7 +19,7 @@ from sklearn.utils.class_weight import compute_class_weight
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from helper import upload 
-from lib.neural import GeneClassifier, GeneExpressionData
+from lib.neural import GeneClassifier
 from lib.data import GeneExpressionData, generate_datasets
 
 # Set all seeds for reproducibility
@@ -122,7 +122,7 @@ def train_model(
     #         torch.save(model.state_dict(), 'saved_model.pth')
 
 def generate_trainer(
-    here :str, 
+    here: str, 
     params: Dict[str, float], 
     label_file: str='meta_primary_labels.csv',
     class_label: str='Subtype',
@@ -201,12 +201,12 @@ def generate_trainer(
     model = GeneClassifier(
         N_features=input_size,
         N_labels=num_labels,
-        weights=torch.from_numpy(class_weights).to(device),
+        weights=class_weights,
         params=params,
     )
     
     trainer = pl.Trainer(
-        # gpus=1,
+        gpus=(1 if torch.cuda.is_available() else 0),
         auto_lr_find=False,
         max_epochs=epochs, 
         gradient_clip_val=0.5,
