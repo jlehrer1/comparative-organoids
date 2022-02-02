@@ -11,6 +11,7 @@ import numpy as np
 
 from torch.utils.data import Dataset
 from sklearn.utils.class_weight import compute_class_weight
+from torch import Tensor 
 
 # Set all seeds for reproducibility
 torch.manual_seed(42)
@@ -82,13 +83,13 @@ def _dataset_class_weights(
         classes=np.unique(comb),
         y=comb,
         class_weight='balanced',
-    ))
+    )).float()
 
 def generate_datasets(
     dataset_files: List[str], 
     label_files: List[str],
     class_label:str,
-) -> Tuple[Dataset, Dataset, int, int]:
+) -> Tuple[Dataset, Dataset, int, int, Tensor[float]]:
     """
     Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
     The assumption with all passed label files is that the number of classes in each dataset is the same. 
@@ -121,8 +122,8 @@ def generate_datasets(
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
     # Calculate input tensor size and # of class labels
-    input_size = len(train[0][0])
-    num_labels = max(pd.read_csv(label_files[0]).loc[:, class_label].values)
+    input_size = len(train[0][0]) # Just consider the first sample for input shape
+    num_labels = max(pd.read_csv(label_files[0]).loc[:, class_label].values) + 1 # Always N classes labeled 0,...,N-1
 
     return train, test, input_size, num_labels, _dataset_class_weights(label_files, class_label)
     

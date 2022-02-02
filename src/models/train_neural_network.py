@@ -60,7 +60,6 @@ def seed_worker(worker_id):
     random.seed(worker_seed)
 
 def train_model(
-    model: GeneClassifier, 
     params: Dict[str, Union[int, float]],
     dataset_files,
     label_files,
@@ -94,7 +93,7 @@ def train_model(
     )
 
     # criterion = 
-    model = GeneClassifier()
+    model = GeneClassifier(input_size, num_labels, weights)
 
     # for e in range(epochs):
     #     train_loss = 0.0
@@ -218,10 +217,9 @@ def generate_trainer(
 
     return trainer, model, traindata, valdata 
 
-def add_args():
-    """
-    Sets up the argparser for model training
-    """
+if __name__ == "__main__":
+    here = pathlib.Path(__file__).parent.absolute()
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--width',
@@ -279,12 +277,6 @@ def add_args():
         help='Class label to train classifier on',
     )
 
-    return parser
-
-if __name__ == "__main__":
-    here = pathlib.Path(__file__).parent.absolute()
-
-    parser = add_args()
     args = parser.parse_args()
     params = vars(args)
     class_label = params['class_label']
@@ -294,7 +286,7 @@ if __name__ == "__main__":
         params=params,
         label_file='meta_primary_labels.csv',
         class_label=class_label,
-        num_workers=100,
+        num_workers=0,
         batch_size=4,
     )
     
