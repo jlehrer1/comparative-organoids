@@ -1,6 +1,6 @@
 import os
 import pathlib 
-import pandas as pd 
+import pandas as pd
 
 from sklearn.preprocessing import LabelEncoder
 
@@ -8,15 +8,17 @@ here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
 
 def encode(infile, outfile):
-    meta_primary = pd.read_csv(os.path.join(data_path, 'meta', infile), sep='\t')
-    meta_trainable = pd.DataFrame()
+    meta = pd.read_csv(os.path.join(data_path, 'meta', infile), sep='\t')
+    # Generate dataframe of categorical encoded targets
+    meta_trainable = pd.DataFrame(index=meta.index)
 
     le = LabelEncoder()
-
     for col in 'Class', 'State', 'Type', 'Subtype':
-        meta_trainable[col] = le.fit_transform(meta_primary.loc[:, col])
+        meta_trainable.loc[:, col] = le.fit_transform(meta.loc[:, col])
 
-    meta_trainable.to_csv(os.path.join(data_path, 'processed', outfile), sep=',')
+    print(meta_trainable)
+
+    meta_trainable.to_csv(os.path.join(data_path, 'processed', outfile), sep=',', index=False)
 
 if __name__ == "__main__":
     for infile, outfile in zip(['meta_organoid.tsv', 'meta_primary.tsv'], ['meta_organoid_labels.csv', 'meta_primary_labels.csv']):
