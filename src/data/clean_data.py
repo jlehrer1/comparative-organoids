@@ -1,15 +1,16 @@
-import dask.dataframe as da
-from dask.diagnostics import ProgressBar
 import pathlib 
 import os 
 import sys
+
+import dask.dataframe as da
+from dask.diagnostics import ProgressBar
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload, S3_CLEAN_DATA_PATH
 from download_data import download_interim
 
 pbar = ProgressBar()
 pbar.register() # global registration
-
 
 if __name__ == "__main__":
     download_interim()

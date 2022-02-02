@@ -20,6 +20,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from helper import upload 
 from lib.neural import GeneClassifier, GeneExpressionData
+from lib.data import GeneExpressionData, generate_datasets
 
 # Set all seeds for reproducibility
 torch.manual_seed(42)
@@ -58,71 +59,6 @@ def seed_worker(worker_id):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
-def dataset_class_weights(
-    label_files: List[str],
-    class_label: str,
-):
-
-    """
-    Compute class weights for the entire label set of N labels. 
-
-    Parameters:
-    label_files: List of absolute paths to label files
-
-    Returns:
-    np.array: Array of class weights for classes 0,...,N-1
-    """
-
-    comb = np.array([pd.read_csv(file).loc[:, class_label].values for file in label_files]).flatten()
-
-    return compute_class_weight(
-        classes=np.unique(comb),
-        y=comb,
-        class_weight='balanced',
-    )
-
-def generate_datasets(
-    dataset_files: List[str], 
-    label_files: List[str],
-    class_label:str,
-) -> Tuple[Dataset, Dataset, int, int]:
-    """
-    Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
-    The assumption with all passed label files is that the number of classes in each dataset is the same. 
-    Class labels are indexed from 0, so for N classes the labels are 0,...,N-1. 
-
-    Parameters:
-    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
-    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
-    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
-    
-    Returns:
-    Tuple[Dataset, Dataset, int, int, List[float]]: 
-    Returns training dataset, validation dataset, input tensor size, number of class labels, class_weights respectively
-    """
-
-    datasets = []
-
-    for datafile, labelfile in zip(dataset_files, label_files):
-        subset = GeneExpressionData(
-            filename=datafile,
-            labelname=labelfile,
-            class_label=class_label
-        )
-
-        datasets.append(subset)
-
-    dataset = torch.utils.data.ConcatDataset(datasets)
-    train_size = int(0.80 * len(dataset))
-    test_size = len(dataset) - train_size
-    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-    # Calculate input tensor size and # of class labels
-    input_size = len(train[0][0])
-    num_labels = max(pd.read_csv(label_files[0]).loc[:, class_label].values)
-
-    return train, test, input_size, num_labels, dataset_class_weights(label_files, class_label)
-
 def train_model(
     model: GeneClassifier, 
     params: Dict[str, Union[int, float]],
@@ -137,6 +73,7 @@ def train_model(
     layers = params['layers']
 
     train, test, input_size, num_labels, weights = generate_datasets(dataset_files, label_files, class_label)
+    
     g = torch.Generator()
     g.manual_seed(42)
 
@@ -203,7 +140,8 @@ def generate_trainer(
     Tuple[trainer, model, traindata, valdata]: Tuple of PyTorch-Lightning trainer, model instance, and train and validation dataloaders for training.
     """
 
-    device = ('cuda' if torch.cuda.is_available() else 'cpu')
+    device = ('cuda:0' if torch.cuda.is_available() else 'cpu')
+    print(f'Device is {device}')
 
     width = params['width']
     epochs = params['epochs']
@@ -223,6 +161,8 @@ def generate_trainer(
         label_files=[os.path.join(data_path, label_file)],
         class_label=class_label,
     )
+
+    class_weights = class_weights.to(device)
 
     dataset = GeneExpressionData(
         filename=os.path.join(data_path, 'primary.csv'),
