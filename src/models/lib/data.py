@@ -116,7 +116,7 @@ def _generate_stratified_dataset(
         current_labels = pd.read_csv(labelfile).loc[:, class_label]
         
         # Make stratified split on labels
-        trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels)
+        trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=0.8)
         
         # Generate train/test with stratified indices
         trainset = GeneExpressionData(
@@ -141,24 +141,21 @@ def _generate_stratified_dataset(
 
     return train, val 
 
-def generate_datasets(
+def _generate_split_dataset(
     dataset_files: List[str], 
     label_files: List[str],
     class_label:str,
-) -> Tuple[Dataset, Dataset, int, int, Tensor]:
+) -> Tuple[Dataset, Dataset]:
     """
-    Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
-    The assumption with all passed label files is that the number of classes in each dataset is the same. 
-    Class labels are indexed from 0, so for N classes the labels are 0,...,N-1. 
-
+    Generates train/val datasets WITHOUT stratified splitting.
+    
     Parameters:
     dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
     label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
     class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
-    
+
     Returns:
-    Tuple[Dataset, Dataset, int, int, List[float]]: 
-    Returns training dataset, validation dataset, input tensor size, number of class labels, class_weights respectively
+    Tuple[Dataset, Dataset]: Training and validation datasets, respectively
     """
 
     datasets = []
@@ -176,6 +173,43 @@ def generate_datasets(
     train_size = int(0.80 * len(dataset))
     test_size = len(dataset) - train_size
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+    return train, test 
+
+def generate_datasets(
+    dataset_files: List[str], 
+    label_files: List[str],
+    class_label:str,
+    stratified=True,
+) -> Tuple[Dataset, Dataset, int, int, Tensor]:
+    """
+    Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
+    The assumption with all passed label files is that the number of classes in each dataset is the same. 
+    Class labels are indexed from 0, so for N classes the labels are 0,...,N-1. 
+
+    Parameters:
+    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
+    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
+    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
+    stratified: bool=True: To return a stratified train/test split or not 
+
+    Returns:
+    Tuple[Dataset, Dataset, int, int, List[float]]: 
+    Returns training dataset, validation dataset, input tensor size, number of class labels, class_weights respectively
+    """
+
+    if stratified:
+        train, test = _generate_stratified_dataset(
+            dataset_files=dataset_files,
+            label_files=label_files,
+            class_label=class_label,
+        )
+    else: 
+        train, test = _generate_split_dataset(
+            dataset_files=dataset_files,
+            label_files=label_files,
+            class_label=class_label,
+        )
 
     # Calculate input tensor size and # of class labels
     input_size = len(train[0][0]) # Just consider the first sample for input shape
