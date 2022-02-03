@@ -19,8 +19,14 @@ class GeneClassifier(pl.LightningModule):
     def __init__(self, 
         N_features: int, 
         N_labels: int, 
-        weights: List[torch.Tensor], 
-        params: Dict[str, float],
+        weights: List[torch.Tensor]=None, 
+        params: Dict[str, float]={
+            'width': 1024,
+            'layers': 2,
+            'lr': 0.001,
+            'momentum': 0,
+            'weight_decay': 0
+        },
     ):
         """
         Initialize the gene classifier neural network

@@ -23,9 +23,11 @@ class GeneExpressionData(Dataset):
     """
     Defines a PyTorch Dataset for a CSV too large to fit in memory. 
 
-    Parameters:
+    Init params:
     filename: Path to csv data file, where rows are samples and columns are features
     labelname: Path to label file, where column '# labels' defines classification labels
+    class_label: Label to train on, must be in labelname file 
+    indices=None: List of indices to use in dataset. If None, all indices given in labelname are used.
     """
 
     def __init__(
@@ -57,7 +59,7 @@ class GeneExpressionData(Dataset):
         return torch.from_numpy(np.array([float(x) for x in data])).float(), label
     
     def __len__(self):
-        return len(self.index)
+        return self._labelname.shape[0] # number of total samples 
     
     def num_labels(self):
         return self._labelname[self._class_label].nunique()
@@ -90,15 +92,18 @@ def _dataset_class_weights(
 def _generate_stratified_dataset(
     dataset_files: List[str], 
     label_files: List[str],
-    class_label:str,
+    class_label: str,
+    test_prop: float = 0.2
 ) -> Tuple[Dataset, Dataset]:
-    """Generates train/val datasets with stratified label splitting. This means that the proportion of each class is the same 
+    """
+    Generates train/val datasets with stratified label splitting. This means that the proportion of each class is the same 
     in the training and validation set. 
     
     Parameters:
     dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
     label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
     class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
+    test_prop: Proportion of data to use as test set 
 
     Returns:
     Tuple[Dataset, Dataset]: Training and validation datasets, respectively
@@ -112,7 +117,7 @@ def _generate_stratified_dataset(
         current_labels = pd.read_csv(labelfile).loc[:, class_label]
         
         # Make stratified split on labels
-        trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=0.8)
+        trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
         
         # Generate train/test with stratified indices
         trainset = GeneExpressionData(
@@ -140,7 +145,8 @@ def _generate_stratified_dataset(
 def _generate_split_dataset(
     dataset_files: List[str], 
     label_files: List[str],
-    class_label:str,
+    class_label: str,
+    test_prop: float = 0.2
 ) -> Tuple[Dataset, Dataset]:
     """
     Generates train/val datasets WITHOUT stratified splitting.
@@ -166,7 +172,7 @@ def _generate_split_dataset(
         datasets.append(subset)
 
     dataset = torch.utils.data.ConcatDataset(datasets)
-    train_size = int(0.80 * len(dataset))
+    train_size = int((1. - test_prop) * len(dataset))
     test_size = len(dataset) - train_size
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 

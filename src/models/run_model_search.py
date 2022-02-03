@@ -7,7 +7,13 @@ from itertools import product
 import numpy as np 
 from scipy.stats import loguniform
 
-def run_search(num, class_label):
+def run_search(
+    num: int, 
+    class_label: str
+) -> None:
+    """
+    
+    """
     here = pathlib.Path(__file__).parent.absolute()
     yaml_path = os.path.join(here, '..', '..', 'yaml', 'model.yaml')
 
