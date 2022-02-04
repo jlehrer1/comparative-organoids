@@ -17,25 +17,27 @@ def run_search(
     here = pathlib.Path(__file__).parent.absolute()
     yaml_path = os.path.join(here, '..', '..', 'yaml', 'model.yaml')
 
-    class_label = [class_label]
-    epochs = [100000]
-    lr = np.linspace(0.001, 0.1, 10) #(start, stop, num)
-    momentum = np.linspace(0.001, 0.9, 10)
-    # momentum = [0]
-    weight_decay = loguniform.rvs(0.001, 0.1, size=10)
-    # weight_decay = [0]
-    width = [64, 128, 1024, 2048]
-    layers = np.arange(10, 25, 5)
+    param_dict = {
+        'class_label': [class_label],
+        'epochs': [100000],
+        'lr': np.linspace(0.001, 0.1, 10), #(start, stop, num),
+        'batch_size': [2, 4, 16, 32],
+        'momentum': np.linspace(0.001, 0.9, 10),
+        'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
+        'width': [1024, 2048, 4096],
+        'layers': np.arange(10, 25, 5),
+    }
 
-    params = list(product(width, layers, epochs, lr, momentum, weight_decay, class_label))
-    param_names = ['width', 'layers', 'epochs', 'lr', 'momentum', 'weight_decay', 'class_label']
+    # Generate cartesian product of dictionary 
+    params = list(product(*param_dict.values()))
+    param_names = list(param_dict.keys())
     
     for i, params in enumerate(random.sample(params, num)):
         for n, p in zip(param_names, params):
             os.environ[n.upper()] = str(p)
 
         # These two are to put in job name
-        os.environ['NAME'] = class_label[0].lower()
+        os.environ['NAME'] = class_label.lower()
         os.environ['I'] = str(i) 
         os.system(f'envsubst < {yaml_path} | kubectl create -f -')
 

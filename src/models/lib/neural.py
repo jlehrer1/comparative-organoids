@@ -52,7 +52,7 @@ class GeneClassifier(pl.LightningModule):
         layers = self.layers*[
             nn.Linear(self.width, self.width),
             nn.ReLU(),
-            # nn.Dropout(0.5),
+            # nn.Dropout(0.25),
             nn.BatchNorm1d(self.width),
         ]
 
