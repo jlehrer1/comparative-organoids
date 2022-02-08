@@ -123,14 +123,14 @@ def _generate_stratified_dataset(
         trainset = GeneExpressionData(
             filename=datafile, 
             labelname=labelfile,
-            class_label='Subtype',
+            class_label=class_label,
             indices=trainsplit.index 
         )
         
         valset = GeneExpressionData(
             filename=datafile, 
             labelname=labelfile,
-            class_label='Subtype',
+            class_label=class_label,
             indices=valsplit.index 
         )
         

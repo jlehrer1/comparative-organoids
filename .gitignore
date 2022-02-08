@@ -110,3 +110,5 @@ notebooks/*/*.png
 notebooks/*.png
 credentials
 src/visualization/*.png
+wandbcreds
+wandb/*

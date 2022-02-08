@@ -11,8 +11,9 @@ import pandas as pd
 import torch
 import numpy as np
 import pytorch_lightning as pl
+import wandb 
 
-from pytorch_lightning.loggers import CometLogger
+from pytorch_lightning.loggers import CometLogger, WandbLogger
 from torch.utils.data import DataLoader
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -20,7 +21,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
 from lib.neural import GeneClassifier
 from lib.data import GeneExpressionData, generate_datasets
-
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 # Set all seeds for reproducibility
 torch.manual_seed(42)
 np.random.seed(42)
@@ -154,6 +155,11 @@ def generate_trainer(
         experiment_name=f'{layers + 5} Layers, {width} Width'
     )
 
+    wandb_logger = WandbLogger(
+        project=f"cell-classifier-{class_label}",
+        name=f'{layers + 5} Layers, {width} Width'
+    )
+
     train, test, input_size, num_labels, class_weights = generate_datasets(
         dataset_files=[os.path.join(data_path, 'primary.csv')], # TODO: add this list of files as a parameter that can be passed to the training script, test this for now 
         label_files=[os.path.join(data_path, label_file)],
@@ -161,22 +167,11 @@ def generate_trainer(
     )
 
     class_weights = class_weights.to(device)
-
-    dataset = GeneExpressionData(
-        filename=os.path.join(data_path, 'primary.csv'),
-        labelname=os.path.join(os.path.join(data_path, label_file)),
-        class_label=class_label,
-    )
-
-    train_size = int(0.80 * len(dataset))
-    test_size = len(dataset) - train_size
-    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
-
     g = torch.Generator()
     g.manual_seed(42)
 
     traindata = DataLoader(
-        train, 
+        train,
         batch_size=batch_size, 
         num_workers=num_workers,
         worker_init_fn=seed_worker,
@@ -208,7 +203,7 @@ def generate_trainer(
         auto_lr_find=False,
         max_epochs=epochs, 
         gradient_clip_val=0.5,
-        logger=comet_logger,
+        logger=wandb_logger,
         callbacks=[
             uploadcallback,
         ],
@@ -287,7 +282,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--num-workers',
         required=False,
-        default=64,
+        default=40,
         type=int,
         help='Number of workers in DataLoaders'
     )

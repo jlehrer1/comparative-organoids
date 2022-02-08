@@ -94,8 +94,8 @@ class GeneClassifier(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=False)
-        self.log("train_accuracy", acc, logger=True, on_epoch=True, on_step=False)
+        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
+        self.log("train_accuracy", acc, logger=True, on_epoch=True, on_step=True)
 
         return loss
     
@@ -105,7 +105,7 @@ class GeneClassifier(pl.LightningModule):
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
         acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
-        self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=False)
-        self.log("val_accuracy", acc, logger=True, on_epoch=True, on_step=False)
+        self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
+        self.log("val_accuracy", acc, logger=True, on_epoch=True, on_step=True)
 
         return val_loss

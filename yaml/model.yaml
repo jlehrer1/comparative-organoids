@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: rna-seq-model-width-${WIDTH}-layers-${LAYERS}-${I}-${NAME}
 spec:
-  backoffLimit: 5
+  backoffLimit: 0
   completions: 1
   template:
     metadata:
@@ -19,24 +19,25 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py -type='primary' && \
+          "wandb login --relogin $(cat wandbcreds) && \
+          python src/data/download_data.py -type='primary' && \
           python src/data/download_data.py -type='labels' && \
           python src/models/train_neural_network.py \
           --width=${WIDTH} \
           --layers=${LAYERS} \
           --lr=${LR} \
           --momentum=${MOMENTUM} \
-          --weight-decay=${WEIGHT_DECAY} \ 
+          --weight-decay=${WEIGHT_DECAY} \
           --class-label=${CLASS_LABEL}" 
         ]
         resources:
           limits:
             memory: 100Gi
-            cpu: "16"
+            cpu: "8"
             nvidia.com/gpu: "1"
           requests:
             memory: 32Gi
-            cpu: "12"
+            cpu: "8"
             nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral
