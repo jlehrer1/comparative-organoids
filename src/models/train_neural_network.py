@@ -60,67 +60,6 @@ def seed_worker(worker_id):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
-def train_model(
-    params: Dict[str, Union[int, float]],
-    dataset_files,
-    label_files,
-    class_label,
-    num_workers: int=100,
-    batch_size: int=8,
-):
-    width = params['width']
-    epochs = params['epochs']
-    layers = params['layers']
-
-    train, test, input_size, num_labels, weights = generate_datasets(dataset_files, label_files, class_label)
-    
-    g = torch.Generator()
-    g.manual_seed(42)
-
-    trainloader = DataLoader(
-        train, 
-        batch_size=batch_size, 
-        num_workers=num_workers,
-        worker_init_fn=seed_worker,
-        generator=g,
-    )
-
-    valloader = DataLoader(
-        test, 
-        batch_size=batch_size, 
-        num_workers=num_workers,
-        worker_init_fn=seed_worker,
-        generator=g,
-    )
-
-    # criterion = 
-    model = GeneClassifier(input_size, num_labels, weights)
-
-    # for e in range(epochs):
-    #     train_loss = 0.0
-    #     model.train()     # Optional when not using Model Specific layer
-    #     for data, labels in trainloader:
-    #         optimizer.zero_grad()
-    #         target = model(data)
-    #         loss = criterion(target,labels)
-    #         loss.backward()
-    #         optimizer.step()
-    #         train_loss += loss.item()
-        
-    #     valid_loss = 0.0
-    #     model.eval() # Optional when not using Model Specific layer
-    #     for data, labels in valloader:
-    #         target = model(data)
-    #         loss = criterion(target,labels)
-    #         valid_loss = loss.item() * data.size(0)
-
-    #     print(f'Epoch {e+1} \t\t Training Loss: {train_loss / len(trainloader)} \t\t Validation Loss: {valid_loss / len(validloader)}')
-    #     if min_valid_loss > valid_loss:
-    #         print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{valid_loss:.6f}) \t Saving The Model')
-    #         min_valid_loss = valid_loss
-    #         # Saving State Dict
-    #         torch.save(model.state_dict(), 'saved_model.pth')
-
 def generate_trainer(
     here: str, 
     params: Dict[str, float], 
