@@ -119,7 +119,8 @@ class GeneClassifier(pl.LightningModule):
                     f"weighted_{tag}_{name}", 
                     val, 
                     on_epoch=on_epoch, 
-                    on_step=on_step
+                    on_step=on_step,
+                    logger=True,
                 )
             else:
                 val = metric(y_hat, y)
@@ -128,6 +129,7 @@ class GeneClassifier(pl.LightningModule):
                     val, 
                     on_epoch=on_epoch, 
                     on_step=on_step,
+                    logger=True,
                 )
 
     def training_step(self, batch, batch_idx):
