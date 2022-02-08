@@ -22,9 +22,10 @@ def run_search(
         'epochs': [100000],
         'lr': np.linspace(0.001, 0.1, 10), #(start, stop, num),
         'batch_size': [2, 4, 16, 32],
-        'momentum': np.linspace(0.001, 0.9, 10),
-        # 'momentum': [0]
-        'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
+        # 'momentum': np.linspace(0.001, 0.9, 10),
+        'momentum': [0],
+        # 'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
+        'weight_decay': [0],
         'width': [1024, 2048, 4096],
         'layers': np.arange(10, 25, 5),
     }

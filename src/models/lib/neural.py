@@ -8,7 +8,8 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from torchmetrics import Accuracy 
+from torchmetrics import Accuracy, Precision, Recall
+from torchmetrics.functional import accuracy, precision, recall 
 
 # Set all seeds for reproducibility
 torch.manual_seed(42)
@@ -19,7 +20,7 @@ class GeneClassifier(pl.LightningModule):
     def __init__(self, 
         N_features: int, 
         N_labels: int, 
-        weights: List[torch.Tensor]=None, 
+        weights: List[torch.Tensor]=None,
         params: Dict[str, float]={
             'width': 1024,
             'layers': 2,
@@ -27,20 +28,36 @@ class GeneClassifier(pl.LightningModule):
             'momentum': 0,
             'weight_decay': 0
         },
+        metrics: Dict[str, Callable]={
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+        },
+        weighted_metrics=False,
     ):
         """
         Initialize the gene classifier neural network
 
         Parameters:
+
         N_features: Number of features in the inpute matrix 
         N_labels: Number of classes
-        weights: Weights to use in accuracy calculation, so we can calculate balanced accuracy to account for uneven class sizes
-        params: Dictionary of hyperparameters to use, includes width, layers, lr, momentum, weight_decay
+        weights: Weights to use in loss calculation to account for imbalance in class size 
+        params: Dictionary of hyperparameters to use. Must include width, layers, lr, momentum, weight_decay
+        metrics: Dictionary of metrics to log, where keys are metric names and values are torchmetrics.functional methods
+        weighted_metrics: If True, use class-weighted calculation in metrics. Otherwise, use default 'micro' calculation.
         """
+
         super(GeneClassifier, self).__init__()
+
+        # save metrics for logging at each step
+        self.metrics = metrics
 
         # Record entire dict for logging
         self._hyperparams = params
+
+        # Record metric calculation scheme
+        self.weighted_metrics = weighted_metrics
 
         # Set hyperparameters
         self.width = params['width']
@@ -49,6 +66,14 @@ class GeneClassifier(pl.LightningModule):
         self.momentum = params['momentum']
         self.weight_decay = params['weight_decay']
 
+        # Save weights for calculation in loss 
+        self.weights = weights
+
+        # Save input/output size, also for metric calculation 
+        self.N_features = N_features
+        self.N_labels = N_labels
+
+        # Generate layers based on width and number of layers 
         layers = self.layers*[
             nn.Linear(self.width, self.width),
             nn.ReLU(),
@@ -56,15 +81,13 @@ class GeneClassifier(pl.LightningModule):
             nn.BatchNorm1d(self.width),
         ]
 
+        # Generate feedforward stack 
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(N_features, self.width),
             *layers,
             nn.Linear(self.width, N_labels),
         )
-
-        self.accuracy = Accuracy(average='weighted', num_classes=N_labels)
-        self.weights = weights
 
     def forward(self, x):
         x = self.flatten(x)
@@ -88,14 +111,32 @@ class GeneClassifier(pl.LightningModule):
         self.logger.log_hyperparams(self.momentum)
         self.logger.log_hyperparams(self.weight_decay)
 
+    def _compute_metrics(self, y_hat, y, tag, on_epoch=True, on_step=False):
+        for name, metric in self.metrics.items():
+            if not self.weighted_metrics: # We dont consider class support in calculation
+                val = metric(y_hat, y, average='weighted', num_classes=self.N_labels)
+                self.log(
+                    f"weighted_{tag}_{name}", 
+                    val, 
+                    on_epoch=on_epoch, 
+                    on_step=on_step
+                )
+            else:
+                val = metric(y_hat, y)
+                self.log(
+                    f"{tag}_{name}", 
+                    val, 
+                    on_epoch=on_epoch, 
+                    on_step=on_step,
+                )
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y, weight=self.weights)
-        acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
         self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
-        self.log("train_accuracy", acc, logger=True, on_epoch=True, on_step=True)
+        self._compute_metrics(y_hat, y, 'train')
 
         return loss
     
@@ -103,9 +144,13 @@ class GeneClassifier(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
-        acc = self.accuracy(y_hat.softmax(dim=-1), y)
 
         self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
-        self.log("val_accuracy", acc, logger=True, on_epoch=True, on_step=True)
-
+        self._compute_metrics(y_hat, y, 'val')
         return val_loss
+
+    # def training_epoch_end():
+    #     pass 
+
+    # def validation_epoch_end():
+    #     pass 

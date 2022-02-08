@@ -176,7 +176,7 @@ def _generate_split_dataset(
     test_size = len(dataset) - train_size
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    return train, test 
+    return train, test
 
 def generate_datasets(
     dataset_files: List[str], 

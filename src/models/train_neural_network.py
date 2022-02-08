@@ -14,6 +14,7 @@ import pytorch_lightning as pl
 import wandb 
 
 from pytorch_lightning.loggers import CometLogger, WandbLogger
+from pytorch.callbacks import EarlyStopping
 from torch.utils.data import DataLoader
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -148,12 +149,12 @@ def generate_trainer(
 
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
-    comet_logger = CometLogger(
-        api_key="neMNyjJuhw25ao48JEWlJpKRR",
-        project_name=f"cell-classifier-{class_label}",  # Optional
-        workspace="jlehrer1",
-        experiment_name=f'{layers + 5} Layers, {width} Width'
-    )
+    # comet_logger = CometLogger(
+    #     api_key="neMNyjJuhw25ao48JEWlJpKRR",
+    #     project_name=f"cell-classifier-{class_label}",  # Optional
+    #     workspace="jlehrer1",
+    #     experiment_name=f'{layers + 5} Layers, {width} Width'
+    # )
 
     wandb_logger = WandbLogger(
         project=f"cell-classifier-{class_label}",
@@ -189,6 +190,12 @@ def generate_trainer(
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
         desc=f'width-{width}-layers-{layers}-label-{class_label}'
+    )
+
+    earlystoppingcallback = EarlyStopping(
+        monitor="train_loss",
+        patience=50,
+        verbose=True
     )
 
     model = GeneClassifier(
