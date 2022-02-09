@@ -28,7 +28,8 @@ spec:
           --lr=${LR} \
           --momentum=${MOMENTUM} \
           --weight-decay=${WEIGHT_DECAY} \
-          --class-label=${CLASS_LABEL}" 
+          --class-label=${CLASS_LABEL}\
+          --weighted-metrics=${WEIGHTED_METRICS}" 
         ]
         resources:
           limits:

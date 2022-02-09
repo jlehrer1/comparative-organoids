@@ -67,6 +67,7 @@ def generate_trainer(
     class_label: str='Subtype',
     num_workers: int=100,
     batch_size: int=8,
+    weighted_metrics=False,
 ):
     """
     Generates PyTorch Lightning trainer and datasets for model training.
@@ -142,7 +143,7 @@ def generate_trainer(
         N_labels=num_labels,
         weights=class_weights,
         params=params,
-        weighted_metrics=False,
+        weighted_metrics=weighted_metrics,
     )
     
     trainer = pl.Trainer(
@@ -158,8 +159,7 @@ def generate_trainer(
 
     return trainer, model, traindata, valdata 
 
-if __name__ == "__main__":
-    here = pathlib.Path(__file__).parent.absolute()
+def make_args() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -234,6 +234,20 @@ if __name__ == "__main__":
         help='Number of workers in DataLoaders'
     )
 
+    parser.add_argument(
+        '--weighted-metrics',
+        required=False,
+        default=False,
+        type=bool,
+        help='If True, calculate metrics with weighted scheme by class support. If False, calculate metrics by standard micro measure'
+    )
+
+    return parser
+
+if __name__ == "__main__":
+    parser = make_args()
+    here = pathlib.Path(__file__).parent.absolute()
+
     args = parser.parse_args()
     params = vars(args)
 
@@ -244,6 +258,7 @@ if __name__ == "__main__":
         class_label=params['class_label'],
         num_workers=params['num_workers'],
         batch_size=params['batch_size'],
+        weighted_metrics=params['weighted_metrics']
     )
     
     trainer.fit(model, traindata, valdata)

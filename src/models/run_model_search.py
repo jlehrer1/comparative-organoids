@@ -9,15 +9,23 @@ from scipy.stats import loguniform
 
 def run_search(
     num: int, 
-    class_label: str
+    class_label: str,
+    weighted_metrics: bool 
 ) -> None:
     """
-    
+    Runs hyperparameter search by scaling i GPU jobs, i=1,..,num on the PRP Nautilus cluster.
+
+    Parameters:
+    num: Number of models to train
+    class_label: Which target label to train for 
+    weighted_metrics: Whether to use weighted metric calculations or regular ('weighted' vs 'micro' in Torchmetrics)
+
     """
     here = pathlib.Path(__file__).parent.absolute()
     yaml_path = os.path.join(here, '..', '..', 'yaml', 'model.yaml')
 
     param_dict = {
+        'weighted_metrics': [weighted_metrics],
         'class_label': [class_label],
         'epochs': [100000],
         'lr': np.linspace(0.001, 0.1, 10), #(start, stop, num),
@@ -56,10 +64,18 @@ if __name__ == "__main__":
     
     parser.add_argument(
         '--class-label',
-        help='Class to train classifer on',
         required=False,
         default='Subtype',
         type=str,
+        help='Class label to train classifier on',
+    )
+
+    parser.add_argument(
+        '--weighted-metrics',
+        required=False,
+        default=False,
+        type=bool,
+        help='If True, calculate metrics with weighted scheme by class support. If False, calculate metrics by standard micro measure'
     )
 
     args = parser.parse_args()
