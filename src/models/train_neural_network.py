@@ -1,9 +1,11 @@
+from email.policy import default
 from ssl import Options
 import random
 import sys
 import argparse
 import pathlib
 import os
+import ast
 from typing import *
 
 import comet_ml
@@ -63,11 +65,11 @@ def seed_worker(worker_id):
 def generate_trainer(
     here: str, 
     params: Dict[str, float], 
-    label_file: str='meta_primary_labels.csv',
-    class_label: str='Subtype',
-    num_workers: int=100,
-    batch_size: int=8,
-    weighted_metrics=False,
+    label_file: str,
+    class_label: str,
+    num_workers: int,
+    batch_size: int,
+    weighted_metrics: bool,
 ):
     """
     Generates PyTorch Lightning trainer and datasets for model training.
@@ -236,10 +238,10 @@ def make_args() -> argparse.ArgumentParser:
 
     parser.add_argument(
         '--weighted-metrics',
-        required=False,
+        type=ast.literal_eval,
         default=False,
-        type=bool,
-        help='If True, calculate metrics with weighted scheme by class support. If False, calculate metrics by standard micro measure'
+        required=False,
+        help='Whether to use class-weighted schemes in metric calculations'
     )
 
     return parser

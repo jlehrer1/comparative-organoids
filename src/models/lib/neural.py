@@ -50,6 +50,8 @@ class GeneClassifier(pl.LightningModule):
 
         super(GeneClassifier, self).__init__()
 
+        print(f'Model initialized. {N_features = }, {N_labels = }. Metrics are {metrics} and {weighted_metrics = }')
+
         # save metrics for logging at each step
         self.metrics = metrics
 

@@ -2,6 +2,7 @@ import random
 import pathlib 
 import os 
 import argparse
+import ast 
 from itertools import product 
 
 import numpy as np 
@@ -69,13 +70,12 @@ if __name__ == "__main__":
         type=str,
         help='Class label to train classifier on',
     )
-
     parser.add_argument(
         '--weighted-metrics',
-        required=False,
+        type=ast.literal_eval,
         default=False,
-        type=bool,
-        help='If True, calculate metrics with weighted scheme by class support. If False, calculate metrics by standard micro measure'
+        required=False,
+        help='Whether to use class-weighted schemes in metric calculations'
     )
 
     args = parser.parse_args()
