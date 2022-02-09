@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 import wandb 
 
 from pytorch_lightning.loggers import CometLogger, WandbLogger
-from pytorch.callbacks import EarlyStopping
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import DataLoader
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -22,7 +22,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload 
 from lib.neural import GeneClassifier
 from lib.data import GeneExpressionData, generate_datasets
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+
 # Set all seeds for reproducibility
 torch.manual_seed(42)
 np.random.seed(42)
@@ -142,6 +142,7 @@ def generate_trainer(
         N_labels=num_labels,
         weights=class_weights,
         params=params,
+        weighted_metrics=False,
     )
     
     trainer = pl.Trainer(
@@ -151,7 +152,7 @@ def generate_trainer(
         gradient_clip_val=0.5,
         logger=wandb_logger,
         callbacks=[
-            uploadcallback,
+            uploadcallback, 
         ],
     )
 

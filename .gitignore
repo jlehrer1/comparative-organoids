@@ -112,3 +112,4 @@ credentials
 src/visualization/*.png
 wandbcreds
 wandb/*
+*.ckpt
