@@ -36,7 +36,8 @@ def run_search(
         # 'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
         'weight_decay': [0],
         'width': [1024, 2048, 4096],
-        'layers': np.arange(10, 25, 5),
+        # 'layers': np.arange(10, 25, 5),
+        'layers' : [15],
     }
 
     # Generate cartesian product of dictionary 
@@ -70,14 +71,14 @@ if __name__ == "__main__":
         type=str,
         help='Class label to train classifier on',
     )
+
     parser.add_argument(
         '--weighted-metrics',
-        type=ast.literal_eval,
+        type=ast.literal_eval, # To evaluate weighted_metrics=False as an actual bool
         default=False,
         required=False,
         help='Whether to use class-weighted schemes in metric calculations'
     )
 
     args = parser.parse_args()
-
-    run_search(args.N, args.class_label)
+    run_search(args.N, args.class_label, args.weighted_accuracy)

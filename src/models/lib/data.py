@@ -35,7 +35,7 @@ class GeneExpressionData(Dataset):
         filename: str, 
         labelname: str, 
         class_label: str,
-        indices: Union[np.array, List[int]]=None
+        indices: Iterable[int]=None
     ):
         self._filename = filename
         self._labelname = (pd.read_csv(labelname) if indices is None else pd.read_csv(labelname).iloc[indices, :])
@@ -72,7 +72,7 @@ def _dataset_class_weights(
     class_label: str,
 ) -> Tensor:
     """
-    Compute class weights for the entire label set of N labels. 
+    Compute class weights for the entire label set of N labels.
 
     Parameters:
     label_files: List of absolute paths to label files
@@ -93,7 +93,7 @@ def _generate_stratified_dataset(
     dataset_files: List[str], 
     label_files: List[str],
     class_label: str,
-    test_prop: float = 0.2
+    test_prop: float=0.2,
 ) -> Tuple[Dataset, Dataset]:
     """
     Generates train/val datasets with stratified label splitting. This means that the proportion of each class is the same 
@@ -124,14 +124,14 @@ def _generate_stratified_dataset(
             filename=datafile, 
             labelname=labelfile,
             class_label=class_label,
-            indices=trainsplit.index 
+            indices=trainsplit.index,
         )
         
         valset = GeneExpressionData(
-            filename=datafile, 
+            filename=datafile,
             labelname=labelfile,
             class_label=class_label,
-            indices=valsplit.index 
+            indices=valsplit.index,
         )
         
         train_datasets.append(trainset)
@@ -140,48 +140,12 @@ def _generate_stratified_dataset(
     train = torch.utils.data.ConcatDataset(train_datasets)
     val = torch.utils.data.ConcatDataset(val_datasets)
 
-    return train, val 
-
-def _generate_split_dataset(
-    dataset_files: List[str], 
-    label_files: List[str],
-    class_label: str,
-    test_prop: float = 0.2
-) -> Tuple[Dataset, Dataset]:
-    """
-    Generates train/val datasets WITHOUT stratified splitting.
-    
-    Parameters:
-    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
-    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
-    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
-
-    Returns:
-    Tuple[Dataset, Dataset]: Training and validation datasets, respectively
-    """
-
-    datasets = []
-
-    for datafile, labelfile in zip(dataset_files, label_files):
-        subset = GeneExpressionData(
-            filename=datafile,
-            labelname=labelfile,
-            class_label=class_label
-        )
-
-        datasets.append(subset)
-
-    dataset = torch.utils.data.ConcatDataset(datasets)
-    train_size = int((1. - test_prop) * len(dataset))
-    test_size = len(dataset) - train_size
-    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-    return train, test
+    return train, val
 
 def generate_datasets(
     dataset_files: List[str], 
     label_files: List[str],
-    class_label:str,
+    class_label: str,
     stratified=True,
 ) -> Tuple[Dataset, Dataset, int, int, Tensor]:
     """

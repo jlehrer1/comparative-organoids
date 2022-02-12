@@ -238,7 +238,7 @@ def make_args() -> argparse.ArgumentParser:
 
     parser.add_argument(
         '--weighted-metrics',
-        type=ast.literal_eval,
+        type=ast.literal_eval, # To evaluate weighted_metrics=False as an actual bool
         default=False,
         required=False,
         help='Whether to use class-weighted schemes in metric calculations'

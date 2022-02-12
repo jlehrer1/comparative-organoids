@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     print('Dropping ribosomal and mitochondrial genes before performing UMAP.')
     data = data.drop(to_remove, axis=1)
-
+    
     print(f'Calculating UMAP reduction with n_components={N_COMP} and n_neighbors={NEIGHBORS}')
     umap_reduction = (pd.DataFrame(
         umap_calc(

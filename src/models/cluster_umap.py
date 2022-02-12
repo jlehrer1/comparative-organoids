@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import hdbscan 
 import dask.dataframe as da 
+import dask 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import upload, S3_CLUSTER_LABEL_PATH

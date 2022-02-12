@@ -1,14 +1,12 @@
 from typing import *
 import random
 
-import comet_ml
 import torch
 import numpy as np
 
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from torchmetrics import Accuracy, Precision, Recall
 from torchmetrics.functional import accuracy, precision, recall 
 
 # Set all seeds for reproducibility
