@@ -142,6 +142,43 @@ def _generate_stratified_dataset(
 
     return train, val
 
+def _generate_split_dataset(
+    dataset_files: List[str], 
+    label_files: List[str],
+    class_label: str,
+    test_prop: float=0.2,
+) -> Tuple[Dataset, Dataset]:
+
+    """
+    Generates train/val datasets WITHOUT stratified splitting.
+    
+    Parameters:
+    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
+    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
+    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
+
+    Returns:
+    Tuple[Dataset, Dataset]: Training and validation datasets, respectively
+    """
+
+    datasets = []
+
+    for datafile, labelfile in zip(dataset_files, label_files):
+        subset = GeneExpressionData(
+            filename=datafile,
+            labelname=labelfile,
+            class_label=class_label
+        )
+
+        datasets.append(subset)
+
+    dataset = torch.utils.data.ConcatDataset(datasets)
+    train_size = int((1. - test_prop) * len(dataset))
+    test_size = len(dataset) - train_size
+    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+    return train, test
+
 def generate_datasets(
     dataset_files: List[str], 
     label_files: List[str],
