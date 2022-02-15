@@ -17,12 +17,11 @@ def encode(infile, outfile):
         meta_trainable.loc[:, col] = le.fit_transform(meta.loc[:, col])
 
     print(meta_trainable)
-
     meta_trainable.to_csv(os.path.join(data_path, 'processed', outfile), sep=',', index=False)
 
 if __name__ == "__main__":
-    for infile, outfile in zip(['meta_organoid.tsv', 'meta_primary.tsv'], ['meta_organoid_labels.csv', 'meta_primary_labels.csv']):
+    for infile in ['meta_organoid.tsv', 'meta_primary.tsv']:
         encode(
             infile=infile,
-            outfile=outfile,
+            outfile=f'{infile}_labels.csv',
         )
