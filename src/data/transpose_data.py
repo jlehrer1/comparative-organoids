@@ -9,17 +9,23 @@ if __name__ == "__main__":
     external_path = os.path.join(data_path, 'external')
 
     files = [
-        os.path.join(external_path, 'allen_cortex.tsv'),
-        os.path.join(external_path, 'allen_m1_region.tsv'),
-        os.path.join(external_path, 'whole_brain_bhaduri.tsv'),
+        'allen_cortex.tsv',
+        'allen_m1_region.tsv',
+        'whole_brain_bhaduri.tsv',
+        'primary.tsv',
+        'organoid.tsv'
     ]
-    
-    for file in files:
-        trans = Transpose(
-            file=file, 
-            outfile=os.path.join(data_path, 'interim', file),
-            sep='\t',
-        )
 
-        trans.compute()
-    
+    for file in files:
+        outfile = os.path.join(data_path, 'interim', f'{file[:-4]}_T.csv')
+        if not os.path.isfile(outfile):
+            trans = Transpose(
+                file=os.path.join(data_path, 'external', file), 
+                outfile=outfile,
+                sep='\t',
+                chunksize=200,
+            )
+
+            trans.compute()
+        else:
+            print(f"{outfile} exists, continuing...")

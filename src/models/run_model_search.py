@@ -20,8 +20,8 @@ def run_search(
     num: Number of models to train
     class_label: Which target label to train for 
     weighted_metrics: Whether to use weighted metric calculations or regular ('weighted' vs 'micro' in Torchmetrics)
-
     """
+    
     here = pathlib.Path(__file__).parent.absolute()
     yaml_path = os.path.join(here, '..', '..', 'yaml', 'model.yaml')
 

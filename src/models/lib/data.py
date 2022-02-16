@@ -35,14 +35,16 @@ class GeneExpressionData(Dataset):
         filename: str, 
         labelname: str, 
         class_label: str,
-        indices: Iterable[int]=None
+        indices: Iterable[int]=None,
+        skip=2,
     ):
         self._filename = filename
         self._labelname = (pd.read_csv(labelname) if indices is None else pd.read_csv(labelname).iloc[indices, :])
         self._total_data = 0
         self._class_label = class_label
         self.index = indices
-                    
+        self.skip=2
+
     def __getitem__(self, idx):
         # Get index in dataframe from integer index
         idx = self._labelname.iloc[idx].name
@@ -52,7 +54,7 @@ class GeneExpressionData(Dataset):
         
         # get gene expression for current cell from csv file
         # index + 2: Header is blank line and zeroth row is column names
-        line = linecache.getline(self._filename, idx + 2)
+        line = linecache.getline(self._filename, idx + self.skip)
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
         
