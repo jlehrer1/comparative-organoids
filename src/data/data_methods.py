@@ -2,10 +2,13 @@ import pathlib
 import os 
 import pandas as pd 
 import numpy as np 
+import sys 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from sklearn.preprocessing import LabelEncoder
 import dask.dataframe as da
 from dask.diagnostics import ProgressBar
+from helper import upload
 
 pbar = ProgressBar()
 pbar.register() # global registration
@@ -145,7 +148,7 @@ def clean_datasets():
 
     unique = list(set.intersection(*cols))
     unique = sorted(unique)
-    
+
     print(f'Number of unique genes across all datasets are {len(unique)}')
     print(f'Sorting columns and calculating intersection of Dask dataframes')
 
@@ -166,4 +169,10 @@ def clean_datasets():
             os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
             single_file=True,
             index=False,
+        )
+
+        print(f'Uploading {file} to S3')
+        upload(
+            os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
+            os.path.join('jlehrer', 'expression_data', 'data', f'{file[:-4]}.csv')
         )
