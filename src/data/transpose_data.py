@@ -9,11 +9,10 @@ if __name__ == "__main__":
     external_path = os.path.join(data_path, 'external')
 
     files = [
+        'primary.tsv',
         'allen_cortex.tsv',
         'allen_m1_region.tsv',
         'whole_brain_bhaduri.tsv',
-        'primary.tsv',
-        'organoid.tsv'
     ]
 
     for file in files:
@@ -23,9 +22,9 @@ if __name__ == "__main__":
                 file=os.path.join(data_path, 'external', file), 
                 outfile=outfile,
                 sep='\t',
-                chunksize=200,
+                chunksize=400,
             )
-
             trans.compute()
+
         else:
             print(f"{outfile} exists, continuing...")

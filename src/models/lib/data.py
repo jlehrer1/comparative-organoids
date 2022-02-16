@@ -43,7 +43,7 @@ class GeneExpressionData(Dataset):
         self._total_data = 0
         self._class_label = class_label
         self.index = indices
-        self.skip=2
+        self.skip=skip
 
     def __getitem__(self, idx):
         # Get index in dataframe from integer index
@@ -68,6 +68,24 @@ class GeneExpressionData(Dataset):
     
     def num_features(self):
         return len(self.__getitem__(0)[0])
+
+    def get_features(self):
+        line = linecache.getline(self._filename, 0)
+        csv_data = csv.reader([line])
+        data = [x for x in csv_data][0]
+
+        return data
+
+    def columns(self):
+        return self.get_features()
+        
+    def getline(self, num):
+        line = linecache.getline(self._filename, num)
+        csv_data = csv.reader([line])
+        data = [x for x in csv_data][0]
+        
+        return data 
+        
 
 def _dataset_class_weights(
     label_files: List[str],
