@@ -32,9 +32,10 @@ if __name__ == "__main__":
             print(f"{outfile} exists, continuing...")
 
         print(f'Uploading transposed {file}')
+        
         upload(
             file_name=outfile,
             remote_name=os.path.join('jlehrer', 'expression_data')
         )
-        
+
         
