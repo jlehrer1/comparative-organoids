@@ -1,6 +1,4 @@
-data/interim/*
-data/raw/*
-data/processed/*
+data/*
 notebooks/*
 remote/*
 yaml/*

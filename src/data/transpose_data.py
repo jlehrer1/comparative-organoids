@@ -2,6 +2,9 @@ from stat import filemode
 from transposecsv import Transpose 
 import os 
 import pathlib 
+import sys 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from helper import upload
 
 if __name__ == "__main__":
     here = pathlib.Path(__file__).parent.absolute()
@@ -25,6 +28,13 @@ if __name__ == "__main__":
                 chunksize=400,
             )
             trans.compute()
-
         else:
             print(f"{outfile} exists, continuing...")
+
+        print(f'Uploading transposed {file}')
+        upload(
+            file_name=outfile,
+            remote_name=os.path.join('jlehrer', 'expression_data')
+        )
+        
+        

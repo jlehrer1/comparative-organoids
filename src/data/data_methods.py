@@ -158,10 +158,10 @@ def clean_datasets():
             os.path.join(data_path, 'interim', file),
             assume_missing=True,
             header=1, # need this since caculating transpose adds one extra row, still need to figure out why as it doesn't happen on synthetic data 
-            sample=1000000,
+            sample=1000000, # May need to make this bigger
         ))
+
         data.columns = [x.split('|')[0].upper() for x in data.columns]
-        
         data = data[unique]
         data = data.persist()
 

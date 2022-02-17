@@ -2,6 +2,7 @@ import pathlib
 import os 
 import sys
 import argparse
+import urllib 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from helper import download, list_objects
@@ -96,6 +97,52 @@ def download_annotations() -> None:
     """Downloads the annotation csv's (top 1000 genes in each cluster)"""
 
     _download_from_key(os.path.join('jlehrer', 'cluster_annotation'))
+
+def download_zipped() -> None:
+    """Downloads all raw datasets and label sets, and then unzips them. This will only be used during the data processing step"""
+
+    # local file name: [dataset url, labelset url]
+    datasets = {
+        'primary.tsv': [
+            'https://cells.ucsc.edu/organoidreportcard/primary10X/exprMatrix.tsv.gz', 
+            'https://cells.ucsc.edu/organoidreportcard/primary10X/meta.tsv',
+        ],
+        'allen_cortex.tsv': [
+            'https://cells.ucsc.edu/allen-celltypes/human-cortex/various-cortical-areas/exprMatrix.tsv.gz',
+            'https://cells.ucsc.edu/allen-celltypes/human-cortex/various-cortical-areas/meta.tsv',
+        ],
+        'allen_m1_region.tsv': [
+            'https://cells.ucsc.edu/allen-celltypes/human-cortex/m1/exprMatrix.tsv.gz',
+            'https://cells.ucsc.edu/allen-celltypes/human-cortex/m1/meta.tsv',
+        ],
+        'whole_brain_bhaduri.tsv': [
+            'https://cells.ucsc.edu/dev-brain-regions/wholebrain/exprMatrix.tsv.gz',
+            'https://cells.ucsc.edu/dev-brain-regions/wholebrain/meta.tsv',
+        ],
+    }
+
+    for file, links in datasets.items():
+        labelname = f'{file[:-4]}_labels.csv'
+        datalink, labellink = links 
+
+        if os.path.isfile(os.path.join(data_path, 'external', file)) and \
+        os.path.isfile(os.path.join(data_path, 'external', labelname)):
+            print(f'{file} and {labelname} exist, continuing...') 
+            continue 
+
+        print(f'Downloading data for {file}')
+        urllib.request.urlretrieve(
+            datalink,
+            file,
+        )
+
+        print(f'Downloading label for {file}')
+        urllib.request.urlretrieve(
+            labellink,
+            f'{file[:-4]}_labels.csv'
+        )
+
+    print('Done')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
