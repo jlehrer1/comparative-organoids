@@ -126,6 +126,11 @@ def combine_labelsets():
         df.index.name = 'cell'
         df.to_csv(os.path.join(data_path, 'labels', filename))
 
+        upload(
+            os.path.join(data_path, 'labels', filename),
+            os.path.join('jlehrer', 'expression_data', 'labels', filename)
+        )
+
 def clean_datasets():
     """
     Cleans the gene expression datasets by taking the intersection of columns (genes) between them, and then sorting the columns to make sure that 

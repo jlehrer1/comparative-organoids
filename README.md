@@ -10,11 +10,14 @@ This folder holds all scripts and methods for downloading, unzipping, renaming, 
 
 `data_methods.py`: Contains source methods for combining and cleaning all external datasets.  
 `clean_data.py`: Contains script for combining and cleaning all external datasets to be label-consistent and column order consistent for model training.  
-`download_data.py`: Contains source methods for downloading and unzipping the raw expression matrices from cells.ucsc.edu, as well as methods for downloading data from the braingeneersdev S3 bucket, once the data is processed and uploaded there.  
+`download_data.py`: Contains source methods for downloading and unzipping the raw expression matrices from cells.ucsc.edu, as well as methods for downloading data from the braingeneersdev S3 bucket, once the data is processed and uploaded there.
 `transpose_data.py`: Since all expression matrices are `gene x cell` and we want to train on `cell x gene` so we can classify individual cells, this script calculates the transpose of all `data/raw` data and writes it to `data/interim`. This is nontrivial, and uses my library [transposecsv](https://github.com/jlehrer1/transpose-csv).  
 
-### `src/features`
-This folder holds all scripts related to feature generation, data augmentation, and label encoding.
+We run these files in the following order:
+1. `download_data.py --type=raw` downloads and unzips the raw expression matrices. 
+2. `transpose_data.py` calculates the tranpose of the expression matrices and uploads them to the braingeneersdev S3 bucket under `jlehrer/interim_expression_data/`.
+3. `clean_data.py --labels` Categorically encodes the labels, removes outliers & entries we don't want in our training data and uploads them to the braingeneersdev S3 bucket under `jlehrer/expression_data/labels`.
+4. `clean_data.py --features` Makes label names consistent, calculates the intersection of genes across all datasets, reorders the columns consistently and uploads these processed expression matrices to `jlehrer/expression_data/data`.
 
 ### `src/models`
 This folder contains all scripts and methods for defining our neural network model, defining our dataset, training our model and deploying it to the Nautilus cluster for distributed training.  
@@ -25,4 +28,7 @@ This folder contains all scripts and methods for defining our neural network mod
 `run_model_search.py`: Sets up an fixed number of jobs on the Nautilus cluster training the NN model on GPU, with randomly initialized hyperparameters.
 
 ### `src/visualization`
+Contains all code for plot generation for data exploration and the paper.
+
 `visualize.py`: Contains code for UMAP plot generation.
+

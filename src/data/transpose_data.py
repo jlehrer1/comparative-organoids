@@ -19,7 +19,8 @@ if __name__ == "__main__":
     ]
 
     for file in files:
-        outfile = os.path.join(data_path, 'interim', f'{file[:-4]}_T.csv')
+        outfile_name = f'{file[:-4]}_T.csv'
+        outfile = os.path.join(data_path, 'interim', outfile_name)
         if not os.path.isfile(outfile):
             trans = Transpose(
                 file=os.path.join(data_path, 'external', file), 
@@ -32,10 +33,10 @@ if __name__ == "__main__":
             print(f"{outfile} exists, continuing...")
 
         print(f'Uploading transposed {file}')
-        
+
         upload(
             file_name=outfile,
-            remote_name=os.path.join('jlehrer', 'expression_data')
+            remote_name=os.path.join('jlehrer', 'interim_expression_data', outfile_name)
         )
 
         
