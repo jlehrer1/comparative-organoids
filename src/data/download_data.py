@@ -102,7 +102,12 @@ def download_raw() -> None:
         os.path.isfile(os.path.join(data_path, 'external', labelname)):
             print(f'{file} and {labelname} exist, continuing...') 
             continue
+        
+        # First, make the required folders if they do not exist 
+        for dir in 'external', 'interim', 'processed':
+            os.makedirs(os.path.join(data_path, dir), exist_ok=True)
 
+        # Download raw files 
         print(f'Downloading zipped data for {file}')
         urllib.request.urlretrieve(
             datalink,
@@ -112,14 +117,14 @@ def download_raw() -> None:
         print(f'Downloading label for {file}')
         urllib.request.urlretrieve(
             labellink,
-            f'{labelname}.gz',
+            labelname,
         )
 
         print(f'Unzipping {file}')
         os.system(
-            f'gunzip -c {filename}.gz > {filename}'
+            f'zcat < {filename}.gz > {filename}'
         )
-        
+
     print('Done')
 
 if __name__ == "__main__":

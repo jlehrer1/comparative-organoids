@@ -177,6 +177,7 @@ def clean_datasets():
         )
 
         print(f'Uploading {file} to S3')
+        
         upload(
             os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
             os.path.join('jlehrer', 'expression_data', 'data', f'{file[:-4]}.csv')

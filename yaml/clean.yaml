@@ -18,7 +18,12 @@ spec:
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["python src/data/clean_data.py"]
+        args: [
+          "python src/data/download_data.py --type='raw' && \
+          python src/data/transpose_data.py --chunksize=2000 && \
+          python src/models/clean_data.py --labels && \
+          python src/models/clean_data.py --features"
+        ]
         resources:
           limits:
             memory: 100Gi

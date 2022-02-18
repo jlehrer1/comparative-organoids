@@ -11,8 +11,19 @@ RUN apt-get --allow-releaseinfo-change update && \
         sudo \
         vim 
 
-RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy 
-RUN conda install -c conda-forge python-kaleido dask-xgboost hdbscan dask-xgboost 
-RUN pip install matplotlib umap-learn dask dask-ml pynndescent seaborn imbalanced-learn xgboost pytorch-lightning comet_ml wandb
+RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy && \
+    conda install -c conda-forge python-kaleido dask-xgboost hdbscan dask-xgboost && \
+    pip install matplotlib && \
+    pip install umap-learn && \
+    pip install dask && \
+    pip install dask-ml && \
+    pip install pynndescent && \ 
+    pip install seaborn && \
+    pip install imbalanced-learn && \ 
+    pip install xgboost && \ 
+    pip install pytorch-lightning && \ 
+    pip install comet_ml && \ 
+    pip install wandb && \ 
+    pip install transposecsv
 
 COPY . .
