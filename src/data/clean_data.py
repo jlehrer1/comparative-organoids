@@ -76,11 +76,12 @@ def clean_labelsets(upload: bool) -> None:
 
     # Read in our four datasets 
     print('Reading in datasets')
+    raw_data_path = os.path.join(here, '..', 'data', 'raw')
     try:
-        df1 = pd.read_csv(os.path.join(here, '..', '../data/external/primary_bhaduri_labels.tsv', sep='\t'))
-        df2 = pd.read_csv(os.path.join(here, '..', '../data/external/whole_brain_bhaduri_labels.tsv', sep='\t'))
-        df3 = pd.read_csv(os.path.join(here, '..', '../data/external/allen_m1_region_labels.tsv', sep='\t'))
-        df4 = pd.read_csv(os.path.join(here, '..', '../data/external/allen_cortex_labels.tsv', sep='\t'))
+        df1 = pd.read_csv(os.path.join(raw_data_path, 'primary_bhaduri_labels.tsv', sep='\t'))
+        df2 = pd.read_csv(os.path.join(raw_data_path, 'whole_brain_bhaduri_labels.tsv', sep='\t'))
+        df3 = pd.read_csv(os.path.join(raw_data_path, 'allen_m1_region_labels.tsv', sep='\t'))
+        df4 = pd.read_csv(os.path.join(raw_data_path, 'allen_cortex_labels.tsv', sep='\t'))
     except Exception as e:
         print('Error: Missing file. Double check label file names and make sure all are downloaded properly.')
         print(e)

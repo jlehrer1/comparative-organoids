@@ -21,7 +21,7 @@ def transpose_files(files, chunksize, upload):
         # The transpose and upload to S3, if the upload parameter is passed 
         if not os.path.isfile(outfile):
             trans = Transpose(
-                file=os.path.join(data_path, 'external', file), 
+                file=os.path.join(data_path, 'raw', file), 
                 outfile=outfile,
                 sep='\t',
                 chunksize=chunksize,
@@ -34,7 +34,7 @@ def transpose_files(files, chunksize, upload):
             print(f'Uploading transposed {file}')
             helper.upload(
                 file_name=outfile,
-                remote_name=os.path.join('jlehrer', 'interim_expression_data', outfile_name)
+                remote_name=os.path.join('jlehrer', 'expression_data', 'interim', outfile_name)
             )
 
 if __name__ == "__main__":

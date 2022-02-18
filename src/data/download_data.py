@@ -22,10 +22,9 @@ def _download_from_key(key, localpath):
     print(f'Key is {key}')
     reduced_files = helper.list_objects(key)
 
-    direc = localpath.split('/')[:-1]
-    if not os.path.exists(direc):
-        print(f'Download path {direc} doesn\'t exist, creating...')
-        os.makedirs(direc, exist_ok=True)
+    if not os.path.exists(localpath):
+        print(f'Download path {localpath} doesn\'t exist, creating...')
+        os.makedirs(localpath, exist_ok=True)
 
     for f in reduced_files:
         if not os.path.isfile(os.path.join(data_path, 'processed', f.split('/')[-1])):
@@ -35,29 +34,64 @@ def _download_from_key(key, localpath):
                 os.path.join(data_path, 'processed', localpath, f.split('/')[-1]) # Just the file name in the list of objects
             )
 
-def download_clean_from_s3() -> None:
+def download_clean_from_s3(
+    file: str=None,
+    local_path: str=None,
+) -> None:
     """Downloads the cleaned data from s3 to be used in model training."""
 
-    key = os.path.join('jlehrer', 'expression_data', 'processed')
-    local_path = os.path.join(data_path, 'processed')
+    if not file: # No single file passed, so download recursively
+        print('Downloading all clean data...')
+        key = os.path.join('jlehrer', 'expression_data', 'processed')
+        local_path = os.path.join(data_path, 'processed')
 
-    _download_from_key(key, local_path) 
+        _download_from_key(key, local_path) 
+    else:
+        print(f'Downloading {file} from clean data')
+        local_path = (os.path.join(data_path, 'processed', file) if not local_path else local_path)
+        helper.download(
+            os.path.join('jlehrer', 'expression_data', 'processed', file),
+            local_path
+        )
 
-def download_interim_from_s3() -> None:
+def download_interim_from_s3(
+    file: str=None,
+    local_path: str=None,
+) -> None:
     """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned."""
 
-    key = os.path.join('jlehrer', 'expression_data', 'interim')
-    local_path = os.path.join(data_path, 'interim')
-
-    _download_from_key(key, local_path)
-
-def download_raw_from_s3() -> None:
+    if not file:
+        print('Downloading all interim data')
+        key = os.path.join('jlehrer', 'expression_data', 'interim')
+        local_path = os.path.join(data_path, 'interim')
+        _download_from_key(key, local_path)
+    else:
+        print(f'Downloading {file} from interim data')
+        local_path = (os.path.join(data_path, 'interim', file) if not local_path else local_path)
+        helper.download(
+            os.path.join('jlehrer', 'expression_data', 'interim', file), 
+            local_path
+        )
+        
+def download_raw_from_s3(
+    file: str=None,
+    local_path: str=None,
+) -> None:
     """Downloads the raw expression matrices from s3"""
 
-    key = os.path.join('jlehrer', 'expression_data', 'raw')
-    local_path = os.path.join(data_path, 'external')
-
-    _download_from_key(key, local_path)
+    if not file: 
+        print('Downloading all raw data')
+        key = os.path.join('jlehrer', 'expression_data', 'raw')
+        local_path = os.path.join(data_path, 'raw')
+        _download_from_key(key, local_path)
+    else:
+        print(f'Downloading {file} from raw data')
+        local_path = (os.path.join(data_path, 'raw', file) if not local_path else local_path)
+        print(local_path)
+        helper.download(
+            os.path.join('jlehrer', 'expression_data', 'raw', file), 
+            local_path
+        )
 
 def download_raw_expression_matrices(upload: bool) -> None:
     """Downloads all raw datasets and label sets from cells.ucsc.edu, and then unzips them locally
@@ -70,19 +104,19 @@ def download_raw_expression_matrices(upload: bool) -> None:
     datasets = helper.DATA_FILES_AND_URLS_DICT
 
     for file, links in datasets.items():
-        datafile_path = os.path.join(data_path, 'external', file)
+        datafile_path = os.path.join(data_path, 'raw', file)
 
         labelfile = f'{file[:-4]}_labels.tsv'
-        labelfile_path = os.path.join(data_path, 'external', labelfile)
+        labelfile_path = os.path.join(data_path, 'raw', labelfile)
 
         datalink, labellink = links 
 
         # First, make the required folders if they do not exist 
-        for dir in 'external', 'interim', 'processed':
+        for dir in 'raw', 'interim', 'processed':
             os.makedirs(os.path.join(data_path, dir), exist_ok=True)
 
         # Download and unzip data file if it doesn't exist 
-        if not os.path.isfile(os.path.join(data_path, 'external', file)):
+        if not os.path.isfile(os.path.join(data_path, 'raw', file)):
             print(f'Downloading zipped data for {file}')
             urllib.request.urlretrieve(
                 datalink,
@@ -100,7 +134,7 @@ def download_raw_expression_matrices(upload: bool) -> None:
             )
 
         # Download label file if it doesn't exist 
-        if not os.path.isfile(os.path.join(data_path, 'external', labelfile_path)):
+        if not os.path.isfile(os.path.join(data_path, 'raw', labelfile_path)):
             print(f'Downloading label for {file}')
             urllib.request.urlretrieve(
                 labellink,
@@ -139,17 +173,38 @@ if __name__ == "__main__":
         help='If passed, also upload data to braingeneersdev/jlehrer/expression_data/raw, if the method accepts this option'
     )
 
+    parser.add_argument(
+        '--key',
+        required=False,
+        default=None,
+        type=str,
+        help='If not None, only download the specific key passed in this argument from the braingeneersdev s3 bucket'
+    )   
+
+    parser.add_argument(
+        '--local-name',
+        required=False,
+        default=None,
+        help='If not None, download the key specified from the --file flag into this local filename'
+    )
+
     args = parser.parse_args()
+
     type = args.type
     upload = args.s3_upload
+    key = args.key 
+    local = args.local_name 
+
+    if local is not None and not key:
+        parser.error('Error: If --local-name is passed in specified download, s3 key must be passed as well via --key')
 
     if type == 'external':
         download_raw_expression_matrices(upload=upload)
     if type == 'interim':
-        download_interim_from_s3()
+        download_interim_from_s3(key, local)
     elif type == 'raw':
-        download_raw_from_s3()
+        download_raw_from_s3(key, local)
     elif type == 'processed' or type == 'clean':
-        download_clean_from_s3()
+        download_clean_from_s3(key, local)
     else:
         raise ValueError('Unknown type specified for data downloading.')

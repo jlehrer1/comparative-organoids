@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: rna-seq-transpose-file-${COUNT}
 spec:
-  backoffLimit: 0
+  backoffLimit: 5
   completions: 1
   template:
     metadata:
@@ -19,7 +19,7 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py --type='raw' && \
+          "python src/data/download_data.py --type='raw' --key=${FILE} && \
           python src/data/transpose_data.py --chunksize=1000 --file='${FILE}' --s3-upload"
         ]
         resources:
