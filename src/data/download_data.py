@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 import pathlib 
 import os 
 import sys
@@ -11,14 +10,7 @@ import helper
 here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
 
-files = [
-    'primary.tsv',
-    'allen_cortex.tsv',
-    'allen_m1_region.tsv',
-    'whole_brain_bhaduri.tsv',
-]
-
-def _download_from_key(key, localpath=''):
+def _download_from_key(key, localpath):
     """
     Helper function that downloads all files recursively from the given key (folder) from the braingeneersdev S3 bucket
     
@@ -26,10 +18,6 @@ def _download_from_key(key, localpath=''):
     key: S3 folder (key) to start downloading recursively from
     localpath: Optional argument, downloads to a subfolder under the data/processed/ folder # TODO add folder generation
     """
-
-    if localpath != '':
-        print(f'Making path {localpath}')
-        pathlib.Path(os.path.join(data_path, 'processed', localpath), exist_ok=True)
 
     print(f'Key is {key}')
     reduced_files = helper.list_objects(key)
@@ -42,43 +30,31 @@ def _download_from_key(key, localpath=''):
                 os.path.join(data_path, 'processed', localpath, f.split('/')[-1]) # Just the file name in the list of objects
             )
 
-def download_clean(type=None) -> None:
-    """
-    Downloads the cleaned organoid and primary cell dataset
-    """
-    if type == 'organoid':
-        print(f'Downloading organoid from S3')
-        helper.download(
-            os.path.join('jlehrer', 'organoid.csv'), 
-            os.path.join(data_path, 'processed', 'organoid.csv')
-        )
-    elif type == 'primary':
-        print(f'Downloading primary from S3')
-        helper.download(
-            os.path.join('jlehrer', 'primary.csv'), 
-            os.path.join(data_path, 'processed', 'primary.csv')
-        )
+def download_clean_expression_matrices() -> None:
+    key = os.path.join('jlehrer', 'expression_data', 'processed')
+    local_path = os.path.join(data_path, 'processed')
 
-def download_interim() -> None:
+    _download_from_key(key, local_path) 
+
+def download_transposed_expression_matrices() -> None:
     """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned."""
+    key = os.path.join('jlehrer', 'expression_data', 'interim')
+    local_path = os.path.join(data_path, 'interim')
 
-    for f in 'organoid_T.csv', 'primary_T.csv':
-        if not os.path.isfile(os.path.join(data_path, 'interim', f)):
-            print(f'Downloading {f} data from S3')
-            helper.download(
-                os.path.join('jlehrer', 'transposed_data', f), 
-                os.path.join(data_path, 'interim', f)
-            )
+    _download_from_key(key, local_path)
 
-def download_raw(upload) -> None:
+def download_raw_expression_matrices(upload) -> None:
     """Downloads all raw datasets and label sets, and then unzips them. This will only be used during the data processing step"""
 
     # {local file name: [dataset url, labelset url]}
     datasets = helper.DATA_FILES_AND_URLS_DICT
 
     for file, links in datasets.items():
-        filename = os.path.join(data_path, 'external', file)
-        labelname = os.path.join(data_path, 'external', f'{file[:-4]}_labels.tsv')
+        datafile_path = os.path.join(data_path, 'external', file)
+
+        labelfile = f'{file[:-4]}_labels.tsv'
+        labelfile_path = os.path.join(data_path, 'external', labelfile)
+
         datalink, labellink = links 
 
         # First, make the required folders if they do not exist 
@@ -90,36 +66,41 @@ def download_raw(upload) -> None:
             print(f'Downloading zipped data for {file}')
             urllib.request.urlretrieve(
                 datalink,
-                f'{filename}.gz',
+                f'{datafile_path}.gz',
             )
 
             print(f'Unzipping {file}')
             os.system(
-                f'zcat < {filename}.gz > {filename}'
+                f'zcat < {datafile_path}.gz > {datafile_path}'
+            )
+
+            print(f'Deleting compressed data')
+            os.system(
+                f'rm -rf {datafile_path}.gz'
             )
 
         # Download label file if it doesn't exist 
-        if not os.path.isfile(os.path.join(data_path, 'external', labelname)):
+        if not os.path.isfile(os.path.join(data_path, 'external', labelfile_path)):
             print(f'Downloading label for {file}')
             urllib.request.urlretrieve(
                 labellink,
-                labelname,
+                labelfile_path,
             )
 
         # If upload boolean is passed, also upload these files to the braingeneersdev s3 bucket
         if upload:
-            print(f'Uploading {file} and {labelname} to braingeneersdev S3 bucket')
+            print(f'Uploading {file} and {labelfile} to braingeneersdev S3 bucket')
             helper.upload(
-                filename,
+                datafile_path,
                 os.path.join('jlehrer', 'expression_data', 'raw', file)
             )
 
             helper.upload(
-                labelname,
+                labelfile_path,
                 os.path.join('jlehrer', 'expression_data', 'raw', f'{file[:-4]}_labels.tsv')
             )
 
-    print('Done')
+    print('Done.')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -128,29 +109,25 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default='clean',
-        help="Type of data to download. Can be one of ['clean', 'interim', 'raw', 'reduced', 'labels']"
+        help="Type of data to download"
     )
 
     parser.add_argument(
         '--s3-upload',
         required=False,
         action='store_true',
-        help='If passed, also upload data to braingeneersdev/jlehrer/expression_data/raw'
+        help='If passed, also upload data to braingeneersdev/jlehrer/expression_data/raw, if the method accepts this option'
     )
 
     args = parser.parse_args()
     type = args.type
     upload = args.s3_upload
 
-    if type == 'clean':
-        download_clean()
-    elif type == 'organoid':
-        download_clean('organoid')
-    elif type == 'primary':
-        download_clean('primary')
-    elif type == 'interim':
-        download_interim()
+    if type == 'interim':
+        download_transposed_expression_matrices()
     elif type == 'raw' or type == 'zipped':
-        download_raw(upload=upload)
+        download_raw_expression_matrices(upload=upload)
+    elif type == 'processed' or type == 'clean':
+        download_clean_expression_matrices()
     else:
         raise ValueError('Unknown type specified for data downloading.')

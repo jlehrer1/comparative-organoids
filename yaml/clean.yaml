@@ -19,8 +19,8 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py --type='raw' && \
-          python src/data/transpose_data.py --chunksize=1000 && \
+          "python src/data/download_data.py --type='raw' --s3-upload && \
+          python src/data/transpose_data.py --chunksize=1000 --s3-upload && \
           python src/models/clean_data.py --labels && \
           python src/models/clean_data.py --features"
         ]

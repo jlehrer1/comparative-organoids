@@ -8,7 +8,7 @@ import argparse
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import helper 
 
-def transpose_files(files, chunksize):
+def transpose_files(files, chunksize, upload):
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data')
 
@@ -26,11 +26,12 @@ def transpose_files(files, chunksize):
         else:
             print(f"{outfile} exists, continuing...")
 
-        print(f'Uploading transposed {file}')
-        helper.upload(
-            file_name=outfile,
-            remote_name=os.path.join('jlehrer', 'interim_expression_data', outfile_name)
-        )
+        if upload:
+            print(f'Uploading transposed {file}')
+            helper.upload(
+                file_name=outfile,
+                remote_name=os.path.join('jlehrer', 'interim_expression_data', outfile_name)
+            )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -40,13 +41,21 @@ if __name__ == "__main__":
         type=int,
         default=400
     )
-    chunksize = parser.parse_args().chunksize 
 
-    files = helper.DATA_FILES_LIST
-    
-    transpose_files(
-        files=files,
-        chunksize=chunksize,
+    parser.add_argument(
+        '--s3-upload',
+        required=False,
+        action='store_true',
+        help='If passed, also upload transposed data to the braingeneers s3 bucket under jlehrer/interim_expression_data/'
     )
 
-        
+    args = parser.parse_args()
+
+    chunksize = args.chunksize  
+    upload = args.s3_upload 
+
+    transpose_files(
+        files=helper.DATA_FILES_LIST,
+        chunksize=chunksize,
+        upload=upload,
+    )

@@ -10,13 +10,6 @@ S3_CLUSTER_LABEL_PATH = os.path.join('jlehrer', 'primary_cluster_labels')
 S3_CLEAN_DATA_PATH = 'jlehrer'
 S3_UMAP_PATH = os.path.join('jlehrer', 'reduced_data')
 
-DATA_FILES_LIST = [
-    'primary_bhaduri.tsv',
-    'allen_cortex.tsv',
-    'allen_m1_region.tsv',
-    'whole_brain_bhaduri.tsv',
-]
-
 DATA_FILES_AND_URLS_DICT = {
     'primary_bhaduri.tsv': [
         'https://cells.ucsc.edu/organoidreportcard/primary10X/exprMatrix.tsv.gz', 
@@ -35,6 +28,9 @@ DATA_FILES_AND_URLS_DICT = {
         'https://cells.ucsc.edu/dev-brain-regions/wholebrain/meta.tsv',
     ],
 }
+
+DATA_FILES_LIST = DATA_FILES_AND_URLS_DICT.keys()
+DATA_URLS_LIST = DATA_FILES_AND_URLS_DICT.values()
 
 here = pathlib.Path(__file__).parent.absolute()
 
