@@ -6,6 +6,7 @@ import argparse
 import urllib 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import helper 
 from helper import download, list_objects
 
 here = pathlib.Path(__file__).parent.absolute()
@@ -74,24 +75,7 @@ def download_raw() -> None:
     """Downloads all raw datasets and label sets, and then unzips them. This will only be used during the data processing step"""
 
     # {local file name: [dataset url, labelset url]}
-    datasets = {
-        'primary.tsv': [
-            'https://cells.ucsc.edu/organoidreportcard/primary10X/exprMatrix.tsv.gz', 
-            'https://cells.ucsc.edu/organoidreportcard/primary10X/meta.tsv',
-        ],
-        'allen_cortex.tsv': [
-            'https://cells.ucsc.edu/allen-celltypes/human-cortex/various-cortical-areas/exprMatrix.tsv.gz',
-            'https://cells.ucsc.edu/allen-celltypes/human-cortex/various-cortical-areas/meta.tsv',
-        ],
-        'allen_m1_region.tsv': [
-            'https://cells.ucsc.edu/allen-celltypes/human-cortex/m1/exprMatrix.tsv.gz',
-            'https://cells.ucsc.edu/allen-celltypes/human-cortex/m1/meta.tsv',
-        ],
-        'whole_brain_bhaduri.tsv': [
-            'https://cells.ucsc.edu/dev-brain-regions/wholebrain/exprMatrix.tsv.gz',
-            'https://cells.ucsc.edu/dev-brain-regions/wholebrain/meta.tsv',
-        ],
-    }
+    datasets = helper.DATA_FILES_AND_URLS_DICT
 
     for file, links in datasets.items():
         filename = os.path.join(data_path, 'external', file)

@@ -6,7 +6,7 @@ import sys
 import argparse
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from helper import upload
+import helper 
 
 def transpose_files(files, chunksize):
     here = pathlib.Path(__file__).parent.absolute()
@@ -27,7 +27,7 @@ def transpose_files(files, chunksize):
             print(f"{outfile} exists, continuing...")
 
         print(f'Uploading transposed {file}')
-        upload(
+        helper.upload(
             file_name=outfile,
             remote_name=os.path.join('jlehrer', 'interim_expression_data', outfile_name)
         )
@@ -42,13 +42,8 @@ if __name__ == "__main__":
     )
     chunksize = parser.parse_args().chunksize 
 
-    files = [
-        'primary.tsv',
-        'allen_cortex.tsv',
-        'allen_m1_region.tsv',
-        'whole_brain_bhaduri.tsv',
-    ]
-
+    files = helper.DATA_FILES_LIST
+    
     transpose_files(
         files=files,
         chunksize=chunksize,

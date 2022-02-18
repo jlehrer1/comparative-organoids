@@ -9,6 +9,33 @@ import pandas as pd
 S3_CLUSTER_LABEL_PATH = os.path.join('jlehrer', 'primary_cluster_labels')
 S3_CLEAN_DATA_PATH = 'jlehrer'
 S3_UMAP_PATH = os.path.join('jlehrer', 'reduced_data')
+
+DATA_FILES_LIST = [
+    'primary_bhaduri.tsv',
+    'allen_cortex.tsv',
+    'allen_m1_region.tsv',
+    'whole_brain_bhaduri.tsv',
+]
+
+DATA_FILES_AND_URLS_DICT = {
+    'primary_bhaduri.tsv': [
+        'https://cells.ucsc.edu/organoidreportcard/primary10X/exprMatrix.tsv.gz', 
+        'https://cells.ucsc.edu/organoidreportcard/primary10X/meta.tsv',
+    ],
+    'allen_cortex.tsv': [
+        'https://cells.ucsc.edu/allen-celltypes/human-cortex/various-cortical-areas/exprMatrix.tsv.gz',
+        'https://cells.ucsc.edu/allen-celltypes/human-cortex/various-cortical-areas/meta.tsv',
+    ],
+    'allen_m1_region.tsv': [
+        'https://cells.ucsc.edu/allen-celltypes/human-cortex/m1/exprMatrix.tsv.gz',
+        'https://cells.ucsc.edu/allen-celltypes/human-cortex/m1/meta.tsv',
+    ],
+    'whole_brain_bhaduri.tsv': [
+        'https://cells.ucsc.edu/dev-brain-regions/wholebrain/exprMatrix.tsv.gz',
+        'https://cells.ucsc.edu/dev-brain-regions/wholebrain/meta.tsv',
+    ],
+}
+
 here = pathlib.Path(__file__).parent.absolute()
 
 with open(os.path.join(here, '..', 'credentials')) as f:

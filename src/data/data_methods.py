@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from sklearn.preprocessing import LabelEncoder
 import dask.dataframe as da
 from dask.diagnostics import ProgressBar
-from helper import upload
+import helper 
 
 pbar = ProgressBar()
 pbar.register() # global registration
@@ -109,14 +109,9 @@ def combine_labelsets():
 
     le = LabelEncoder()
     le = le.fit(unique_targets)
+    datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
 
-    datasets = {
-        df1_reduced: 'bhaduri_2020_labels.csv',
-        df2_reduced: 'bhaduri_2021_labels.csv',
-        df3_reduced: 'allen_m1_region_labels.csv',
-        df4_reduced: 'allen_cortex_labels.csv',
-    }
-
+    datasets = dict(zip(datasets, helper.DATA_FILES_LIST))
     # Categorically encode the targets and 
     # Write out the numerically encoded targets to disk 
     # when we read in, set index_col='cell'
@@ -126,7 +121,7 @@ def combine_labelsets():
         df.index.name = 'cell'
         df.to_csv(os.path.join(data_path, 'labels', filename))
 
-        upload(
+        helper.upload(
             os.path.join(data_path, 'labels', filename),
             os.path.join('jlehrer', 'expression_data', 'labels', filename)
         )
@@ -137,13 +132,8 @@ def clean_datasets():
     each dimension of the output Tensor corresponds to the same gene. 
     """
 
-    files = [
-        'bhaduri_2020_T.csv',
-        # 'bhaduri_2021_T.csv',
-        'allen_m1_T.csv',
-        'allen_cortex_T.csv'
-    ]
-
+    files = helper.DATA_FILES_LIST
+    
     cols = []
     for file in files:
         # Read in columns, split by | (since some are PVALB|PVALB), and make sure all are uppercase
@@ -177,7 +167,7 @@ def clean_datasets():
         )
 
         print(f'Uploading {file} to S3')
-        
+
         upload(
             os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
             os.path.join('jlehrer', 'expression_data', 'data', f'{file[:-4]}.csv')
