@@ -1,25 +1,28 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-upload-raw-data
+  name: rna-seq-clean-data-2
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-upload-raw-data
+        k8s-app: rna-seq-clean-data-2
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-upload-raw-data
+      - name: rna-seq-clean-data-2
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py --type='external' --s3-upload"
+          "python src/data/download_data.py --type='external' && \
+          python src/data/transpose_data.py --chunksize=1000 --s3-upload && \
+          python src/models/clean_data.py --labels && \
+          python src/models/clean_data.py --features"
         ]
         resources:
           limits:

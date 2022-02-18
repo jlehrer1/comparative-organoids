@@ -13,8 +13,12 @@ def transpose_files(files, chunksize, upload):
     data_path = os.path.join(here, '..', '..', 'data')
 
     for file in files:
+        # Create both the transposed file name, and it's path
         outfile_name = f'{file[:-4]}_T.csv'
         outfile = os.path.join(data_path, 'interim', outfile_name)
+        
+        # If the file doesn't already exist, use the Transpose API to calculate
+        # The transpose and upload to S3, if the upload parameter is passed 
         if not os.path.isfile(outfile):
             trans = Transpose(
                 file=os.path.join(data_path, 'external', file), 
@@ -35,6 +39,7 @@ def transpose_files(files, chunksize, upload):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         '--chunksize',
         required=False,
@@ -49,13 +54,29 @@ if __name__ == "__main__":
         help='If passed, also upload transposed data to the braingeneers s3 bucket under jlehrer/interim_expression_data/'
     )
 
+    parser.add_argument(
+        '--file',
+        required=False,
+        default=None,
+        type=str,
+        help='File to calculate transpose of, to be used if this script is parallelized. If nothing is passed, just calculate the transpose of the entire data file list.'
+    )
+
     args = parser.parse_args()
 
     chunksize = args.chunksize  
     upload = args.s3_upload 
+    files = args.files 
 
+    # If files is a str, i.e. a single file to be used when calling this script in parallel, make it into a list of length one 
+    # as expected by transpose_files
+    if not files:
+        files = helper.DATA_FILES_LIST
+    else:
+        files = [files] 
+         
     transpose_files(
-        files=helper.DATA_FILES_LIST,
+        files=files,
         chunksize=chunksize,
         upload=upload,
     )

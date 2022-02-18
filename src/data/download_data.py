@@ -22,6 +22,11 @@ def _download_from_key(key, localpath):
     print(f'Key is {key}')
     reduced_files = helper.list_objects(key)
 
+    direc = localpath.split('/')[:-1]
+    if not os.path.exists(direc):
+        print(f'Download path {direc} doesn\'t exist, creating...')
+        os.makedirs(direc, exist_ok=True)
+
     for f in reduced_files:
         if not os.path.isfile(os.path.join(data_path, 'processed', f.split('/')[-1])):
             print(f'Downloading {f} from S3')
@@ -30,21 +35,36 @@ def _download_from_key(key, localpath):
                 os.path.join(data_path, 'processed', localpath, f.split('/')[-1]) # Just the file name in the list of objects
             )
 
-def download_clean_expression_matrices() -> None:
+def download_clean_from_s3() -> None:
+    """Downloads the cleaned data from s3 to be used in model training."""
+
     key = os.path.join('jlehrer', 'expression_data', 'processed')
     local_path = os.path.join(data_path, 'processed')
 
     _download_from_key(key, local_path) 
 
-def download_transposed_expression_matrices() -> None:
+def download_interim_from_s3() -> None:
     """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned."""
+
     key = os.path.join('jlehrer', 'expression_data', 'interim')
     local_path = os.path.join(data_path, 'interim')
 
     _download_from_key(key, local_path)
 
-def download_raw_expression_matrices(upload) -> None:
-    """Downloads all raw datasets and label sets, and then unzips them. This will only be used during the data processing step"""
+def download_raw_from_s3() -> None:
+    """Downloads the raw expression matrices from s3"""
+
+    key = os.path.join('jlehrer', 'expression_data', 'raw')
+    local_path = os.path.join(data_path, 'external')
+
+    _download_from_key(key, local_path)
+
+def download_raw_expression_matrices(upload: bool) -> None:
+    """Downloads all raw datasets and label sets from cells.ucsc.edu, and then unzips them locally
+    
+    Parameters:
+    upload: Whether or not to also upload data to S3 bucket 
+    """
 
     # {local file name: [dataset url, labelset url]}
     datasets = helper.DATA_FILES_AND_URLS_DICT
@@ -123,11 +143,13 @@ if __name__ == "__main__":
     type = args.type
     upload = args.s3_upload
 
-    if type == 'interim':
-        download_transposed_expression_matrices()
-    elif type == 'raw' or type == 'zipped':
+    if type == 'external':
         download_raw_expression_matrices(upload=upload)
+    if type == 'interim':
+        download_interim_from_s3()
+    elif type == 'raw':
+        download_raw_from_s3()
     elif type == 'processed' or type == 'clean':
-        download_clean_expression_matrices()
+        download_clean_from_s3()
     else:
         raise ValueError('Unknown type specified for data downloading.')

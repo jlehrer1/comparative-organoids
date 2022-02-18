@@ -1,25 +1,26 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-upload-raw-data
+  name: rna-seq-transpose-file-${COUNT}
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-upload-raw-data
+        k8s-app: rna-seq-transpose-file-${COUNT}
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-upload-raw-data
+      - name: rna-seq-transpose-file-${COUNT}
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py --type='external' --s3-upload"
+          "python src/data/download_data.py --type='raw' && \
+          python src/data/transpose_data.py --chunksize=1000 --file='${FILE}' --s3-upload"
         ]
         resources:
           limits:

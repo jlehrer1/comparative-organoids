@@ -66,9 +66,12 @@ df4_mapping = {
     'VLMC': 'Vascular'
 }
 
-def combine_labelsets():
+def clean_labelsets(upload: bool) -> None:
     """
     Combines all label sets to be consistent, and writes this to disc. 
+
+    Parameters:
+    upload: Whether or not to upload cleaned data to braingeneersdev/jlehrer/expression_data/labels
     """
 
     # Read in our four datasets 
@@ -102,33 +105,37 @@ def combine_labelsets():
     df4_reduced = df4[['subclass_label']].rename(columns={'subclass_label': 'Type'})
     df4_reduced = df4_reduced[(df4_reduced['Type'] != 'Exclude') & (df4_reduced['Type'] != 'Progenitor')]
 
-    # Get the union of all targets 
+    # Get the union of all labels 
     datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
     unique_targets = list(set(np.concatenate([df['Type'].unique() for df in datasets])))
 
+    # Fit a labelencoder on the intersection of the targets
     le = LabelEncoder()
     le = le.fit(unique_targets)
-    datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
 
+    datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
     datasets = dict(zip(datasets, helper.DATA_FILES_LIST))
+
     # Categorically encode the targets and 
     # Write out the numerically encoded targets to disk 
     # when we read in, set index_col='cell'
-
     for df, filename in datasets.items():
         df['Type'] = le.transform(df['Type'])
         df.index.name = 'cell'
         df.to_csv(os.path.join(data_path, 'labels', filename))
 
-        helper.upload(
-            os.path.join(data_path, 'labels', filename),
-            os.path.join('jlehrer', 'expression_data', 'labels', filename)
-        )
+        if upload:
+            helper.upload(
+                os.path.join(data_path, 'labels', filename),
+                os.path.join('jlehrer', 'expression_data', 'labels', filename)
+            )
 
-def clean_datasets():
+def clean_datasets(upload: bool) -> None:
     """
     Cleans the gene expression datasets by taking the intersection of columns (genes) between them, and then sorting the columns to make sure that each dimension of the output Tensor corresponds to the same gene. These are read AFTER the expression matrices have been transposed, and will throw an error if these files don't exist in data/interim/
 
+    Parameters:
+    upload: Whether or not to upload cleaned data to braingeneersdev/jlehrer/expression_data/data
     """
 
     files = helper.DATA_FILES_LIST
@@ -168,10 +175,11 @@ def clean_datasets():
 
         print(f'Uploading {file} to S3')
 
-        helper.upload(
-            os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
-            os.path.join('jlehrer', 'expression_data', 'data', f'{file[:-4]}.csv')
-        )
+        if upload:
+            helper.upload(
+                os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
+                os.path.join('jlehrer', 'expression_data', 'data', f'{file[:-4]}.csv')
+            )
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -192,13 +200,23 @@ if __name__ == "__main__":
         action='store_true',
     )
 
+    parser.add_argument(
+        '--s3-upload',
+        required=False,
+        action='store_true'
+    )
+
     args = parser.parse_args()
-    labels, data = args.labels, args.data 
+    labels = args.labels
+    data = args.data 
+    upload = args.s3_upload
 
     if not labels and not data:
         print('Nothing arguments passed. Done.')
 
-    if data: clean_datasets()
-    if labels: combine_labelsets()
+    if data: 
+        clean_datasets(upload=upload)
+    if labels: 
+        clean_labelsets(upload=upload)
 
 
