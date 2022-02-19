@@ -39,7 +39,7 @@ def run_search(
         # 'layers': np.arange(10, 25, 5),
         'layers' : [15],
     }
-
+    
     # Generate cartesian product of dictionary 
     params = list(product(*param_dict.values()))
     param_names = list(param_dict.keys())

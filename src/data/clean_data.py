@@ -1,3 +1,4 @@
+from enum import unique
 import pathlib 
 import os
 import sys
@@ -15,9 +16,31 @@ import helper
 here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
 
+df1_mapping = {
+    'Inhibitory Neuron': 'Interneuron'
+}
+
 df2_mapping = {
-    'RG' : 'Radial Glia', 
-    'CR': 'Cajal Retzius'
+    'IT': 'Interneuron',
+    'L4 IT': 'Interneuron',
+    'VIP': 'Interneuron',
+    'PVALB': 'Interneuron',
+    'L6 CT': 'Interneuron', 
+    'LAMP5': 'Interneuron',
+    'SST': 'Interneuron',
+    'Exclude': 'Exclude',
+    'Oligodendrocyte': 'Oligodendrocyte',
+    'Astrocyte': 'Astrocyte',
+    'L6b': 'Excitatory Neuron',
+    'L5/6 IT Car3': 'Excitatory Neuron',
+    'L5/6 NP': 'Excitatory Neuron',
+    'OPC': 'OPC',
+    'Microglia': 'Microglia',
+    'PAX6' : 'Progenitors', # DROP THESE, progenitors should not be in postnatal 
+    'L5 ET': 'Excitatory Neuron',
+    'Endothelial' : 'Endothelial',
+    'Pericyte': 'Pericyte',
+    'VLMC': 'Vascular'
 }
 
 df3_mapping = {
@@ -44,26 +67,8 @@ df3_mapping = {
 }
 
 df4_mapping = {
-    'IT': 'Interneuron',
-    'L4 IT': 'Interneuron',
-    'VIP': 'Interneuron',
-    'PVALB': 'Interneuron',
-    'L6 CT': 'Interneuron', 
-    'LAMP5': 'Interneuron',
-    'SST': 'Interneuron',
-    'Exclude': 'Exclude',
-    'Oligodendrocyte': 'Oligodendrocyte',
-    'Astrocyte': 'Astrocyte',
-    'L6b': 'Excitatory Neuron',
-    'L5/6 IT Car3': 'Excitatory Neuron',
-    'L5/6 NP': 'Excitatory Neuron',
-    'OPC': 'OPC',
-    'Microglia': 'Microglia',
-    'PAX6' : 'Progenitors', # DROP THESE, progenitors should not be in postnatal 
-    'L5 ET': 'Excitatory Neuron',
-    'Endothelial' : 'Endothelial',
-    'Pericyte': 'Pericyte',
-    'VLMC': 'Vascular'
+    'RG' : 'Radial Glia', 
+    'CR': 'Cajal Retzius'
 }
 
 def clean_labelsets(upload: bool) -> None:
@@ -74,56 +79,67 @@ def clean_labelsets(upload: bool) -> None:
     upload: Whether or not to upload cleaned data to braingeneersdev/jlehrer/expression_data/labels
     """
 
-    # Read in our four datasets 
+    # Read in our four datasets
+    # MAKE SURE THESE ARE IN THE SAME ORDER AS helper.DATA_FILES_LIST
     print('Reading in datasets')
-    raw_data_path = os.path.join(here, '..', 'data', 'raw')
-    try:
-        df1 = pd.read_csv(os.path.join(raw_data_path, 'primary_bhaduri_labels.tsv', sep='\t'))
-        df2 = pd.read_csv(os.path.join(raw_data_path, 'whole_brain_bhaduri_labels.tsv', sep='\t'))
-        df3 = pd.read_csv(os.path.join(raw_data_path, 'allen_m1_region_labels.tsv', sep='\t'))
-        df4 = pd.read_csv(os.path.join(raw_data_path, 'allen_cortex_labels.tsv', sep='\t'))
-    except Exception as e:
-        print('Error: Missing file. Double check label file names and make sure all are downloaded properly.')
-        print(e)
+    raw_data_path = os.path.join(here, '..', '..', 'data', 'raw')
+    df1 = pd.read_csv(os.path.join(raw_data_path, 'primary_bhaduri_labels.tsv'), sep='\t')
+    df2 = pd.read_csv(os.path.join(raw_data_path, 'allen_cortex_labels.tsv'), sep='\t')
+    df3 = pd.read_csv(os.path.join(raw_data_path, 'allen_m1_region_labels.tsv'), sep='\t')
+    df4 = pd.read_csv(os.path.join(raw_data_path, 'whole_brain_bhaduri_labels.tsv'), sep='\t')
 
     # Rename cells so we have label consistency across classes 
     print('Mapping target labels to be consistent')
-    df2['celltype'] = df2['celltype'].replace(df2_mapping)
+    df1['Type'] = df1['Type'].replace(df1_mapping)
+    df2['subclass_label'] = df2['subclass_label'].replace(df2_mapping)
     df3['subclass_label'] = df3['subclass_label'].replace(df3_mapping)
-    df4['subclass_label'] = df4['subclass_label'].replace(df4_mapping)
+    df4['celltype'] = df4['celltype'].replace(df4_mapping)
 
     # Grab only columns of interest and rename them for column name consistency 
     print('Reducing ')
+    # Fix primary_bhaduri (Bhaduri et. al 2019)
     df1_reduced = df1[['Type']]
     df1_reduced = df1_reduced[df1_reduced['Type'] != 'Outlier']
 
-    df2_reduced = df2[['celltype']].rename(columns={'celltype': 'Type'})
-    df2_reduced = df2_reduced[df2_reduced['Type'] != 'Outlier']
+    # Fix allen cortex 
+    df2_reduced = df2[['subclass_label']].rename(columns={'subclass_label': 'Type'})
+    df2_reduced = df2_reduced[(df2_reduced['Type'] != 'Exclude') & (df2_reduced['Type'] != 'Progenitor')]
 
+    # Fix allen m1 region
     df3_reduced = df3[['subclass_label']].rename(columns={'subclass_label': 'Type'})
     df3_reduced = df3_reduced[df3_reduced['Type'] != 'Outlier']
 
-    df4_reduced = df4[['subclass_label']].rename(columns={'subclass_label': 'Type'})
-    df4_reduced = df4_reduced[(df4_reduced['Type'] != 'Exclude') & (df4_reduced['Type'] != 'Progenitor')]
+    # Fix whole brain bhaduri (bhaduri et. al 2021)
+    df4_reduced = df4[['celltype']].rename(columns={'celltype': 'Type'})
+    df4_reduced = df4_reduced[df4_reduced['Type'] != 'Outlier']
 
     # Get the union of all labels 
     datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
-    unique_targets = list(set(np.concatenate([df['Type'].unique() for df in datasets])))
 
+    for df in datasets:
+        df['Type'] = df['Type'].apply(lambda x: x.rstrip())
+
+    unique_targets = list(set(np.concatenate([df['Type'].unique() for df in datasets])))
+    print(unique_targets)
     # Fit a labelencoder on the intersection of the targets
     le = LabelEncoder()
     le = le.fit(unique_targets)
 
+    # Make a list of our four datasets to index when we are encoding them
     datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
-    datasets = dict(zip(datasets, helper.DATA_FILES_LIST))
+    files = helper.DATA_FILES_LIST
+
+    # Create the output directory if it doens't exist 
+    os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
 
     # Categorically encode the targets and 
     # Write out the numerically encoded targets to disk 
     # when we read in, set index_col='cell'
-    for df, filename in datasets.items():
+    for idx, filename in enumerate(files):
+        df = datasets[idx]
         df['Type'] = le.transform(df['Type'])
         df.index.name = 'cell'
-        df.to_csv(os.path.join(data_path, 'labels', filename))
+        df.to_csv(os.path.join(data_path, 'processed', 'labels', f'{filename[:-4]}_labels.csv'))
 
         if upload:
             helper.upload(

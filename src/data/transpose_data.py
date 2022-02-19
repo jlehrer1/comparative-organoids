@@ -29,7 +29,6 @@ def transpose_files(files, chunksize, upload):
             trans.compute()
         else:
             print(f"{outfile} exists, continuing...")
-
         if upload:
             print(f'Uploading transposed {file}')
             helper.upload(
@@ -66,14 +65,14 @@ if __name__ == "__main__":
 
     chunksize = args.chunksize  
     upload = args.s3_upload 
-    files = args.files 
+    file = args.file
 
     # If files is a str, i.e. a single file to be used when calling this script in parallel, make it into a list of length one 
     # as expected by transpose_files
-    if not files:
+    if not file:
         files = helper.DATA_FILES_LIST
     else:
-        files = [files] 
+        files = [file] 
          
     transpose_files(
         files=files,

@@ -31,7 +31,7 @@ def _download_from_key(key, localpath):
             print(f'Downloading {f} from S3')
             helper.download(
                 f,
-                os.path.join(data_path, 'processed', localpath, f.split('/')[-1]) # Just the file name in the list of objects
+                os.path.join(localpath, f.split('/')[-1]) # Just the file name in the list of objects
             )
 
 def download_clean_from_s3(
@@ -40,6 +40,7 @@ def download_clean_from_s3(
 ) -> None:
     """Downloads the cleaned data from s3 to be used in model training."""
 
+    os.makedirs(os.path.join(data_path, 'processed'), exist_ok=True)
     if not file: # No single file passed, so download recursively
         print('Downloading all clean data...')
         key = os.path.join('jlehrer', 'expression_data', 'processed')
@@ -60,6 +61,8 @@ def download_interim_from_s3(
 ) -> None:
     """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned."""
 
+    os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
+
     if not file:
         print('Downloading all interim data')
         key = os.path.join('jlehrer', 'expression_data', 'interim')
@@ -79,6 +82,7 @@ def download_raw_from_s3(
 ) -> None:
     """Downloads the raw expression matrices from s3"""
 
+    os.makedirs(os.path.join(data_path, 'raw'), exist_ok=True)
     if not file: 
         print('Downloading all raw data')
         key = os.path.join('jlehrer', 'expression_data', 'raw')
@@ -87,7 +91,6 @@ def download_raw_from_s3(
     else:
         print(f'Downloading {file} from raw data')
         local_path = (os.path.join(data_path, 'raw', file) if not local_path else local_path)
-        print(local_path)
         helper.download(
             os.path.join('jlehrer', 'expression_data', 'raw', file), 
             local_path
