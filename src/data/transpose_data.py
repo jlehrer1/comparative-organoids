@@ -18,7 +18,8 @@ def transpose_files(files, chunksize, upload):
         outfile = os.path.join(data_path, 'interim', outfile_name)
         
         # If the file doesn't already exist, use the Transpose API to calculate
-        # The transpose and upload to S3, if the upload parameter is passed 
+        # The transpose and upload to S3, if the upload parameter is passed
+        os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
         if not os.path.isfile(outfile):
             trans = Transpose(
                 file=os.path.join(data_path, 'raw', file), 

@@ -120,7 +120,6 @@ def clean_labelsets(upload: bool) -> None:
         df['Type'] = df['Type'].apply(lambda x: x.rstrip())
 
     unique_targets = list(set(np.concatenate([df['Type'].unique() for df in datasets])))
-    print(unique_targets)
     # Fit a labelencoder on the intersection of the targets
     le = LabelEncoder()
     le = le.fit(unique_targets)
