@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-transpose-file-${COUNT}
+  name: rna-seq-transpose-file-${COUNT}-2
 spec:
   backoffLimit: 5
   completions: 1
@@ -24,14 +24,16 @@ spec:
         ]
         resources:
           limits:
-            memory: 100Gi
-            cpu: "64"
+            memory: 500Gi
+            cpu: "4"
+            ephemeral-storage: 100Gi
           requests:
-            memory: 72Gi
-            cpu: "32"
+            memory: 250Gi
+            cpu: "4"
+            ephemeral-storage: 100Gi
         volumeMounts:
         - name: ephemeral
-          mountPath: "/data"
+          mountPath: "/"
       volumes:
       # Ephemeral storage
       - name: ephemeral

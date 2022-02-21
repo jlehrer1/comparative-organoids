@@ -82,11 +82,16 @@ def clean_labelsets(upload: bool) -> None:
     # Read in our four datasets
     # MAKE SURE THESE ARE IN THE SAME ORDER AS helper.DATA_FILES_LIST
     print('Reading in datasets')
+    files = helper.DATA_FILES_LIST
     raw_data_path = os.path.join(here, '..', '..', 'data', 'raw')
     df1 = pd.read_csv(os.path.join(raw_data_path, 'primary_bhaduri_labels.tsv'), sep='\t')
     df2 = pd.read_csv(os.path.join(raw_data_path, 'allen_cortex_labels.tsv'), sep='\t')
     df3 = pd.read_csv(os.path.join(raw_data_path, 'allen_m1_region_labels.tsv'), sep='\t')
     df4 = pd.read_csv(os.path.join(raw_data_path, 'whole_brain_bhaduri_labels.tsv'), sep='\t')
+
+    # Create the output directories if they don't exist 
+    os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
+    os.makedirs(os.path.join(data_path, 'interim', 'labels'), exist_ok=True)
 
     # Rename cells so we have label consistency across classes 
     print('Mapping target labels to be consistent')
@@ -96,40 +101,39 @@ def clean_labelsets(upload: bool) -> None:
     df4['celltype'] = df4['celltype'].replace(df4_mapping)
 
     # Grab only columns of interest and rename them for column name consistency 
-    print('Reducing ')
-    # Fix primary_bhaduri (Bhaduri et. al 2019)
+    print('Cleaning labels...')
+
+    # Select only by type and rename labels 
     df1_reduced = df1[['Type']]
-    df1_reduced = df1_reduced[df1_reduced['Type'] != 'Outlier']
-
-    # Fix allen cortex 
     df2_reduced = df2[['subclass_label']].rename(columns={'subclass_label': 'Type'})
-    df2_reduced = df2_reduced[(df2_reduced['Type'] != 'Exclude') & (df2_reduced['Type'] != 'Progenitor')]
-
-    # Fix allen m1 region
     df3_reduced = df3[['subclass_label']].rename(columns={'subclass_label': 'Type'})
-    df3_reduced = df3_reduced[df3_reduced['Type'] != 'Outlier']
-
-    # Fix whole brain bhaduri (bhaduri et. al 2021)
     df4_reduced = df4[['celltype']].rename(columns={'celltype': 'Type'})
+
+    # Remove all whitespace since we have 'Neuron ', and 'Neuron' in our label sets!
+    datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
+    for df in datasets:
+        df.loc[:, 'Type'] = df.loc[:, 'Type'].apply(lambda x: x.rstrip())
+
+    # Write out the interim labels before removing samples we don't want to train on
+    # Since we want to visualize this 
+    for idx, filename in enumerate(files):
+        df = datasets[idx]
+        df.to_csv(os.path.join(data_path, 'interim', 'labels', f'{filename[:-4]}_labels.csv'))
+
+    # Now remove all samples we don't want to train on 
+    df1_reduced = df1_reduced[df1_reduced['Type'] != 'Outlier']
+    df2_reduced = df2_reduced[(df2_reduced['Type'] != 'Exclude') & (df2_reduced['Type'] != 'Progenitor')]
+    df3_reduced = df3_reduced[df3_reduced['Type'] != 'Outlier']
     df4_reduced = df4_reduced[df4_reduced['Type'] != 'Outlier']
 
-    # Get the union of all labels 
-    datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
-
-    for df in datasets:
-        df['Type'] = df['Type'].apply(lambda x: x.rstrip())
-
-    unique_targets = list(set(np.concatenate([df['Type'].unique() for df in datasets])))
     # Fit a labelencoder on the intersection of the targets
+    unique_targets = list(set(np.concatenate([df['Type'].unique() for df in datasets])))
     le = LabelEncoder()
     le = le.fit(unique_targets)
 
     # Make a list of our four datasets to index when we are encoding them
     datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
-    files = helper.DATA_FILES_LIST
 
-    # Create the output directory if it doens't exist 
-    os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
 
     # Categorically encode the targets and 
     # Write out the numerically encoded targets to disk 

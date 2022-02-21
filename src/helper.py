@@ -29,8 +29,16 @@ DATA_FILES_AND_URLS_DICT = {
     ],
 }
 
+DATA_FILES_AND_NAMES_DICT = {
+    'primary_bhaduri.tsv': 'Bhaduri et. al (2019)',
+    'allen_cortex.tsv': 'Allen Brain Atlas Cortex',
+    'allen_m1_region.tsv': 'Allen Brain Atlas M1 Region',
+    'whole_brain_bhaduri.tsv': 'Bhaduri et. al (2021)'
+}
+
 DATA_FILES_LIST = DATA_FILES_AND_URLS_DICT.keys()
 DATA_URLS_LIST = DATA_FILES_AND_URLS_DICT.values()
+
 
 here = pathlib.Path(__file__).parent.absolute()
 
