@@ -51,7 +51,7 @@ s3 = boto3.resource(
     aws_access_key_id=key,
     aws_secret_access_key=access,
 )
-   
+
 def upload(file_name, remote_name=None) -> None:
     """
     Uploads a file to the braingeneersdev S3 bucket

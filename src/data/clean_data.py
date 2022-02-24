@@ -36,29 +36,29 @@ df2_mapping = {
     'L5/6 NP': 'Excitatory Neuron',
     'OPC': 'OPC',
     'Microglia': 'Microglia',
-    'PAX6' : 'Progenitors', # DROP THESE, progenitors should not be in postnatal 
+    'PAX6': 'Progenitors', # DROP THESE, progenitors should not be in postnatal 
     'L5 ET': 'Excitatory Neuron',
-    'Endothelial' : 'Endothelial',
+    'Endothelial': 'Endothelial',
     'Pericyte': 'Pericyte',
-    'VLMC': 'Vascular'
+    'VLMC': 'Vascular',
 }
 
 df3_mapping = {
     'L2/3 IT': 'Excitatory Neuron',
-    'L5 IT': 'Interneuron', 
+    'L5 IT': 'Interneuron',
     'Pvalb': 'Interneuron',
     'Sst': 'Interneuron',
     'Vip': 'Interneuron',
     'Lamp5': 'Interneuron',
-    'L6 CT': 'Interneuron', 
-    'Oligo': 'Oligodendrocyte', 
+    'L6 CT': 'Interneuron',
+    'Oligo': 'Oligodendrocyte',
     'L6b': 'Excitatory Neuron',
     'L6 IT': 'Excitatory Neuron',
     'L5/6 NP': 'Excitatory Neuron',
-    'Sncg': 'Interneuron', 
-    'L5 ET': 'Excitatory Neuron', 
+    'Sncg': 'Interneuron',
+    'L5 ET': 'Excitatory Neuron',
     'Astro': 'Astrocyte',
-    'L6 IT Car3': 'Excitatory Neuron', 
+    'L6 IT Car3': 'Excitatory Neuron',
     'OPC': 'OPC',
     'Micro-PVM': 'Microglia',
     'Sst Chodl': 'Interneuron',
@@ -68,7 +68,7 @@ df3_mapping = {
 
 df4_mapping = {
     'RG' : 'Radial Glia', 
-    'CR': 'Cajal Retzius'
+    'CR': 'Cajal Retzius',
 }
 
 def clean_labelsets(upload: bool) -> None:
@@ -134,7 +134,6 @@ def clean_labelsets(upload: bool) -> None:
     # Make a list of our four datasets to index when we are encoding them
     datasets = [df1_reduced, df2_reduced, df3_reduced, df4_reduced]
 
-
     # Categorically encode the targets and 
     # Write out the numerically encoded targets to disk 
     # when we read in, set index_col='cell'
@@ -194,13 +193,12 @@ def clean_datasets(upload: bool) -> None:
         )
 
         print(f'Uploading {file} to S3')
-
         if upload:
             helper.upload(
                 os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
                 os.path.join('jlehrer', 'expression_data', 'data', f'{file[:-4]}.csv')
             )
-        
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
