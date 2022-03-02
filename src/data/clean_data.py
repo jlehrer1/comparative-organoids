@@ -83,11 +83,11 @@ def clean_labelsets(upload: bool) -> None:
     # MAKE SURE THESE ARE IN THE SAME ORDER AS helper.DATA_FILES_LIST
     print('Reading in datasets')
     files = helper.DATA_FILES_LIST
-    raw_data_path = os.path.join(here, '..', '..', 'data', 'raw')
-    df1 = pd.read_csv(os.path.join(raw_data_path, 'primary_bhaduri_labels.tsv'), sep='\t')
-    df2 = pd.read_csv(os.path.join(raw_data_path, 'allen_cortex_labels.tsv'), sep='\t')
-    df3 = pd.read_csv(os.path.join(raw_data_path, 'allen_m1_region_labels.tsv'), sep='\t')
-    df4 = pd.read_csv(os.path.join(raw_data_path, 'whole_brain_bhaduri_labels.tsv'), sep='\t')
+    interim_data_path = os.path.join(here, '..', '..', 'data', 'interim')
+    df1 = pd.read_csv(os.path.join(interim_data_path, 'primary_bhaduri_labels.tsv'), sep='\t')
+    df2 = pd.read_csv(os.path.join(interim_data_path, 'allen_cortex_labels.tsv'), sep='\t')
+    df3 = pd.read_csv(os.path.join(interim_data_path, 'allen_m1_region_labels.tsv'), sep='\t')
+    df4 = pd.read_csv(os.path.join(interim_data_path, 'whole_brain_bhaduri_labels.tsv'), sep='\t')
 
     # Create the output directories if they don't exist 
     os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
@@ -195,8 +195,8 @@ def clean_datasets(upload: bool) -> None:
         print(f'Uploading {file} to S3')
         if upload:
             helper.upload(
-                os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
-                os.path.join('jlehrer', 'expression_data', 'data', f'{file[:-4]}.csv')
+                os.path.join(data_path, 'processed', 'clean', f'{file[:-4]}.csv'),
+                os.path.join('jlehrer', 'expression_data', 'clean', f'{file[:-4]}.csv')
             )
 
 if __name__ == "__main__":

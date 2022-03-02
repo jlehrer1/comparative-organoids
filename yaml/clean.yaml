@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-clean-data-2
+  name: rna-seq-clean-data
 spec:
   backoffLimit: 0
   completions: 1
@@ -19,10 +19,8 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/download_data.py --type='raw' && \
-          python src/data/transpose_data.py --chunksize=1000 --s3-upload && \
-          python src/models/clean_data.py --labels && \
-          python src/models/clean_data.py --features"
+          "python src/data/download_data.py --type='interim' && \
+          python src/data/clean_data.py --data --s3-upload"
         ]
         resources:
           limits:

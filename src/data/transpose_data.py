@@ -1,16 +1,17 @@
-from transposecsv import Transpose 
 import os 
 import pathlib 
 import sys 
 import argparse
 from typing import List 
 
+import transposecsv
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import helper
 
 def transpose_files(
-    files: List[str], 
-    chunksize: int, 
+    files: List[str],
+    chunksize: int,
     upload_chunks: bool,
     upload_file: bool,
     no_cache: bool,
@@ -40,7 +41,7 @@ def transpose_files(
         # The transpose and upload to S3, if the upload parameter is passed
         os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
         if not os.path.isfile(outfile) or no_cache:
-            transpose = Transpose(
+            transpose = transposecsv.Transpose(
                 file=os.path.join(data_path, 'raw', file), 
                 outfile=outfile,
                 sep='\t',

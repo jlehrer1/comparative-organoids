@@ -72,8 +72,8 @@ def download_interim_from_s3(
         print(f'Downloading {file} from interim data')
         local_path = (os.path.join(data_path, 'interim', file) if not local_path else local_path)
         helper.download(
-            os.path.join('jlehrer', 'expression_data', 'interim', file), 
-            local_path
+            os.path.join('jlehrer', 'expression_data', 'interim', file),
+            local_path,
         )
         
 def download_raw_from_s3(
