@@ -115,7 +115,7 @@ def clean_labelsets(upload: bool) -> None:
         df.loc[:, 'Type'] = df.loc[:, 'Type'].apply(lambda x: x.rstrip())
 
     # Write out the interim labels before removing samples we don't want to train on
-    # Since we want to visualize this 
+    # Since we want to visualize this
     for idx, filename in enumerate(files):
         df = datasets[idx]
         df.to_csv(os.path.join(data_path, 'interim', 'labels', f'{filename[:-4]}_labels.csv'))
@@ -170,6 +170,8 @@ def clean_datasets(upload: bool) -> None:
     unique = list(set.intersection(*cols))
     unique = sorted(unique)
 
+    # Get rid of LOC genes before subsetting 
+
     print(f'Number of unique genes across all datasets are {len(unique)}')
     print(f'Sorting columns and calculating intersection of Dask dataframes')
 
@@ -178,16 +180,22 @@ def clean_datasets(upload: bool) -> None:
         data = (da.read_csv(
             os.path.join(data_path, 'interim', file),
             assume_missing=True,
-            header=1, # need this since caculating transpose adds one extra row, still need to figure out why as it doesn't happen on synthetic data 
+            header=1, # need this since calculating transpose adds one extra row, still need to figure out why as it doesn't happen on synthetic data 
             sample=1000000, # May need to make this bigger
         ))
-
         data.columns = [x.split('|')[0].upper() for x in data.columns]
-        data = data[unique]
+
+        result = da.DataFrame()
+        for i, gene in enumerate(unique):
+            print(f'Getting column {gene}, which is {i}/{len(unique)}')
+            result[gene] = data[gene]
+            result = result.persist()   
+
+        # data = data[unique]
         data = data.persist()
 
         data.to_csv(
-            os.path.join(data_path, 'processed', 'data', f'{file[:-4]}.csv'),
+            os.path.join(data_path, 'processed', f'{file[:-4]}.csv'),
             single_file=True,
             index=False,
         )
@@ -195,7 +203,7 @@ def clean_datasets(upload: bool) -> None:
         print(f'Uploading {file} to S3')
         if upload:
             helper.upload(
-                os.path.join(data_path, 'processed', 'clean', f'{file[:-4]}.csv'),
+                os.path.join(data_path, 'processed', f'{file[:-4]}.csv'),
                 os.path.join('jlehrer', 'expression_data', 'clean', f'{file[:-4]}.csv')
             )
 
