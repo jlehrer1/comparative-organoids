@@ -166,7 +166,10 @@ def gene_intersection() -> List[str]:
 
     return unique 
 
-def clean_datasets(upload: bool) -> None:
+def clean_datasets(
+    upload: bool,
+    single_file: str=None 
+) -> None:
     """
     Cleans the gene expression datasets by taking the intersection of columns (genes) between them, and then sorting the columns to make sure that each dimension of the output Tensor corresponds to the same gene. These are read AFTER the expression matrices have been transposed, and will throw an error if these files don't exist in data/interim/
 
@@ -174,9 +177,14 @@ def clean_datasets(upload: bool) -> None:
     upload: Whether or not to upload cleaned data to braingeneersdev/jlehrer/expression_data/data
     """
 
+
     unique = gene_intersection()
-    files = helper.DATA_FILES_LIST
-    files = [f'{file[:-4]}_T.csv' for file in files]
+
+    if not single_file:
+        files = helper.DATA_FILES_LIST
+        files = [f'{file[:-4]}_T.csv' for file in files]
+    else:
+        files = [f'{single_file[:-4]}_T.csv']
 
     # Get rid of LOC genes before subsetting 
     print(f'Number of unique genes across all datasets are {len(unique)}')
@@ -250,13 +258,28 @@ if __name__ == "__main__":
         action='store_true',
     )
 
+    parser.add_argument(
+        '--file',
+        required=False,
+        help='If passed, calculate the gene intersection for the passed file. Otherwise, calculate the gene intersection for all data. This exists so this script can be run in parallel',
+        type=str,
+        type=None,
+    )
+
     args = parser.parse_args()
+    file = args.file 
     labels = args.labels
     data = args.data 
     upload = args.s3_upload
     generate_genes = args.generate_genes
 
-    if data: 
+    if file and not data:
+        raise ValueError("--data flag must also be passed if calculating gene intersection for specific file.")
+
+
+    if data and file: 
+        clean_datasets(upload=upload, single_file=file)
+    if data and not file: 
         clean_datasets(upload=upload)
     if labels: 
         clean_labelsets(upload=upload)
