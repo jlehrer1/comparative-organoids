@@ -5,6 +5,7 @@ import sys
 import pandas as pd 
 import numpy as np 
 import argparse
+from typing import List 
 
 from sklearn.preprocessing import LabelEncoder
 import dask.dataframe as da
@@ -149,14 +150,7 @@ def clean_labelsets(upload: bool) -> None:
                 os.path.join('jlehrer', 'expression_data', 'labels', filename)
             )
 
-def clean_datasets(upload: bool) -> None:
-    """
-    Cleans the gene expression datasets by taking the intersection of columns (genes) between them, and then sorting the columns to make sure that each dimension of the output Tensor corresponds to the same gene. These are read AFTER the expression matrices have been transposed, and will throw an error if these files don't exist in data/interim/
-
-    Parameters:
-    upload: Whether or not to upload cleaned data to braingeneersdev/jlehrer/expression_data/data
-    """
-
+def gene_intersection() -> List[str]:
     files = helper.DATA_FILES_LIST
     files = [f'{file[:-4]}_T.csv' for file in files]
 
@@ -170,8 +164,21 @@ def clean_datasets(upload: bool) -> None:
     unique = list(set.intersection(*cols))
     unique = sorted(unique)
 
-    # Get rid of LOC genes before subsetting 
+    return unique 
 
+def clean_datasets(upload: bool) -> None:
+    """
+    Cleans the gene expression datasets by taking the intersection of columns (genes) between them, and then sorting the columns to make sure that each dimension of the output Tensor corresponds to the same gene. These are read AFTER the expression matrices have been transposed, and will throw an error if these files don't exist in data/interim/
+
+    Parameters:
+    upload: Whether or not to upload cleaned data to braingeneersdev/jlehrer/expression_data/data
+    """
+
+    unique = gene_intersection()
+    files = helper.DATA_FILES_LIST
+    files = [f'{file[:-4]}_T.csv' for file in files]
+
+    # Get rid of LOC genes before subsetting 
     print(f'Number of unique genes across all datasets are {len(unique)}')
     print(f'Sorting columns and calculating intersection of Dask dataframes')
 
@@ -185,14 +192,19 @@ def clean_datasets(upload: bool) -> None:
         ))
         data.columns = [x.split('|')[0].upper() for x in data.columns]
 
-        result = da.DataFrame()
-        for i, gene in enumerate(unique):
-            print(f'Getting column {gene}, which is {i}/{len(unique)}')
-            result[gene] = data[gene]
-            result = result.persist()   
-
+        # result = da.DataFrame()
+        # for i, gene in enumerate(unique):
+        #     print(f'Getting column {gene}, which is {i}/{len(unique)}')
+        #     result[gene] = data[gene]
+        #     result = result.persist()
         # data = data[unique]
-        data = data.persist()
+        print(f'Number of unique genes is {len(unique)} and number of genes in current dataset is {len(data.columns)}')
+
+        for gene in data.columns:
+            if gene not in unique:
+                print(f'Dropping gene {gene}')
+                data = data.drop(gene, axis=1)
+                data = data.persist()
 
         data.to_csv(
             os.path.join(data_path, 'processed', f'{file[:-4]}.csv'),
@@ -213,7 +225,6 @@ if __name__ == "__main__":
     parser.add_argument(
         '--labels',
         required=False,
-        default=None,
         help='If passed, run the code for label cleaning, otherwise, continue.',
         action='store_true',
     )
@@ -221,7 +232,6 @@ if __name__ == "__main__":
     parser.add_argument(
         '--data',
         required=False,
-        default=None,
         help='If passed, run the code for data cleaning. This should be run remotely, as it requires the interaction between large Dask dataframes which will likely be quite slow. Otherwise, continue',
         action='store_true',
     )
@@ -229,20 +239,29 @@ if __name__ == "__main__":
     parser.add_argument(
         '--s3-upload',
         required=False,
+        help='If passed, also upload the results to the braingeneersdev S3 bucket',
         action='store_true'
+    )
+
+    parser.add_argument(
+        '--generate-genes',
+        required=False,
+        help='If passed, generate the intersection of genes to data/',
+        action='store_true',
     )
 
     args = parser.parse_args()
     labels = args.labels
     data = args.data 
     upload = args.s3_upload
-
-    if not labels and not data:
-        print('Nothing arguments passed. Done.')
+    generate_genes = args.generate_genes
 
     if data: 
         clean_datasets(upload=upload)
     if labels: 
         clean_labelsets(upload=upload)
-
-
+    if generate_genes: 
+        import json 
+        genes = json.dumps(gene_intersection())
+        with open(os.path.join(data_path, 'genes.txt'), 'w', encoding='utf-8') as f:
+            json.dump(genes, f, ensure_ascii=False, indent=4)
