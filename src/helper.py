@@ -37,9 +37,16 @@ DATA_FILES_AND_NAMES_DICT = {
     'whole_brain_bhaduri.tsv': 'Bhaduri et. al (2021)'
 }
 
+
+INTERIM_DATA_AND_LABEL_FILES_LIST = {
+    'primary_bhaduri_T.csv': 'primary_bhaduri_labels.csv',
+    'allen_cortex_T.csv': 'allen_cortex_labels.csv',
+    'allen_m1_region_T.csv': 'allen_m1_region_labels.csv',
+    'whole_brain_bhaduri_T.csv': 'whole_brain_bhaduri_labels.csv'
+}
+
 DATA_FILES_LIST = DATA_FILES_AND_URLS_DICT.keys()
 DATA_URLS_LIST = DATA_FILES_AND_URLS_DICT.values()
-
 
 here = pathlib.Path(__file__).parent.absolute()
 
