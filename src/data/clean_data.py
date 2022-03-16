@@ -150,22 +150,6 @@ def clean_labelsets(upload: bool) -> None:
                 os.path.join('jlehrer', 'expression_data', 'labels', filename)
             )
 
-def gene_intersection() -> List[str]:
-    files = helper.DATA_FILES_LIST
-    files = [f'{file[:-4]}_T.csv' for file in files]
-
-    cols = []
-    for file in files:
-        # Read in columns, split by | (since some are PVALB|PVALB), and make sure all are uppercase
-        temp = pd.read_csv(os.path.join(data_path, 'interim', file), nrows=1, header=1).columns 
-        temp = [x.split('|')[0].upper() for x in temp]
-        cols.append(set(temp))
-
-    unique = list(set.intersection(*cols))
-    unique = sorted(unique)
-
-    return unique 
-
 def clean_datasets(
     upload: bool,
     single_file: str=None 
@@ -177,8 +161,7 @@ def clean_datasets(
     upload: Whether or not to upload cleaned data to braingeneersdev/jlehrer/expression_data/data
     """
 
-
-    unique = gene_intersection()
+    unique = helper.gene_intersection()
 
     if not single_file:
         files = helper.DATA_FILES_LIST
@@ -199,15 +182,8 @@ def clean_datasets(
             sample=1000000, # May need to make this bigger
         ))
         data.columns = [x.split('|')[0].upper() for x in data.columns]
-
-        # result = da.DataFrame()
-        # for i, gene in enumerate(unique):
-        #     print(f'Getting column {gene}, which is {i}/{len(unique)}')
-        #     result[gene] = data[gene]
-        #     result = result.persist()
-        # data = data[unique]
+        
         print(f'Number of unique genes is {len(unique)} and number of genes in current dataset is {len(data.columns)}')
-
         for gene in data.columns:
             if gene not in unique:
                 print(f'Dropping gene {gene}')
@@ -263,7 +239,6 @@ if __name__ == "__main__":
         required=False,
         help='If passed, calculate the gene intersection for the passed file. Otherwise, calculate the gene intersection for all data. This exists so this script can be run in parallel',
         type=str,
-        type=None,
     )
 
     args = parser.parse_args()
@@ -278,6 +253,7 @@ if __name__ == "__main__":
 
 
     if data and file: 
+        print(f'Calculating gene intersection for {file}')
         clean_datasets(upload=upload, single_file=file)
     if data and not file: 
         clean_datasets(upload=upload)
@@ -285,6 +261,6 @@ if __name__ == "__main__":
         clean_labelsets(upload=upload)
     if generate_genes: 
         import json 
-        genes = json.dumps(gene_intersection())
+        genes = json.dumps(helper.gene_intersection())
         with open(os.path.join(data_path, 'genes.txt'), 'w', encoding='utf-8') as f:
             json.dump(genes, f, ensure_ascii=False, indent=4)

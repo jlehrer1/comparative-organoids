@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rna-seq-clean-data-${COUNT}
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: rna-seq-clean-data-${COUNT}
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: rna-seq-clean-data-${COUNT}
+        image: jmlehrer/cell-exploration:latest
+        command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        args: [
+          "python src/data/download_data.py --type='interim' && \
+          python src/data/clean_data.py --data --s3-upload --file=${FILE}"
+        ]
+        resources:
+          limits:
+            memory: 100Gi
+            cpu: "64"
+          requests:
+            memory: 72Gi
+            cpu: "32"
+        volumeMounts:
+        - name: ephemeral
+          mountPath: "/data"
+      volumes:
+      # Ephemeral storage
+      - name: ephemeral
+        emptyDir: {}

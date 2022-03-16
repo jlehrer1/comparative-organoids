@@ -86,7 +86,6 @@ class GeneExpressionData(Dataset):
         
         return data 
         
-
 def _dataset_class_weights(
     label_files: List[str],
     class_label: str,

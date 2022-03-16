@@ -5,6 +5,7 @@ import seaborn as sns
 import pathlib 
 import json
 import pandas as pd 
+from typing import * 
 
 S3_CLUSTER_LABEL_PATH = os.path.join('jlehrer', 'primary_cluster_labels')
 S3_CLEAN_DATA_PATH = 'jlehrer'
@@ -147,3 +148,19 @@ def primary_genes() -> list:
         arr = json.load(f)
 
     return arr
+
+def gene_intersection() -> List[str]:
+    files = DATA_FILES_LIST
+    files = [f'{file[:-4]}_T.csv' for file in files]
+
+    cols = []
+    for file in files:
+        # Read in columns, split by | (since some are PVALB|PVALB), and make sure all are uppercase
+        temp = pd.read_csv(os.path.join(here, '..', 'data', 'interim', file), nrows=1, header=1).columns 
+        temp = [x.split('|')[0].upper() for x in temp]
+        cols.append(set(temp))
+
+    unique = list(set.intersection(*cols))
+    unique = sorted(unique)
+
+    return unique 

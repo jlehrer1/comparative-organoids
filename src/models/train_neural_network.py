@@ -65,11 +65,12 @@ def seed_worker(worker_id):
 def generate_trainer(
     here: str, 
     params: Dict[str, float], 
-    label_file: str,
     class_label: str,
     num_workers: int,
     batch_size: int,
     weighted_metrics: bool,
+    datafiles: List[str],
+    labelfiles: List[str],
 ):
     """
     Generates PyTorch Lightning trainer and datasets for model training.
@@ -91,21 +92,14 @@ def generate_trainer(
 
     data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
-    # comet_logger = CometLogger(
-    #     api_key="neMNyjJuhw25ao48JEWlJpKRR",
-    #     project_name=f"cell-classifier-{class_label}",  # Optional
-    #     workspace="jlehrer1",
-    #     experiment_name=f'{layers + 5} Layers, {width} Width'
-    # )
-
     wandb_logger = WandbLogger(
         project=f"cell-classifier-{class_label}",
         name=f'{layers + 5} Layers, {width} Width'
     )
 
     train, test, input_size, num_labels, class_weights = generate_datasets(
-        dataset_files=[os.path.join(data_path, 'primary.csv')], # TODO: add this list of files as a parameter that can be passed to the training script, test this for now 
-        label_files=[os.path.join(data_path, label_file)],
+        dataset_files=datafiles, # TODO: add this list of files as a parameter that can be passed to the training script, test this for now 
+        label_files=labelfiles,
         class_label=class_label,
     )
 
@@ -249,6 +243,7 @@ def make_args() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     parser = make_args()
     here = pathlib.Path(__file__).parent.absolute()
+    data_path = os.path.join(here, '..', '..', 'data', 'processed')
 
     args = parser.parse_args()
     params = vars(args)
@@ -256,11 +251,12 @@ if __name__ == "__main__":
     trainer, model, traindata, valdata = generate_trainer(
         here=here, 
         params=params,
-        label_file='meta_primary_labels.csv',
         class_label=params['class_label'],
         num_workers=params['num_workers'],
         batch_size=params['batch_size'],
-        weighted_metrics=params['weighted_metrics']
+        weighted_metrics=params['weighted_metrics'],
+        datafiles=[os.path.join(data_path, 'primary.csv')],
+        labelfiles=['meta_primary_labels.csv'],
     )
     
     trainer.fit(model, traindata, valdata)
