@@ -37,6 +37,7 @@ class GeneExpressionData(Dataset):
         class_label: str,
         indices: Iterable[int]=None,
         skip=2,
+        cast=True,
     ):
         self._filename = filename
         self._labelname = (pd.read_csv(labelname) if indices is None else pd.read_csv(labelname).iloc[indices, :])
@@ -44,6 +45,7 @@ class GeneExpressionData(Dataset):
         self._class_label = class_label
         self.index = indices
         self.skip=skip
+        self.cast = cast 
 
     def __getitem__(self, idx):
         # Get index in dataframe from integer index
@@ -58,8 +60,11 @@ class GeneExpressionData(Dataset):
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
         
-        return torch.from_numpy(np.array([float(x) for x in data])).float(), label
-    
+        if self.cast:
+            return torch.from_numpy(np.array([float(x) for x in data])).float(), label
+        else:
+            return data, label
+
     def __len__(self):
         return self._labelname.shape[0] # number of total samples 
     
@@ -70,7 +75,7 @@ class GeneExpressionData(Dataset):
         return len(self.__getitem__(0)[0])
 
     def get_features(self):
-        line = linecache.getline(self._filename, 0)
+        line = linecache.getline(self._filename, self.skip - 1)
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
 
@@ -91,7 +96,7 @@ def _dataset_class_weights(
     class_label: str,
 ) -> Tensor:
     """
-    Compute class weights for the entire label set of N labels.
+    Compute class weights for the entire l  abel set of N labels.
 
     Parameters:
     label_files: List of absolute paths to label files
@@ -100,7 +105,12 @@ def _dataset_class_weights(
     np.array: Array of class weights for classes 0,...,N-1
     """
 
-    comb = np.array([pd.read_csv(file).loc[:, class_label].values for file in label_files]).flatten()
+    comb = []
+
+    for file in label_files:
+        comb.extend(
+            pd.read_csv(file).loc[:, class_label].values
+        )
 
     return torch.from_numpy(compute_class_weight(
         classes=np.unique(comb),
@@ -112,6 +122,8 @@ def _generate_stratified_dataset(
     dataset_files: List[str], 
     label_files: List[str],
     class_label: str,
+    skip=2,
+    cast=True,
     test_prop: float=0.2,
 ) -> Tuple[Dataset, Dataset]:
     """
@@ -144,6 +156,8 @@ def _generate_stratified_dataset(
             labelname=labelfile,
             class_label=class_label,
             indices=trainsplit.index,
+            skip=skip,
+            cast=cast,
         )
         
         valset = GeneExpressionData(
@@ -151,6 +165,9 @@ def _generate_stratified_dataset(
             labelname=labelfile,
             class_label=class_label,
             indices=valsplit.index,
+            skip=skip,
+            cast=cast
+
         )
         
         train_datasets.append(trainset)
@@ -165,6 +182,8 @@ def _generate_split_dataset(
     dataset_files: List[str], 
     label_files: List[str],
     class_label: str,
+    skip=2,
+    cast=True,
     test_prop: float=0.2,
 ) -> Tuple[Dataset, Dataset]:
 
@@ -186,7 +205,9 @@ def _generate_split_dataset(
         subset = GeneExpressionData(
             filename=datafile,
             labelname=labelfile,
-            class_label=class_label
+            class_label=class_label,
+            skip=skip,
+            cast=cast
         )
 
         datasets.append(subset)

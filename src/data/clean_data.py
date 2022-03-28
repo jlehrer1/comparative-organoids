@@ -9,7 +9,6 @@ from typing import List
 
 from sklearn.preprocessing import LabelEncoder
 import dask.dataframe as da
-from dask.diagnostics import ProgressBar
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import helper 
