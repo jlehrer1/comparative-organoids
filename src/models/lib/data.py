@@ -3,6 +3,7 @@ import linecache
 import csv
 from typing import *
 import random
+from functools import cached_property
 
 import comet_ml
 import pandas as pd 
@@ -38,32 +39,41 @@ class GeneExpressionData(Dataset):
         indices: Iterable[int]=None,
         skip=2,
         cast=True,
+        index_col='cell',
     ):
         self._filename = filename
-        self._labelname = (pd.read_csv(labelname) if indices is None else pd.read_csv(labelname).iloc[indices, :])
+
+        if indices is None:
+            self._labelname = pd.read_csv(labelname).set_index(index_col)
+        else:
+            self._labelname = pd.read_csv(labelname).iloc[indices, :].set_index(index_col)
+
         self._total_data = 0
         self._class_label = class_label
-        self.index = indices
-        self.skip=skip
-        self.cast = cast 
+
+        self.skip = skip
+        self.cast = cast
 
     def __getitem__(self, idx):
-        # Get index in dataframe from integer index
+        # The label dataframe contains both its natural integer index, as well as a "cell" index which contains the indices of the data that we 
+        # haven't dropped. This is because some labels we don't want to use, i.e. the ones with "Exclude" or "Low Quality".
+        # Since we are grabbing lines from a raw file, we have to keep the original indices of interest, even though the length
+        # of the label dataframe is smaller than the original index
         idx = self._labelname.iloc[idx].name
         
         # Get label
         label = self._labelname.loc[idx, self._class_label]
         
         # get gene expression for current cell from csv file
-        # index + 2: Header is blank line and zeroth row is column names
+        # We skip some lines because we're reading directly from 
         line = linecache.getline(self._filename, idx + self.skip)
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
         
         if self.cast:
-            return torch.from_numpy(np.array([float(x) for x in data])).float(), label
-        else:
-            return data, label
+            data = torch.from_numpy(np.array([float(x) for x in data])).float()
+
+        return data, label
 
     def __len__(self):
         return self._labelname.shape[0] # number of total samples 
@@ -74,23 +84,50 @@ class GeneExpressionData(Dataset):
     def num_features(self):
         return len(self.__getitem__(0)[0])
 
-    def get_features(self):
-        line = linecache.getline(self._filename, self.skip - 1)
-        csv_data = csv.reader([line])
-        data = [x for x in csv_data][0]
-
-        return data
-
-    def columns(self):
-        return self.get_features()
-        
     def getline(self, num):
         line = linecache.getline(self._filename, num)
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
         
         return data 
-        
+
+    @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
+    def features(self):
+        data = self.getline(self.skip - 1)
+        data = [x.upper().strip() for x in data]
+             
+        return data
+
+    @property
+    def columns(self): # Just an alias...
+        return self.features
+
+def clean_sample(sample, refgenes, currgenes):
+    # currgenes and refgenes are already sorted
+    # Passed from calculate_intersection
+
+    """
+    Remove uneeded gene columns for given sample.
+
+    Arguments:
+    sample: np.ndarray
+        n samples to clean
+    refgenes:
+        list of reference genes from helper.generate_intersection(), contains the genes we want to keep
+    currgenes:
+        list of reference genes for the current sample
+    """
+
+    intersection = np.intersect1d(currgenes, refgenes, return_indices=True)
+    indices = intersection[1] # List of indices in currgenes that equal refgenes 
+    
+    axis = (1 if sample.ndim == 2 else 0)
+    
+    sample = np.sort(sample, axis=axis)
+    sample = np.take(sample, indices, axis=axis)
+
+    return sample
+
 def _dataset_class_weights(
     label_files: List[str],
     class_label: str,
@@ -125,6 +162,7 @@ def _generate_stratified_dataset(
     skip=2,
     cast=True,
     test_prop: float=0.2,
+    index_col='cell',
 ) -> Tuple[Dataset, Dataset]:
     """
     Generates train/val datasets with stratified label splitting. This means that the proportion of each class is the same 
@@ -158,16 +196,17 @@ def _generate_stratified_dataset(
             indices=trainsplit.index,
             skip=skip,
             cast=cast,
+            index_col=index_col,
         )
         
         valset = GeneExpressionData(
             filename=datafile,
             labelname=labelfile,
             class_label=class_label,
-            indices=valsplit.index,
+            indices=valsplit.index, 
             skip=skip,
-            cast=cast
-
+            cast=cast,
+            index_col=index_col,
         )
         
         train_datasets.append(trainset)
@@ -185,6 +224,7 @@ def _generate_split_dataset(
     skip=2,
     cast=True,
     test_prop: float=0.2,
+    index_col='cell',
 ) -> Tuple[Dataset, Dataset]:
 
     """
@@ -207,7 +247,8 @@ def _generate_split_dataset(
             labelname=labelfile,
             class_label=class_label,
             skip=skip,
-            cast=cast
+            cast=cast,
+            index_col=index_col
         )
 
         datasets.append(subset)

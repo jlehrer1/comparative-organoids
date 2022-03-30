@@ -161,25 +161,15 @@ def gene_intersection() -> List[str]:
     files = [f'{file[:-4]}_T.csv' for file in files]
 
     cols = []
-    file = os.path.join(here, '.geneintersection.txt')
     # Cache this file for later 
 
-    if not os.path.isfile(file):
-        for file in files:
-            # Read in columns, split by | (since some are PVALB|PVALB), and make sure all are uppercase
-            temp = pd.read_csv(os.path.join(here, '..', 'data', 'interim', file), nrows=1, header=1).columns 
-            temp = [x.split('|')[0].upper().strip() for x in temp]
-            cols.append(set(temp))
+    for file in files:
+        # Read in columns, split by | (since some are PVALB|PVALB), and make sure all are uppercase
+        temp = pd.read_csv(os.path.join(here, '..', 'data', 'interim', file), nrows=1, header=1).columns 
+        temp = [x.split('|')[0].upper().strip() for x in temp]
+        cols.append(set(temp))
 
-        unique = list(set.intersection(*cols))
-        unique = sorted(unique)
-        unique = json.dumps(unique)
-
-        with open(file, 'w', encoding='utf-8') as f:
-            json.dump(unique, f)
-
-    else:
-        f = open(file, 'r')
-        unique = json.loads(f.read())
+    unique = list(set.intersection(*cols))
+    unique = sorted(unique)
 
     return unique 
