@@ -41,12 +41,13 @@ class GeneExpressionData(Dataset):
         cast=True,
         index_col='cell',
     ):
-        self._filename = filename
+        self.filename = filename
+        self.name = filename # alias 
 
         if indices is None:
-            self._labelname = pd.read_csv(labelname).set_index(index_col)
+            self._labeldf = pd.read_csv(labelname).set_index(index_col)
         else:
-            self._labelname = pd.read_csv(labelname).iloc[indices, :].set_index(index_col)
+            self._labeldf = pd.read_csv(labelname).iloc[indices, :].set_index(index_col)
 
         self._total_data = 0
         self._class_label = class_label
@@ -59,14 +60,14 @@ class GeneExpressionData(Dataset):
         # haven't dropped. This is because some labels we don't want to use, i.e. the ones with "Exclude" or "Low Quality".
         # Since we are grabbing lines from a raw file, we have to keep the original indices of interest, even though the length
         # of the label dataframe is smaller than the original index
-        idx = self._labelname.iloc[idx].name
+        idx = self._labeldf.iloc[idx].name
         
         # Get label
-        label = self._labelname.loc[idx, self._class_label]
+        label = self._labeldf.loc[idx, self._class_label]
         
         # get gene expression for current cell from csv file
         # We skip some lines because we're reading directly from 
-        line = linecache.getline(self._filename, idx + self.skip)
+        line = linecache.getline(self.filename, idx + self.skip)
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
         
@@ -76,16 +77,16 @@ class GeneExpressionData(Dataset):
         return data, label
 
     def __len__(self):
-        return self._labelname.shape[0] # number of total samples 
+        return self._labeldf.shape[0] # number of total samples 
     
     def num_labels(self):
-        return self._labelname[self._class_label].nunique()
+        return self._labeldf[self._class_label].nunique()
     
     def num_features(self):
         return len(self.__getitem__(0)[0])
 
     def getline(self, num):
-        line = linecache.getline(self._filename, num)
+        line = linecache.getline(self.filename, num)
         csv_data = csv.reader([line])
         data = [x for x in csv_data][0]
         
@@ -102,6 +103,14 @@ class GeneExpressionData(Dataset):
     def columns(self): # Just an alias...
         return self.features
 
+    @cached_property
+    def labels(self):
+        return self._labeldf.loc[:, self._class_label].unique()
+
+    @property
+    def shape(self):
+        return (self.__len__, len(self.features))
+        
 def clean_sample(sample, refgenes, currgenes):
     # currgenes and refgenes are already sorted
     # Passed from calculate_intersection
