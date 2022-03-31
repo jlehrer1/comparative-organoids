@@ -47,7 +47,7 @@ class GeneExpressionData(Dataset):
         if indices is None:
             self._labeldf = pd.read_csv(labelname).set_index(index_col)
         else:
-            self._labeldf = pd.read_csv(labelname).iloc[indices, :].set_index(index_col)
+            self._labeldf = pd.read_csv(labelname).loc[indices, :].set_index(index_col)
 
         self._total_data = 0
         self._class_label = class_label
@@ -78,12 +78,6 @@ class GeneExpressionData(Dataset):
 
     def __len__(self):
         return self._labeldf.shape[0] # number of total samples 
-    
-    def num_labels(self):
-        return self._labeldf[self._class_label].nunique()
-    
-    def num_features(self):
-        return len(self.__getitem__(0)[0])
 
     def getline(self, num):
         line = linecache.getline(self.filename, num)
@@ -92,16 +86,24 @@ class GeneExpressionData(Dataset):
         
         return data 
 
-    @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
-    def features(self):
-        data = self.getline(self.skip - 1)
-        data = [x.upper().strip() for x in data]
-             
-        return data
-
     @property
     def columns(self): # Just an alias...
         return self.features
+
+    @cached_property
+    def num_labels(self):
+        return self._labeldf[self._class_label].nunique()
+
+    @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
+    def features(self):
+        data = self.getline(self.skip - 1)
+        data = [x.split('|')[0].upper().strip() for x in data]
+
+        return data
+    
+    @property
+    def num_features(self):
+        return len(self.features)
 
     @cached_property
     def labels(self):
@@ -128,7 +130,7 @@ def clean_sample(sample, refgenes, currgenes):
     """
 
     intersection = np.intersect1d(currgenes, refgenes, return_indices=True)
-    indices = intersection[1] # List of indices in currgenes that equal refgenes 
+    indices = intersection[1]
     
     axis = (1 if sample.ndim == 2 else 0)
     
