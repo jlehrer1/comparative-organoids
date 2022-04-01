@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 from ssl import Options
 import linecache 
 import csv
@@ -10,7 +11,7 @@ import pandas as pd
 import torch
 import numpy as np
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
 from torch import Tensor 
@@ -45,39 +46,51 @@ class GeneExpressionData(Dataset):
         self.name = filename # alias 
 
         if indices is None:
-            self._labeldf = pd.read_csv(labelname).set_index(index_col)
+            self._labeldf = pd.read_csv(labelname)
         else:
-            self._labeldf = pd.read_csv(labelname).loc[indices, :].set_index(index_col)
+            self._labeldf = pd.read_csv(labelname).loc[indices, :]
 
         self._total_data = 0
         self._class_label = class_label
+        self._index_col = index_col 
 
         self.skip = skip
         self.cast = cast
 
     def __getitem__(self, idx):
+        # Get label
+        if isinstance(idx, slice):
+            if idx.start is None or idx.stop is None:
+                raise ValueError(f"Error: Unlike other iterables, {self.__class__.__name__} does not support unbounded slicing since samples are being read as needed from disk, which may result in memory errors.")
+
+            step = (1 if idx.step is None else idx.step)
+            idxs = range(idx.start, idx.stop, step)
+
+            return [self[i] for i in idxs]
+
+        label = self._labeldf.loc[idx, self._class_label]
+
         # The label dataframe contains both its natural integer index, as well as a "cell" index which contains the indices of the data that we 
         # haven't dropped. This is because some labels we don't want to use, i.e. the ones with "Exclude" or "Low Quality".
         # Since we are grabbing lines from a raw file, we have to keep the original indices of interest, even though the length
         # of the label dataframe is smaller than the original index
-        idx = self._labeldf.iloc[idx].name
-        
-        # Get label
-        label = self._labeldf.loc[idx, self._class_label]
-        
+
+        # The actual line in the datafile to get, corresponding to the number in the self._index_col values 
+        data_index = self._labeldf.loc[idx, self._index_col]
+
         # get gene expression for current cell from csv file
         # We skip some lines because we're reading directly from 
-        line = linecache.getline(self.filename, idx + self.skip)
-        csv_data = csv.reader([line])
-        data = [x for x in csv_data][0]
+        line = linecache.getline(self.filename, data_index + self.skip)
         
         if self.cast:
-            data = torch.from_numpy(np.array([float(x) for x in data])).float()
+            data = torch.from_numpy(np.array(line.split(','), dtype=np.float32)).float()
+        else:
+            data = np.array(line.split(','))
 
         return data, label
 
     def __len__(self):
-        return self._labeldf.shape[0] # number of total samples 
+        return len(self._labeldf) # number of total samples 
 
     def getline(self, num):
         line = linecache.getline(self.filename, num)
@@ -90,20 +103,12 @@ class GeneExpressionData(Dataset):
     def columns(self): # Just an alias...
         return self.features
 
-    @cached_property
-    def num_labels(self):
-        return self._labeldf[self._class_label].nunique()
-
     @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
     def features(self):
         data = self.getline(self.skip - 1)
         data = [x.split('|')[0].upper().strip() for x in data]
 
         return data
-    
-    @property
-    def num_features(self):
-        return len(self.features)
 
     @cached_property
     def labels(self):
@@ -111,8 +116,56 @@ class GeneExpressionData(Dataset):
 
     @property
     def shape(self):
-        return (self.__len__, len(self.features))
-        
+        return (self.__len__(), len(self.features))
+
+# From: https://github.com/hcarlens/pytorch-tabular/blob/master/fast_tensor_data_loader.py
+class FastTensorDataLoader(DataLoader):
+    """
+    A DataLoader-like object for a set of tensors that can be much faster than
+    TensorDataset + DataLoader because dataloader grabs individual indices of
+    the dataset and calls cat (slow).
+    Source: https://discuss.pytorch.org/t/dataloader-much-slower-than-manual-batching/27014/6
+    """
+    def __init__(self, *tensors, batch_size=32, shuffle=False):
+        """
+        Initialize a FastTensorDataLoader.
+        :param *tensors: tensors to store. Must have the same length @ dim 0.
+        :param batch_size: batch size to load.
+        :param shuffle: if True, shuffle the data *in-place* whenever an
+            iterator is created out of this object.
+        :returns: A FastTensorDataLoader.
+        """
+        assert all(t.shape[0] == tensors[0].shape[0] for t in tensors)
+        self.tensors = tensors
+
+        self.dataset_len = self.tensors[0].shape[0]
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+
+        # Calculate # batches
+        n_batches, remainder = divmod(self.dataset_len, self.batch_size)
+        if remainder > 0:
+            n_batches += 1
+        self.n_batches = n_batches
+
+    def __iter__(self):
+        if self.shuffle:
+            r = torch.randperm(self.dataset_len)
+            self.tensors = [t[r] for t in self.tensors]
+        self.i = 0
+        return self
+
+    def __next__(self):
+        if self.i >= self.dataset_len:
+            raise StopIteration
+            
+        batch = tuple(t[self.i: self.i+self.batch_size] for t in self.tensors)
+        self.i += self.batch_size
+        return batch
+
+    def __len__(self):
+        return self.n_batches
+
 def clean_sample(sample, refgenes, currgenes):
     # currgenes and refgenes are already sorted
     # Passed from calculate_intersection
