@@ -119,6 +119,16 @@ class GeneExpressionData(Dataset):
     def shape(self):
         return (self.__len__(), len(self.features))
 
+    @cached_property 
+    def class_weights(self):
+        labels = self._labeldf.loc[:, self._class_label].values
+
+        return compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(labels),
+            y=labels
+        )
+
 # From: https://github.com/hcarlens/pytorch-tabular/blob/master/fast_tensor_data_loader.py
 class FastTensorDataLoader(DataLoader):
     """
@@ -168,7 +178,44 @@ class FastTensorDataLoader(DataLoader):
     def __len__(self):
         return self.n_batches
 
-def clean_sample(sample, refgenes, currgenes):
+def generate_loaders(
+    datafiles, 
+    labelfiles, 
+    batch_size, 
+    num_workers,
+
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    trainloaders, valloaders, testloaders = [], [], []
+
+    for datafile, labelfile in zip(datafiles, labelfiles):
+        train, val, test = generate_single_dataset(
+            datafile,
+            labelfile,
+            'Type', 
+            skip=3, 
+            index_col='cell', 
+            cast=True
+        )
+
+        trainloaders.append(
+            DataLoader(train, batch_size=batch_size, num_workers=num_workers)
+        )
+
+        valloaders.append(
+            DataLoader(val, batch_size=batch_size, num_workers=num_workers)
+        )
+
+        testloaders.append(
+            DataLoader(test, batch_size=batch_size, num_workers=num_workers)
+        )
+
+        return trainloaders, valloaders, testloaders
+
+def clean_sample(
+    sample, 
+    refgenes,
+    currgenes
+) -> np.ndarray:
     # currgenes and refgenes are already sorted
     # Passed from calculate_intersection
 
@@ -314,7 +361,7 @@ def _generate_split_dataset(
             class_label=class_label,
             skip=skip,
             cast=cast,
-            index_col=index_col
+            index_col=index_col,
         )
 
         datasets.append(subset)
