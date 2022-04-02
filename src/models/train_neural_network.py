@@ -15,6 +15,10 @@ import numpy as np
 import pytorch_lightning as pl
 import wandb 
 
+
+from tqdm import tqdm 
+import torch.nn as nn 
+import torch.optim as optim
 from pytorch_lightning.loggers import CometLogger, WandbLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import DataLoader
@@ -23,7 +27,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from helper import upload 
 from lib.neural import GeneClassifier
-from lib.data import GeneExpressionData, generate_datasets
+from lib.data import generate_datasets, clean_sample
 
 # Set all seeds for reproducibility
 torch.manual_seed(42)
@@ -155,6 +159,60 @@ def generate_trainer(
 
     return trainer, model, traindata, valdata 
 
+def train_loop(model, trainloaders, valloaders, refgenes):
+    wandb.init()
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+    wandb.watch(model, log_freq=100)
+
+    for epoch in range(100):  # loop over the dataset multiple times
+        running_loss = 0.0
+        
+        # Train loop
+        for trainidx, trainloader in enumerate(trainloaders):
+            model.train()
+            print(f'Training on {trainidx}')
+            
+            for i, data in enumerate(tqdm(trainloader)):
+                inputs, labels = data
+                # CLEAN INPUTS
+                inputs = clean_sample(inputs, refgenes, traindata[trainidx].columns)
+                # Forward pass ➡
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+
+                # Backward pass ⬅
+                optimizer.zero_grad()
+                loss.backward()
+
+                # Step with optimizer
+                optimizer.step()
+                
+                # print statistics
+                running_loss += loss.item()
+                if i % 10 == 0:    # print every 2000 mini-batches
+                    running_loss = 0.0
+                    wandb.log({"train_loss": loss})
+                    
+        # Validation loops 
+        for validx, valloader in enumerate(valloaders):
+            model.eval()
+            
+            for i, data in enumerate(tqdm(valloader)):
+                inputs, labels = data
+                inputs = clean_sample(inputs, refgenes, traindata[validx].columns)
+                
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                
+                running_loss += loss.item()
+                
+                if i % 10 == 0:
+                    wandb.log({"val_loss": loss})
+    
+print('Finished train/validation, calculating test error')
 def make_args() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser()

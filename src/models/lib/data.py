@@ -1,3 +1,4 @@
+from cProfile import label
 from multiprocessing.sharedctypes import Value
 from ssl import Options
 import linecache 
@@ -329,9 +330,9 @@ def generate_single_dataset(
     datafile: str,
     labelfile: str,
     class_label: str,
-    skip: str,
-    index_col: str, 
-    cast: str,
+    skip: int=2,
+    index_col: str='cell', 
+    cast: bool=True,
     test_prop=0.2,
 ) -> Tuple[Dataset, Dataset]:
     """
@@ -373,6 +374,10 @@ def generate_datasets(
     label_files: List[str],
     class_label: str,
     stratified=True,
+    skip: int=2,
+    index_col: str='cell', 
+    cast: bool=True,
+    test_prop=0.2
 ) -> Tuple[Dataset, Dataset, int, int, Tensor]:
     """
     Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
@@ -392,9 +397,13 @@ def generate_datasets(
 
     if stratified:
         train, test = _generate_stratified_dataset(
-            dataset_files=dataset_files,
+            dataset_files=dataset_files, 
             label_files=label_files,
             class_label=class_label,
+            skip=skip,
+            cast=cast,
+            index_col=index_col,
+            test_prop=test_prop
         )
     else: 
         train, test = _generate_split_dataset(
