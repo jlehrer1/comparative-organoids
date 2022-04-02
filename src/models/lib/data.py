@@ -152,13 +152,14 @@ class FastTensorDataLoader(DataLoader):
         if self.shuffle:
             r = torch.randperm(self.dataset_len)
             self.tensors = [t[r] for t in self.tensors]
+            
         self.i = 0
         return self
 
     def __next__(self):
         if self.i >= self.dataset_len:
             raise StopIteration
-            
+
         batch = tuple(t[self.i: self.i+self.batch_size] for t in self.tensors)
         self.i += self.batch_size
         return batch
@@ -197,7 +198,7 @@ def _dataset_class_weights(
     class_label: str,
 ) -> Tensor:
     """
-    Compute class weights for the entire l  abel set of N labels.
+    Compute class weights for the entire label set of N labels.
 
     Parameters:
     label_files: List of absolute paths to label files
@@ -323,6 +324,49 @@ def _generate_split_dataset(
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
     return train, test
+
+def generate_single_dataset(
+    datafile: str,
+    labelfile: str,
+    class_label: str,
+    skip: str,
+    index_col: str, 
+    cast: str,
+    test_prop=0.2,
+) -> Tuple[Dataset, Dataset]:
+    """
+    Generate a train/test split for the given datafile and labelfile.
+
+    Parameters:
+    datafile: Path to dataset csv file
+    labelfile: Path to label csv file 
+    class_label: Column (label) in labelfile to train on 
+
+    Returns:
+    Tuple[Dataset, Dataset]: Train/val/test set, respectively 
+    """
+
+    dataset = GeneExpressionData(
+        filename=datafile,
+        labelname=labelfile,
+        class_label=class_label,
+        skip=skip,
+        cast=cast,
+        index_col=index_col
+    )
+
+    # We have to do two splits for to generate train/test, then train --> train/val so we
+    # can return train/val/test
+
+    train_size = int((1. - test_prop) * len(dataset))
+    test_size = len(dataset) - train_size
+    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+    train_size = int((1. - test_prop) * len(dataset))
+    test_size = len(dataset) - train_size
+    train, val = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+    return train, val, test 
 
 def generate_datasets(
     dataset_files: List[str], 
