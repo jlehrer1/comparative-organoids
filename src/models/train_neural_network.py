@@ -24,6 +24,9 @@ from torch.utils.data import DataLoader
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from lib.train import generate_trainer
+from helper import seed_everything
+
+seed_everything(42)
 
 def make_args() -> argparse.ArgumentParser:
 

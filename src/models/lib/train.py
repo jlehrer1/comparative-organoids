@@ -1,12 +1,8 @@
 import random
 import sys
-import argparse
-import pathlib
 import os
-import ast
 from typing import *
 
-import comet_ml
 import pandas as pd 
 import torch
 import numpy as np
@@ -25,14 +21,11 @@ from torch.utils.data import DataLoader
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from helper import upload 
-from lib.neural import GeneClassifier
+from helper import upload, seed_everything
 from lib.data import generate_datasets, clean_sample
 
 # Set all seeds for reproducibility
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
+seed_everything(42)
 
 class UploadCallback(pl.callbacks.Callback):
     """Custom PyTorch callback for uploading model checkpoints to the braingeneers S3 bucket.

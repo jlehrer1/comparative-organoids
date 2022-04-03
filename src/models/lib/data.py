@@ -12,15 +12,16 @@ import pandas as pd
 import torch
 import numpy as np
 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
 from torch import Tensor 
 
-# Set all seeds for reproducibility
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
+import sys, os 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from helper import seed_everything
+seed_everything(42)
 
 class GeneExpressionData(Dataset):
     """
@@ -239,8 +240,8 @@ def _dataset_class_weights(
         class_weight='balanced',
     )).float()
 
-def _generate_stratified_dataset(
-    dataset_files: List[str], 
+def generate_datasets(
+    dataset_files: List[str],
     label_files: List[str],
     class_label: str,
     skip=3,
@@ -249,8 +250,8 @@ def _generate_stratified_dataset(
     index_col='cell',
 ) -> Tuple[Dataset, Dataset]:
     """
-    Generates train/val datasets with stratified label splitting. This means that the proportion of each class is the same 
-    in the training and validation set. 
+    Generates the COMBINED train/val/test datasets with stratified label splitting. 
+    This means that the proportion of each label is the same in the training, validation and test set. 
     
     Parameters:
     dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
@@ -259,11 +260,10 @@ def _generate_stratified_dataset(
     test_prop: Proportion of data to use as test set 
 
     Returns:
-    Tuple[Dataset, Dataset]: Training and validation datasets, respectively
+    Tuple[Dataset, Dataset, Dataset]: Training, validation and test datasets, respectively
     """
     
-    train_datasets = []
-    val_datasets = []
+    train_datasets, val_datasets, test_datasets = [], [], []
 
     for datafile, labelfile in zip(dataset_files, label_files):
         # Read in current labelfile
@@ -271,78 +271,26 @@ def _generate_stratified_dataset(
         
         # Make stratified split on labels
         trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
-        
-        # Generate train/test with stratified indices
-        trainset = GeneExpressionData(
-            filename=datafile, 
-            labelname=labelfile,
-            class_label=class_label,
-            indices=trainsplit.index,
-            skip=skip,
-            cast=cast,
-            index_col=index_col,
-        )
-        
-        valset = GeneExpressionData(
-            filename=datafile,
-            labelname=labelfile,
-            class_label=class_label,
-            indices=valsplit.index, 
-            skip=skip,
-            cast=cast,
-            index_col=index_col,
-        )
-        
-        train_datasets.append(trainset)
-        val_datasets.append(valset)
-    
-    train = torch.utils.data.ConcatDataset(train_datasets)
-    val = torch.utils.data.ConcatDataset(val_datasets)
+        trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
 
-    return train, val
+        for indices, data_list in zip([trainsplit, valsplit, testsplit], [train_datasets, val_datasets, test_datasets]):
+            data_list.append(
+                GeneExpressionData(
+                    filename=datafile, 
+                    labelname=labelfile,
+                    class_label=class_label,
+                    indices=indices.index,
+                    skip=skip,
+                    cast=cast,
+                    index_col=index_col,
+                )
+            )
 
-def _generate_split_dataset(
-    dataset_files: List[str], 
-    label_files: List[str],
-    class_label: str,
-    skip=3,
-    cast=True,
-    test_prop: float=0.2,
-    index_col='cell',
-) -> Tuple[Dataset, Dataset]:
+    train = ConcatDataset(train_datasets)
+    val = ConcatDataset(val_datasets)
+    test = ConcatDataset(test_datasets)
 
-    """
-    Generates train/val datasets WITHOUT stratified splitting.
-    
-    Parameters:
-    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
-    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
-    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
-
-    Returns:
-    Tuple[Dataset, Dataset]: Training and validation datasets, respectively
-    """
-
-    datasets = []
-
-    for datafile, labelfile in zip(dataset_files, label_files):
-        subset = GeneExpressionData(
-            filename=datafile,
-            labelname=labelfile,
-            class_label=class_label,
-            skip=skip,
-            cast=cast,
-            index_col=index_col,
-        )
-
-        datasets.append(subset)
-
-    dataset = torch.utils.data.ConcatDataset(datasets)
-    train_size = int((1. - test_prop) * len(dataset))
-    test_size = len(dataset) - train_size
-    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-    return train, test
+    return train, val, test
 
 def generate_single_dataset(
     datafile: str,
@@ -383,61 +331,12 @@ def generate_single_dataset(
     test_size = len(dataset) - train_size
     train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    train_size = int((1. - test_prop) * len(dataset))
-    test_size = len(dataset) - train_size
-    train, val = torch.utils.data.random_split(dataset, [train_size, test_size])
+    train_size = int((1. - test_prop) * len(train))
+    val_size = len(train) - train_size
+    train, val = torch.utils.data.random_split(train, [train_size, val_size])
 
     return train, val, test 
 
-def generate_datasets(
-    dataset_files: List[str], 
-    label_files: List[str],
-    class_label: str,
-    stratified=True,
-    skip: int=2,
-    index_col: str='cell', 
-    cast: bool=True,
-    test_prop=0.2
-) -> Tuple[Dataset, Dataset, int, int, Tensor]:
-    """
-    Generates the training / test set for the classifier, including input size and # of classes to be passed to the model object. 
-    The assumption with all passed label files is that the number of classes in each dataset is the same. 
-    Class labels are indexed from 0, so for N classes the labels are 0,...,N-1. 
-
-    Parameters:
-    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
-    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
-    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
-    stratified: bool=True: To return a stratified train/test split or not 
-
-    Returns:
-    Tuple[Dataset, Dataset, int, int, List[float]]: 
-    Returns training dataset, validation dataset, input tensor size, number of class labels, class_weights respectively
-    """
-
-    if stratified:
-        train, test = _generate_stratified_dataset(
-            dataset_files=dataset_files, 
-            label_files=label_files,
-            class_label=class_label,
-            skip=skip,
-            cast=cast,
-            index_col=index_col,
-            test_prop=test_prop
-        )
-    else: 
-        train, test = _generate_split_dataset(
-            dataset_files=dataset_files,
-            label_files=label_files,
-            class_label=class_label,
-        )
-
-    # Calculate input tensor size and # of class labels
-    input_size = len(train[0][0]) # Just consider the first sample for input shape
-    num_labels = max(pd.read_csv(label_files[0]).loc[:, class_label].values) + 1 # Always N classes labeled 0,...,N-1
-
-    return train, test, input_size, num_labels, _dataset_class_weights(label_files, class_label)
-    
 def generate_single_dataloader(
     datafile: str,
     labelfile: str,
@@ -477,22 +376,28 @@ def generate_loaders(
     normalize=False,
     batch_size=4, 
     num_workers=0,
-) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    trainloaders, valloaders, testloaders = [], [], []
+    collocate: bool=False, 
+) -> Union[Tuple[List[DataLoader], List[DataLoader], List[DataLoader]], Tuple[DataLoader, DataLoader, DataLoader]]:
 
-    for datafile, labelfile in zip(datafiles, labelfiles):
-        train, val, test = generate_single_dataloader(
-            datafile=datafile,
-            labelfile=labelfile,
-            class_label=class_label, 
-            skip=skip, 
-            index_col=index_col, 
-            cast=cast, 
-            normalize=normalize,
-        )
+    if collocate:
+        trainloaders, valloaders, testloaders = [], [], []
+        for datafile, labelfile in zip(datafiles, labelfiles):
+            train, val, test = generate_single_dataloader(
+                datafile=datafile,
+                labelfile=labelfile,
+                class_label=class_label, 
+                skip=skip, 
+                index_col=index_col, 
+                cast=cast, 
+                normalize=normalize,
+                batch_size=batch_size,
+                num_workers=num_workers,
+            )
 
-        trainloaders.append(train)
-        valloaders.append(val)
-        testloaders.append(test)
+            trainloaders.append(train)
+            valloaders.append(val)
+            testloaders.append(test)
 
-    return trainloaders, valloaders, testloaders
+        return trainloaders, valloaders, testloaders
+    else:
+

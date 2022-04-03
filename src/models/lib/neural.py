@@ -11,10 +11,13 @@ import pytorch_lightning as pl
 from torchmetrics.functional import accuracy, precision, recall 
 from pytorch_tabnet.tab_network import TabNet
 
+import sys, os 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from helper import seed_everything
+
 # Set all seeds for reproducibility
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
+seed_everything(42)
 
 class GeneClassifier(pl.LightningModule):
     def __init__(self, 

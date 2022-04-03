@@ -157,6 +157,12 @@ def primary_genes() -> list:
     return arr
 
 def gene_intersection() -> List[str]:
+    """
+    Calculates the intersection of all gene columns in our datafiles. 
+    
+    Returns:
+    List[str]: List of genes in all uppercase. This standard should be used across the codebase. 
+    """
     files = DATA_FILES_LIST
     files = [f'{file[:-4]}_T.csv' for file in files]
 
@@ -173,3 +179,21 @@ def gene_intersection() -> List[str]:
     unique = sorted(unique)
 
     return unique 
+
+def seed_everything(
+    seed: int
+) -> None:
+    """
+    Make all seeds in PyTorch deterministic for easier debugging.
+    """
+    import random, os
+    import numpy as np
+    import torch
+    
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True

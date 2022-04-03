@@ -20,11 +20,17 @@ from pytorch_lightning.loggers import CometLogger, WandbLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch.utils.data import DataLoader
 
+import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from neural import GeneClassifier
 from train import UploadCallback, seed_worker
 from data import generate_datasets
+
+from helper import seed_everything
+
+# Set all seeds for reproducibility
+seed_everything(42)
 
 def generate_trainer(
     here: str, 
