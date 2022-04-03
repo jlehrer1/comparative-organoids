@@ -15,9 +15,7 @@ from torchmetrics.functional import accuracy, f1_score, precision, recall
 from tqdm import tqdm 
 import torch.nn as nn 
 import torch.optim as optim
-from pytorch_lightning.loggers import CometLogger, WandbLogger
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from torch.utils.data import DataLoader
+from sklearn.utils.class_weight import compute_class_weight
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
@@ -234,3 +232,30 @@ def _inner_computation(
         running_loss = 0.0
     
     return running_loss, record
+
+def _dataset_class_weights(
+    labelfiles: List[str],
+    class_label: str,
+) -> torch.Tensor:
+    """
+    Compute class weights for the entire label set of N labels.
+
+    Parameters:
+    labelfiles: List of absolute paths to label files
+
+    Returns:
+    np.array: Array of class weights for classes 0,...,N-1
+    """
+
+    comb = []
+
+    for file in labelfiles:
+        comb.extend(
+            pd.read_csv(file).loc[:, class_label].values
+        )
+
+    return torch.from_numpy(compute_class_weight(
+        classes=np.unique(comb),
+        y=comb,
+        class_weight='balanced',
+    )).float()

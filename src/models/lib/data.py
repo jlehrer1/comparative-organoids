@@ -1,21 +1,15 @@
-from cProfile import label
-from multiprocessing.sharedctypes import Value
-from ssl import Options
 import linecache 
 import csv
 from typing import *
-import random
 from functools import cached_property
 
-import comet_ml
 import pandas as pd 
 import torch
 import numpy as np
 
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
-from torch import Tensor 
+from sklearn.utils.class_weight import compute_class_weight
 
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -46,33 +40,28 @@ class GeneExpressionData(Dataset):
         normalize=False,
     ):
         self.filename = filename
-        self.name = filename # alias 
-
-        if indices is None:
-            self._labeldf = pd.read_csv(labelname)
-        else:
-            self._labeldf = pd.read_csv(labelname).loc[indices, :]
-
-        self._total_data = 0
+        self.labelname = labelname # alias 
         self._class_label = class_label
         self._index_col = index_col 
-
         self.skip = skip
         self.cast = cast
         self.normalize = normalize 
+        self.indices = indices
+
+        if indices is None:
+            self._labeldf = pd.read_csv(labelname).reset_index(drop=True)
+        else:
+            self._labeldf = pd.read_csv(labelname).loc[indices, :].reset_index(drop=True)
 
     def __getitem__(self, idx):
-        # Get label
+        # Handle slicing 
         if isinstance(idx, slice):
             if idx.start is None or idx.stop is None:
                 raise ValueError(f"Error: Unlike other iterables, {self.__class__.__name__} does not support unbounded slicing since samples are being read as needed from disk, which may result in memory errors.")
 
             step = (1 if idx.step is None else idx.step)
             idxs = range(idx.start, idx.stop, step)
-
             return [self[i] for i in idxs]
-
-        label = self._labeldf.loc[idx, self._class_label]
 
         # The label dataframe contains both its natural integer index, as well as a "cell" index which contains the indices of the data that we 
         # haven't dropped. This is because some labels we don't want to use, i.e. the ones with "Exclude" or "Low Quality".
@@ -94,17 +83,12 @@ class GeneExpressionData(Dataset):
         if self.normalize:
             data = data / data.max()
 
+        label = self._labeldf.loc[idx, self._class_label]
+
         return data, label
 
     def __len__(self):
         return len(self._labeldf) # number of total samples 
-
-    def getline(self, num):
-        line = linecache.getline(self.filename, num)
-        csv_data = csv.reader([line])
-        data = [x for x in csv_data][0]
-        
-        return data 
 
     @property
     def columns(self): # Just an alias...
@@ -112,8 +96,8 @@ class GeneExpressionData(Dataset):
 
     @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
     def features(self):
-        data = self.getline(self.skip - 1)
-        data = [x.split('|')[0].upper().strip() for x in data]
+        data = self.getline(self.filename, self.skip - 1)
+        data = [x.split('|')[0].upper().strip() for x in data.split(',')]
 
         return data
 
@@ -213,49 +197,23 @@ def clean_sample(
 
     return torch.from_numpy(sample)
 
-def _dataset_class_weights(
-    label_files: List[str],
-    class_label: str,
-) -> Tensor:
-    """
-    Compute class weights for the entire label set of N labels.
-
-    Parameters:
-    label_files: List of absolute paths to label files
-
-    Returns:
-    np.array: Array of class weights for classes 0,...,N-1
-    """
-
-    comb = []
-
-    for file in label_files:
-        comb.extend(
-            pd.read_csv(file).loc[:, class_label].values
-        )
-
-    return torch.from_numpy(compute_class_weight(
-        classes=np.unique(comb),
-        y=comb,
-        class_weight='balanced',
-    )).float()
-
 def generate_datasets(
-    dataset_files: List[str],
-    label_files: List[str],
+    datafiles: List[str],
+    labelfiles: List[str],
     class_label: str,
     skip=3,
     cast=True,
     test_prop: float=0.2,
-    index_col='cell',
+    index_col: str='cell',
+    normalize: bool=False,
 ) -> Tuple[Dataset, Dataset]:
     """
     Generates the COMBINED train/val/test datasets with stratified label splitting. 
     This means that the proportion of each label is the same in the training, validation and test set. 
     
     Parameters:
-    dataset_files: List of absolute paths to csv files under data_path/ that define cell x expression matrices
-    label_files: List of absolute paths to csv files under data_path/ that define cell x class matrices
+    datafiles: List of absolute paths to csv files under data_path/ that define cell x expression matrices
+    labelfiles: List of absolute paths to csv files under data_path/ that define cell x class matrices
     class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
     test_prop: Proportion of data to use as test set 
 
@@ -265,7 +223,7 @@ def generate_datasets(
     
     train_datasets, val_datasets, test_datasets = [], [], []
 
-    for datafile, labelfile in zip(dataset_files, label_files):
+    for datafile, labelfile in zip(datafiles, labelfiles):
         # Read in current labelfile
         current_labels = pd.read_csv(labelfile).loc[:, class_label]
         
@@ -276,19 +234,27 @@ def generate_datasets(
         for indices, data_list in zip([trainsplit, valsplit, testsplit], [train_datasets, val_datasets, test_datasets]):
             data_list.append(
                 GeneExpressionData(
-                    filename=datafile, 
+                    filename=datafile,
                     labelname=labelfile,
                     class_label=class_label,
                     indices=indices.index,
                     skip=skip,
                     cast=cast,
                     index_col=index_col,
+                    normalize=normalize,
                 )
             )
 
-    train = ConcatDataset(train_datasets)
-    val = ConcatDataset(val_datasets)
-    test = ConcatDataset(test_datasets)
+    # Flexibility to generate single stratified dataset from a single file 
+    # Just in generate_single_dataset
+    if len(datafiles) > 1:
+        train = ConcatDataset(train_datasets)
+        val = ConcatDataset(val_datasets)
+        test = ConcatDataset(test_datasets)
+    else:
+        train = train_datasets[0]
+        val = val_datasets[0]
+        test = test_datasets[0]
 
     return train, val, test
 
@@ -301,7 +267,7 @@ def generate_single_dataset(
     cast: bool=True,
     test_prop=0.2,
     normalize=False,
-) -> Tuple[Dataset, Dataset]:
+) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Generate a train/test split for the given datafile and labelfile.
 
@@ -314,26 +280,16 @@ def generate_single_dataset(
     Tuple[Dataset, Dataset]: Train/val/test set, respectively 
     """
 
-    dataset = GeneExpressionData(
-        filename=datafile,
-        labelname=labelfile,
+    train, val, test = generate_datasets(
+        datafiles=[datafile],
+        labelfiles=[labelfile],
         class_label=class_label,
         skip=skip,
         cast=cast,
+        test_prop=test_prop,
         index_col=index_col,
-        normalize=normalize,
+        normalize=normalize
     )
-
-    # We have to do two splits for to generate train/test, then train --> train/val so we
-    # can return train/val/test
-
-    train_size = int((1. - test_prop) * len(dataset))
-    test_size = len(dataset) - train_size
-    train, test = torch.utils.data.random_split(dataset, [train_size, test_size])
-
-    train_size = int((1. - test_prop) * len(train))
-    val_size = len(train) - train_size
-    train, val = torch.utils.data.random_split(train, [train_size, val_size])
 
     return train, val, test 
 
@@ -379,10 +335,10 @@ def generate_loaders(
     collocate: bool=False, 
 ) -> Union[Tuple[List[DataLoader], List[DataLoader], List[DataLoader]], Tuple[DataLoader, DataLoader, DataLoader]]:
 
-    if collocate:
-        trainloaders, valloaders, testloaders = [], [], []
+    if not collocate:
+        train, val, test = [], [], []
         for datafile, labelfile in zip(datafiles, labelfiles):
-            train, val, test = generate_single_dataloader(
+            trainloader, valloader, testloader = generate_single_dataloader(
                 datafile=datafile,
                 labelfile=labelfile,
                 class_label=class_label, 
@@ -394,10 +350,27 @@ def generate_loaders(
                 num_workers=num_workers,
             )
 
-            trainloaders.append(train)
-            valloaders.append(val)
-            testloaders.append(test)
-
-        return trainloaders, valloaders, testloaders
+            train.append(trainloader)
+            val.append(valloader)
+            test.append(testloader)
     else:
+        train, val, test = generate_datasets(
+            datafiles=datafiles,
+            labelfiles=labelfiles,
+            class_label=class_label,
+            cast=cast,
+            skip=skip,
+            index_col=index_col,
+            normalize=normalize,
+        )
+
+        train = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
+        val = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
+        test = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
+
+    return train, val, test 
+
+
+
+
 
