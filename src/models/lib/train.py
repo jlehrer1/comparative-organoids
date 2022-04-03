@@ -66,21 +66,20 @@ def seed_worker(worker_id):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
-def train_loop(model, trainloaders, valloaders, refgenes):
+def train_loop(model, trainloaders, valloaders, testloaders, refgenes):
     wandb.init()
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
-    wandb.watch(model, log_freq=100)
-
     for epoch in range(100):  # loop over the dataset multiple times
+        print(f'On epoch {epoch}')
         running_loss = 0.0
         
         # Train loop
         for trainidx, trainloader in enumerate(trainloaders):
             model.train()
-            print(f'Working on train loader {trainidx}')
+            print(f'Training on {trainidx}')
             
             for i, data in enumerate(tqdm(trainloader)):
                 inputs, labels = data
@@ -99,13 +98,20 @@ def train_loop(model, trainloaders, valloaders, refgenes):
                 
                 # print statistics
                 running_loss += loss.item()
-                if i % 10 == 0:    # print every 2000 mini-batches
+                if i % 100 == 0:
                     running_loss = 0.0
+                    metric_results = calculate_metrics(
+                        outputs=outputs,
+                        labels=labels,
+                        append_str='train',
+                        num_classes=model.N_labels
+                    )
                     wandb.log({"train_loss": loss})
-
+                    wandb.log(metric_results)
+    
         # Validation loops 
         for validx, valloader in enumerate(valloaders):
-            print(f'Working on validation loader {validx}')
+            print(f'Evaluating on validation loader {validx}')
             model.eval()
             
             for i, data in enumerate(tqdm(valloader)):
@@ -117,9 +123,43 @@ def train_loop(model, trainloaders, valloaders, refgenes):
                 
                 running_loss += loss.item()
                 
-                if i % 10 == 0:
+                if i % 100 == 0:
+                    running_loss = 0.0
+                    metric_results = calculate_metrics(
+                        outputs=outputs,
+                        labels=labels,
+                        append_str='val',
+                        num_classes=model.N_labels
+                    )
+                    
                     wandb.log({"val_loss": loss})
+                    wandb.log(metric_results)
+        
     print('Finished train/validation, calculating test error')
+
+    for testidx, testloader in enumerate(testloaders):
+        print(f'Evaluating on test loader {testidx}')
+        model.eval()
+        
+        for i, data in enumerate(tqdm(testloader)):
+            inputs, labels = data
+            inputs = clean_sample(inputs, refgenes, valloader.dataset.dataset.columns)
+            
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+
+            if i % 100 == 0:
+                running_loss = 0.0
+                metric_results = calculate_metrics(
+                    outputs=outputs,
+                    labels=labels,
+                    append_str='test',
+                    num_classes=model.N_labels
+                )
+
+                wandb.log({"test_loss": loss})
+                wandb.log(metric_results)
+
 
 def calculate_metrics(
     outputs, 
