@@ -152,3 +152,4 @@ class GeneClassifier(pl.LightningModule):
         self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'val')
         return val_loss
+
