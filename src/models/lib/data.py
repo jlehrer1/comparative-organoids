@@ -39,9 +39,10 @@ class GeneExpressionData(Dataset):
         labelname: str, 
         class_label: str,
         indices: Iterable[int]=None,
-        skip=2,
+        skip=3,
         cast=True,
         index_col='cell',
+        normalize=False,
     ):
         self.filename = filename
         self.name = filename # alias 
@@ -57,6 +58,7 @@ class GeneExpressionData(Dataset):
 
         self.skip = skip
         self.cast = cast
+        self.normalize = normalize 
 
     def __getitem__(self, idx):
         # Get label
@@ -87,6 +89,9 @@ class GeneExpressionData(Dataset):
             data = torch.from_numpy(np.array(line.split(','), dtype=np.float32)).float()
         else:
             data = np.array(line.split(','))
+
+        if self.normalize:
+            data = data / data.max()
 
         return data, label
 
@@ -178,44 +183,11 @@ class FastTensorDataLoader(DataLoader):
     def __len__(self):
         return self.n_batches
 
-def generate_loaders(
-    datafiles, 
-    labelfiles, 
-    batch_size, 
-    num_workers,
-
-) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    trainloaders, valloaders, testloaders = [], [], []
-
-    for datafile, labelfile in zip(datafiles, labelfiles):
-        train, val, test = generate_single_dataset(
-            datafile,
-            labelfile,
-            'Type', 
-            skip=3, 
-            index_col='cell', 
-            cast=True
-        )
-
-        trainloaders.append(
-            DataLoader(train, batch_size=batch_size, num_workers=num_workers)
-        )
-
-        valloaders.append(
-            DataLoader(val, batch_size=batch_size, num_workers=num_workers)
-        )
-
-        testloaders.append(
-            DataLoader(test, batch_size=batch_size, num_workers=num_workers)
-        )
-
-        return trainloaders, valloaders, testloaders
-
 def clean_sample(
     sample, 
     refgenes,
     currgenes
-) -> np.ndarray:
+) -> torch.Tensor:
     # currgenes and refgenes are already sorted
     # Passed from calculate_intersection
 
@@ -232,14 +204,13 @@ def clean_sample(
     """
 
     intersection = np.intersect1d(currgenes, refgenes, return_indices=True)
-    indices = intersection[1]
+    indices = intersection[1] # List of indices in currgenes that equal refgenes 
     
     axis = (1 if sample.ndim == 2 else 0)
-    
     sample = np.sort(sample, axis=axis)
     sample = np.take(sample, indices, axis=axis)
 
-    return sample
+    return torch.from_numpy(sample)
 
 def _dataset_class_weights(
     label_files: List[str],
@@ -272,7 +243,7 @@ def _generate_stratified_dataset(
     dataset_files: List[str], 
     label_files: List[str],
     class_label: str,
-    skip=2,
+    skip=3,
     cast=True,
     test_prop: float=0.2,
     index_col='cell',
@@ -334,7 +305,7 @@ def _generate_split_dataset(
     dataset_files: List[str], 
     label_files: List[str],
     class_label: str,
-    skip=2,
+    skip=3,
     cast=True,
     test_prop: float=0.2,
     index_col='cell',
@@ -381,6 +352,7 @@ def generate_single_dataset(
     index_col: str='cell', 
     cast: bool=True,
     test_prop=0.2,
+    normalize=False,
 ) -> Tuple[Dataset, Dataset]:
     """
     Generate a train/test split for the given datafile and labelfile.
@@ -400,7 +372,8 @@ def generate_single_dataset(
         class_label=class_label,
         skip=skip,
         cast=cast,
-        index_col=index_col
+        index_col=index_col,
+        normalize=normalize,
     )
 
     # We have to do two splits for to generate train/test, then train --> train/val so we
@@ -465,3 +438,61 @@ def generate_datasets(
 
     return train, test, input_size, num_labels, _dataset_class_weights(label_files, class_label)
     
+def generate_single_dataloader(
+    datafile: str,
+    labelfile: str,
+    class_label: str,
+    skip: int=2,
+    index_col: str='cell', 
+    cast: bool=True,
+    test_prop=0.2,
+    normalize=False,
+    batch_size=4,
+    num_workers=0
+) -> DataLoader:
+    train, val, test = generate_single_dataset(
+        datafile,
+        labelfile,
+        class_label,
+        skip,
+        index_col,
+        cast,
+        test_prop,
+        normalize,
+    )
+
+    train = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
+    val = DataLoader(val, batch_size=batch_size, num_workers=num_workers)
+    test = DataLoader(test, batch_size=batch_size, num_workers=num_workers)
+
+    return train, val, test 
+
+def generate_loaders(
+    datafiles, 
+    labelfiles,
+    class_label,
+    cast=True,
+    skip=3,
+    index_col='cell',
+    normalize=False,
+    batch_size=4, 
+    num_workers=0,
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    trainloaders, valloaders, testloaders = [], [], []
+
+    for datafile, labelfile in zip(datafiles, labelfiles):
+        train, val, test = generate_single_dataloader(
+            datafile=datafile,
+            labelfile=labelfile,
+            class_label=class_label, 
+            skip=skip, 
+            index_col=index_col, 
+            cast=cast, 
+            normalize=normalize,
+        )
+
+        trainloaders.append(train)
+        valloaders.append(val)
+        testloaders.append(test)
+
+    return trainloaders, valloaders, testloaders

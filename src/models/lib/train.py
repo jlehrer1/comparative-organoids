@@ -160,7 +160,6 @@ def train_loop(model, trainloaders, valloaders, testloaders, refgenes):
                 wandb.log({"test_loss": loss})
                 wandb.log(metric_results)
 
-
 def calculate_metrics(
     outputs, 
     labels,
