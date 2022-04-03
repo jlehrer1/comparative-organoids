@@ -161,11 +161,13 @@ def train_loop(model, trainloaders, valloaders, testloaders, refgenes):
                 wandb.log(metric_results)
 
 def calculate_metrics(
-    outputs, 
-    labels,
-    num_classes,
-    append_str='',
+    outputs: torch.Tensor, 
+    labels: torch.Tensor,
+    num_classes: int,
+    append_str: str='',
+    subset: List[str]=None,
 ) -> Dict[str, float]:
+
     metrics = {
         'micro_accuracy': partial(accuracy, average='micro', num_classes=num_classes),
         'macro_accuracy': partial(accuracy, average='macro', num_classes=num_classes),
@@ -175,8 +177,12 @@ def calculate_metrics(
         'recall': recall,
     }
     results = {}
-    
-    for name, metric in metrics.items():
+
+    subset = ([subset] if isinstance(subset, str) else subset)
+    subset = (metrics.keys() if subset is None else subset)
+
+    for name in subset:
+        metric = metrics[name]
         res = metric(
             preds=outputs,
             target=labels,
@@ -185,3 +191,53 @@ def calculate_metrics(
         results[f"{name}{f'_{append_str}' if append_str else ''}"] = res
     
     return results 
+
+def _inner_computation(
+    data,
+    model, 
+    optimizer,
+    criterion,
+    i, 
+    running_loss,
+    refgenes,
+    currgenes,
+    mode=['train', 'val', 'test'],
+    wandb=None,
+    record=None,
+    quiet=True,
+):
+    inputs, labels = data
+    inputs = clean_sample(inputs, refgenes, currgenes)
+    outputs, M_loss = model(inputs)
+    loss = criterion(outputs, labels)
+    
+    if mode == 'train':
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    running_loss += loss.item()
+
+    if i % 100 == 0:
+        running_loss = running_loss / 100
+        metric_results = calculate_metrics(
+            outputs=outputs,
+            labels=labels,
+            append_str=mode,
+            num_classes=model.output_dim
+        )
+        
+        if record is not None:
+            record.append(running_loss)
+            
+        if wandb is not None:
+            wandb.log({f"{mode}_loss": loss})
+            wandb.log(metric_results)
+            
+        if not quiet:
+            print(metric_results)
+        print(f'{mode} loss is {running_loss}')
+            
+        running_loss = 0.0
+    
+    return running_loss, record

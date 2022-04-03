@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from torchmetrics.functional import accuracy, precision, recall 
+from pytorch_tabnet.tab_network import TabNet
 
 # Set all seeds for reproducibility
 torch.manual_seed(42)
@@ -17,8 +18,8 @@ random.seed(42)
 
 class GeneClassifier(pl.LightningModule):
     def __init__(self, 
-        N_features: int, 
-        N_labels: int, 
+        input_dim: int, 
+        output_dim: int, 
         weights: List[torch.Tensor]=None,
         params: Dict[str, float]={
             'width': 1024,
@@ -39,8 +40,8 @@ class GeneClassifier(pl.LightningModule):
 
         Parameters:
 
-        N_features: Number of features in the inpute matrix 
-        N_labels: Number of classes
+        input_dim: Number of features in the inpute matrix 
+        output_dim: Number of classes
         weights: Weights to use in loss calculation to account for imbalance in class size 
         params: Dictionary of hyperparameters to use. Must include width, layers, lr, momentum, weight_decay
         metrics: Dictionary of metrics to log, where keys are metric names and values are torchmetrics.functional methods
@@ -49,7 +50,7 @@ class GeneClassifier(pl.LightningModule):
 
         super(GeneClassifier, self).__init__()
 
-        print(f'Model initialized. {N_features = }, {N_labels = }. Metrics are {metrics} and {weighted_metrics = }')
+        print(f'Model initialized. {input_dim = }, {output_dim = }. Metrics are {metrics} and {weighted_metrics = }')
 
         # save metrics for logging at each step
         self.metrics = metrics
@@ -71,8 +72,8 @@ class GeneClassifier(pl.LightningModule):
         self.weights = weights
 
         # Save input/output size, also for metric calculation 
-        self.N_features = N_features
-        self.N_labels = N_labels
+        self.input_dim = input_dim
+        self.output_dim = output_dim
 
         # Generate layers based on width and number of layers 
         layers = self.layers*[
@@ -85,9 +86,9 @@ class GeneClassifier(pl.LightningModule):
         # Generate feedforward stack 
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(N_features, self.width),
+            nn.Linear(input_dim, self.width),
             *layers,
-            nn.Linear(self.width, N_labels),
+            nn.Linear(self.width, output_dim),
         )
 
     def forward(self, x):
@@ -115,7 +116,7 @@ class GeneClassifier(pl.LightningModule):
     def _compute_metrics(self, y_hat, y, tag, on_epoch=True, on_step=False):
         for name, metric in self.metrics.items():
             if not self.weighted_metrics: # We dont consider class support in calculation
-                val = metric(y_hat, y, average='weighted', num_classes=self.N_labels)
+                val = metric(y_hat, y, average='weighted', num_classes=self.output_dim)
                 self.log(
                     f"weighted_{tag}_{name}", 
                     val, 
@@ -153,3 +154,14 @@ class GeneClassifier(pl.LightningModule):
         self._compute_metrics(y_hat, y, 'val')
         return val_loss
 
+class TabNetGeneClassifier(TabNet):
+    """
+    Just a simple wrapper to only return the regular output instead the output and M_loss as defined in the tabnet paper.
+    This allows me to use a single train/val/test loop for both models. 
+    """
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def forward(self, x):
+        out, _ = super().forward(x)
+        return out

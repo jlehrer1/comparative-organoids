@@ -99,8 +99,8 @@ def generate_trainer(
     )
 
     model = GeneClassifier(
-        N_features=input_size,
-        N_labels=num_labels,
+        input_dim=input_size,
+        output_dim=num_labels,
         weights=class_weights,
         params=params,
         weighted_metrics=weighted_metrics,
