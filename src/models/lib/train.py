@@ -57,25 +57,28 @@ def seed_worker(worker_id):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
-def train_loop(model, trainloaders, valloaders, testloaders, refgenes):
+def train_val_loop(
+    model, 
+    trainloaders, 
+    valloaders, 
+    refgenes,
+    criterion,
+    optimizer,
+    mod,
+):
     wandb.init()
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-
-    for epoch in range(100):  # loop over the dataset multiple times
-        print(f'On epoch {epoch}')
+    wandb.watch(model)
+    for epoch in range(1000):  # loop over the dataset multiple times
+        print(f'{epoch = }')
         running_loss = 0.0
-        
+        epoch_loss = 0.0
         # Train loop
-        for trainidx, trainloader in enumerate(trainloaders):
-            model.train()
-            print(f'Training on {trainidx}')
-            
-            for i, data in enumerate(tqdm(trainloader)):
+        model.train()
+        for train in trainloaders:
+            for i, data in enumerate(train):
                 inputs, labels = data
                 # CLEAN INPUTS
-                inputs = clean_sample(inputs, refgenes, trainloader.dataset.dataset.columns)
+                inputs = clean_sample(inputs, refgenes, train.dataset.columns)
                 # Forward pass ➡
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
@@ -86,70 +89,99 @@ def train_loop(model, trainloaders, valloaders, testloaders, refgenes):
 
                 # Step with optimizer
                 optimizer.step()
-                
+
                 # print statistics
                 running_loss += loss.item()
-                if i % 100 == 0:
-                    running_loss = 0.0
+                epoch_loss += loss.item()
+
+
+                if i % mod == 0: # record every 2000 mini batches 
                     metric_results = calculate_metrics(
                         outputs=outputs,
                         labels=labels,
                         append_str='train',
-                        num_classes=model.N_labels
+                        num_classes=model.output_dim,
+                        subset='weighted_accuracy',
                     )
-                    wandb.log({"train_loss": loss})
+
                     wandb.log(metric_results)
-    
-        # Validation loops 
-        for validx, valloader in enumerate(valloaders):
-            print(f'Evaluating on validation loader {validx}')
-            model.eval()
-            
-            for i, data in enumerate(tqdm(valloader)):
-                inputs, labels = data
-                inputs = clean_sample(inputs, refgenes, valloader.dataset.dataset.columns)
+                    running_loss = running_loss / mod
+                    wandb.log({f"batch_train_loss": loss})
+
+                    running_loss = 0.0
                 
+        wandb.log({f"epoch_train_loss": epoch_loss / len(train)})
+        
+        model.eval()
+        with torch.no_grad(): # save memory but not computing gradients 
+            running_loss = 0.0
+            epoch_loss = 0.0
+            
+            for val in valloaders:
+                for i, data in enumerate(val):
+                    inputs, labels = data
+                    # CLEAN INPUTS
+                    inputs = clean_sample(inputs, refgenes, val.dataset.columns)
+                    # Forward pass ➡
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+
+                    # print statistics
+                    running_loss += loss.item()
+                    epoch_loss += loss.item()
+
+                    if i % mod == 0: #every 2000 mini batches 
+                        running_loss = running_loss / mod
+                        wandb.log({"val_loss": loss})
+                        running_loss = 0.0
+
+                        metric_results = calculate_metrics(
+                            outputs=outputs,
+                            labels=labels,
+                            num_classes=model.output_dim,
+                            subset='weighted_accuracy',
+                            append_str='val',
+                        )
+
+                    wandb.log(metric_results)
+        
+            wandb.log({f"epoch_val_loss": epoch_loss / len(train)})
+
+def test_loop(
+    model,
+    testloaders,
+    refgenes,
+    criterion,
+    mod,
+):
+    model.eval()
+    
+    with torch.no_grad():
+        for test in testloaders:
+            running_loss = 0.0
+            for i, data in enumerate(test):
+                inputs, labels = data
+                # CLEAN INPUTS
+                inputs = clean_sample(inputs, refgenes, test.dataset.columns)
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
-                
+
+                # print statistics
                 running_loss += loss.item()
-                
-                if i % 100 == 0:
+                if i % mod == 0: #every 2000 mini batches 
+                    running_loss = running_loss / mod
+                    wandb.log({"test_loss": loss})
                     running_loss = 0.0
+
                     metric_results = calculate_metrics(
                         outputs=outputs,
                         labels=labels,
-                        append_str='val',
-                        num_classes=model.N_labels
+                        num_classes=model.output_dim,
+                        subset='weighted_accuracy',
+                        append_str='test',
                     )
-                    
-                    wandb.log({"val_loss": loss})
+
                     wandb.log(metric_results)
-        
-    print('Finished train/validation, calculating test error')
-
-    for testidx, testloader in enumerate(testloaders):
-        print(f'Evaluating on test loader {testidx}')
-        model.eval()
-        
-        for i, data in enumerate(tqdm(testloader)):
-            inputs, labels = data
-            inputs = clean_sample(inputs, refgenes, valloader.dataset.dataset.columns)
-            
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-
-            if i % 100 == 0:
-                running_loss = 0.0
-                metric_results = calculate_metrics(
-                    outputs=outputs,
-                    labels=labels,
-                    append_str='test',
-                    num_classes=model.N_labels
-                )
-
-                wandb.log({"test_loss": loss})
-                wandb.log(metric_results)
 
 def calculate_metrics(
     outputs: torch.Tensor, 
@@ -259,3 +291,9 @@ def total_class_weights(
         y=comb,
         class_weight='balanced',
     )).float()
+
+def num_labels(labelfiles, class_label):
+    val = []
+    for file in labelfiles:
+        val.append(pd.read_csv(file).loc[:, class_label].values.max())
+    return max(val)
