@@ -96,7 +96,7 @@ class GeneExpressionData(Dataset):
 
     @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
     def features(self):
-        data = self.getline(self.filename, self.skip - 1)
+        data = linecache.getline(self.filename, self.skip - 1)
         data = [x.split('|')[0].upper().strip() for x in data.split(',')]
 
         return data
@@ -117,6 +117,20 @@ class GeneExpressionData(Dataset):
             class_weight='balanced',
             classes=np.unique(labels),
             y=labels
+        )
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(filename={self.filename}, labelname={self.labelname})"
+
+    def __str__(self) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"(filename={self.filename}, "
+            f"labelname={self.labelname}, "
+            f"skip={self.skip}, "
+            f"cast={self.cast}, "
+            f"normalize={self.normalize}, "
+            f"indices={self.indices})"
         )
 
 # From: https://github.com/hcarlens/pytorch-tabular/blob/master/fast_tensor_data_loader.py

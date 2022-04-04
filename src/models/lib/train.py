@@ -233,7 +233,7 @@ def _inner_computation(
     
     return running_loss, record
 
-def _dataset_class_weights(
+def total_class_weights(
     labelfiles: List[str],
     class_label: str,
 ) -> torch.Tensor:
