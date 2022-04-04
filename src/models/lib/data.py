@@ -14,7 +14,8 @@ from sklearn.utils.class_weight import compute_class_weight
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from helper import seed_everything
+from helper import seed_everything, gene_intersection
+
 seed_everything(42)
 
 class GeneExpressionData(Dataset):
@@ -27,7 +28,6 @@ class GeneExpressionData(Dataset):
     class_label: Label to train on, must be in labelname file 
     indices=None: List of indices to use in dataset. If None, all indices given in labelname are used.
     """
-
     def __init__(
         self, 
         filename: str, 
@@ -38,6 +38,7 @@ class GeneExpressionData(Dataset):
         cast=True,
         index_col='cell',
         normalize=False,
+        map_genes=False,
     ):
         self.filename = filename
         self.labelname = labelname # alias 
@@ -47,6 +48,9 @@ class GeneExpressionData(Dataset):
         self.cast = cast
         self.normalize = normalize 
         self.indices = indices
+        self.map_genes = map_genes
+
+        self.refgenes = (gene_intersection() if map_genes else None)
 
         if indices is None:
             self._labeldf = pd.read_csv(labelname).reset_index(drop=True)
@@ -63,11 +67,6 @@ class GeneExpressionData(Dataset):
             idxs = range(idx.start, idx.stop, step)
             return [self[i] for i in idxs]
 
-        # The label dataframe contains both its natural integer index, as well as a "cell" index which contains the indices of the data that we 
-        # haven't dropped. This is because some labels we don't want to use, i.e. the ones with "Exclude" or "Low Quality".
-        # Since we are grabbing lines from a raw file, we have to keep the original indices of interest, even though the length
-        # of the label dataframe is smaller than the original index
-
         # The actual line in the datafile to get, corresponding to the number in the self._index_col values 
         data_index = self._labeldf.loc[idx, self._index_col]
 
@@ -82,6 +81,9 @@ class GeneExpressionData(Dataset):
 
         if self.normalize:
             data = data / data.max()
+
+        if self.map_genes:
+            data = clean_sample(data, self.refgenes, self.columns)
 
         label = self._labeldf.loc[idx, self._class_label]
 
@@ -215,11 +217,9 @@ def generate_datasets(
     datafiles: List[str],
     labelfiles: List[str],
     class_label: str,
-    skip=3,
-    cast=True,
     test_prop: float=0.2,
-    index_col: str='cell',
-    normalize: bool=False,
+    *args,
+    **kwargs,
 ) -> Tuple[Dataset, Dataset]:
     """
     Generates the COMBINED train/val/test datasets with stratified label splitting. 
@@ -252,10 +252,8 @@ def generate_datasets(
                     labelname=labelfile,
                     class_label=class_label,
                     indices=indices.index,
-                    skip=skip,
-                    cast=cast,
-                    index_col=index_col,
-                    normalize=normalize,
+                    *args,
+                    **kwargs,
                 )
             )
 
@@ -276,11 +274,9 @@ def generate_single_dataset(
     datafile: str,
     labelfile: str,
     class_label: str,
-    skip: int=2,
-    index_col: str='cell', 
-    cast: bool=True,
     test_prop=0.2,
-    normalize=False,
+    *args,
+    **kwargs,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
     Generate a train/test split for the given datafile and labelfile.
@@ -298,11 +294,9 @@ def generate_single_dataset(
         datafiles=[datafile],
         labelfiles=[labelfile],
         class_label=class_label,
-        skip=skip,
-        cast=cast,
         test_prop=test_prop,
-        index_col=index_col,
-        normalize=normalize
+        *args,
+        **kwargs,
     )
 
     return train, val, test 
@@ -311,23 +305,19 @@ def generate_single_dataloader(
     datafile: str,
     labelfile: str,
     class_label: str,
-    skip: int=2,
-    index_col: str='cell', 
-    cast: bool=True,
     test_prop=0.2,
-    normalize=False,
     batch_size=4,
-    num_workers=0
+    num_workers=0,
+    *args,
+    **kwargs,
 ) -> DataLoader:
     train, val, test = generate_single_dataset(
-        datafile,
-        labelfile,
-        class_label,
-        skip,
-        index_col,
-        cast,
-        test_prop,
-        normalize,
+        datafile=datafile,
+        labelfile=labelfile,
+        class_label=class_label,
+        test_prop=test_prop,
+        *args,
+        **kwargs 
     )
 
     train = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
@@ -337,16 +327,14 @@ def generate_single_dataloader(
     return train, val, test 
 
 def generate_loaders(
-    datafiles, 
-    labelfiles,
-    class_label,
-    cast=True,
-    skip=3,
-    index_col='cell',
-    normalize=False,
-    batch_size=4, 
-    num_workers=0,
+    datafiles: List[str], 
+    labelfiles: List[str],
+    class_label: str,
+    batch_size: int=4, 
+    num_workers: int=0,
     collocate: bool=False, 
+    *args,
+    **kwargs,
 ) -> Union[Tuple[List[DataLoader], List[DataLoader], List[DataLoader]], Tuple[DataLoader, DataLoader, DataLoader]]:
 
     if not collocate:
@@ -356,12 +344,10 @@ def generate_loaders(
                 datafile=datafile,
                 labelfile=labelfile,
                 class_label=class_label, 
-                skip=skip, 
-                index_col=index_col, 
-                cast=cast, 
-                normalize=normalize,
                 batch_size=batch_size,
                 num_workers=num_workers,
+                *args,
+                **kwargs
             )
 
             train.append(trainloader)
@@ -372,10 +358,8 @@ def generate_loaders(
             datafiles=datafiles,
             labelfiles=labelfiles,
             class_label=class_label,
-            cast=cast,
-            skip=skip,
-            index_col=index_col,
-            normalize=normalize,
+            *args,
+            **kwargs,
         )
 
         train = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
