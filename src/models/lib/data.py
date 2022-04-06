@@ -1,6 +1,7 @@
 import linecache 
 import csv
 from typing import *
+import functools 
 from functools import cached_property
 
 import pandas as pd 
@@ -10,7 +11,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-import pytorch_lighting as pl 
+import pytorch_lightning as pl 
 
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -136,7 +137,7 @@ class GeneExpressionData(Dataset):
             f"indices={self.indices})"
         )
 
-class SampleLoader(torch.utils.data.DataLoader):
+class SampleLoader(DataLoader):
     def __init__(self, refgenes, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.refgenes = refgenes
@@ -145,6 +146,16 @@ class SampleLoader(torch.utils.data.DataLoader):
     def __iter__(self):
         for batch in super().__iter__():
             yield clean_sample(batch[0], self.refgenes, self.currgenes), batch[1]
+
+def custom_collate(sample, refgenes, currgenes):
+    data = clean_sample(torch.stack([x[0] for x in sample]), refgenes, currgenes)
+    labels = torch.tensor([x[1] for x in sample])
+    return data, labels
+
+class CollateLoader(torch.utils.data.DataLoader):
+    def __init__(self, refgenes, currgenes, *args, **kwargs):
+        collate_fn = functools.partial(custom_collate, refgenes=refgenes, currgenes=currgenes)
+        super().__init__(collate_fn = collate_fn, *args, **kwargs)
 
 class GeneDataModule(pl.LightningModule):
     def __init__(
@@ -321,6 +332,7 @@ def generate_single_dataloader(
     datafile: str,
     labelfile: str,
     class_label: str,
+    refgenes: List[str],
     test_prop=0.2,
     batch_size=4,
     num_workers=0,
@@ -336,9 +348,29 @@ def generate_single_dataloader(
         **kwargs 
     )
 
-    train = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
-    val = DataLoader(val, batch_size=batch_size, num_workers=num_workers)
-    test = DataLoader(test, batch_size=batch_size, num_workers=num_workers)
+    train = CollateLoader(
+        dataset=train, 
+        refgenes=refgenes,
+        currgenes=train.columns,
+        batch_size=batch_size, 
+        num_workers=num_workers,
+    )
+
+    val = CollateLoader(
+        dataset=val, 
+        refgenes=refgenes,
+        currgenes=val.columns,
+        batch_size=batch_size, 
+        num_workers=num_workers,
+    )
+
+    test = CollateLoader(
+        dataset=test, 
+        refgenes=refgenes,
+        currgenes=val.columns,
+        batch_size=batch_size, 
+        num_workers=num_workers,
+    )
 
     return train, val, test 
 
@@ -346,6 +378,7 @@ def generate_loaders(
     datafiles: List[str], 
     labelfiles: List[str],
     class_label: str,
+    refgenes: List[str],
     batch_size: int=4, 
     num_workers: int=0,
     collocate: bool=False, 
@@ -360,6 +393,7 @@ def generate_loaders(
                 datafile=datafile,
                 labelfile=labelfile,
                 class_label=class_label, 
+                refgenes=refgenes,
                 batch_size=batch_size,
                 num_workers=num_workers,
                 *args,
@@ -378,9 +412,26 @@ def generate_loaders(
             **kwargs,
         )
 
-        train = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
-        val = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
-        test = DataLoader(train, batch_size=batch_size, num_workers=num_workers)
+        train = CollateLoader(
+            dataset=train, 
+            refgenes=refgenes,
+            batch_size=batch_size, 
+            num_workers=num_workers
+        )
+
+        val = CollateLoader(
+            dataset=train, 
+            refgenes=refgenes,
+            batch_size=batch_size, 
+            num_workers=num_workers
+        )
+
+        test = CollateLoader(
+            dataset=train, 
+            refgenes=refgenes,
+            batch_size=batch_size, 
+            num_workers=num_workers
+        )
 
     return train, val, test 
 

@@ -43,7 +43,6 @@ class GeneClassifier(pl.LightningModule):
         Initialize the gene classifier neural network
 
         Parameters:
-
         input_dim: Number of features in the inpute matrix 
         output_dim: Number of classes
         weights: Weights to use in loss calculation to account for imbalance in class size 
@@ -52,9 +51,8 @@ class GeneClassifier(pl.LightningModule):
         weighted_metrics: If True, use class-weighted calculation in metrics. Otherwise, use default 'micro' calculation.
         """
 
-        super(GeneClassifier, self).__init__()
-
-        print(f'Model initialized. {input_dim = }, {output_dim = }. Metrics are {metrics} and {weighted_metrics.keys() = }')
+        super().__init__()
+        print(f'Model initialized. {input_dim = }, {output_dim = }. Metrics are {metrics.keys()} and {weighted_metrics = }')
 
         # save metrics for logging at each step
         self.metrics = metrics
@@ -141,7 +139,7 @@ class GeneClassifier(pl.LightningModule):
                     logger=True,
                 )
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, dataset_idx):
         x, y = batch
 
         y_hat = self(x)
@@ -152,7 +150,7 @@ class GeneClassifier(pl.LightningModule):
 
         return loss
     
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, dataset_idx):
         x, y = batch
         y_hat = self(x)
         val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
@@ -169,6 +167,7 @@ class TabNetGeneClassifier(TabNet):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+    # Don't need extra sparsity. See TabNet paper/repository for more information
     def forward(self, x):
         out, _ = super().forward(x)
         return out
