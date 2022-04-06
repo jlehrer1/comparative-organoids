@@ -10,6 +10,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+import pytorch_lighting as pl 
 
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -144,6 +145,60 @@ class SampleLoader(torch.utils.data.DataLoader):
     def __iter__(self):
         for batch in super().__iter__():
             yield clean_sample(batch[0], self.refgenes, self.currgenes), batch[1]
+
+class GeneDataModule(pl.LightningModule):
+    def __init__(
+        self, 
+        datafiles: List[str],
+        labelfiles: List[str],
+        class_label: str,
+        batch_size: int=16,
+        num_workers=32,
+        *args,
+        **kwargs,
+    ):
+        super().__init__()
+        
+        self.datafiles = datafiles
+        self.labelfiles = labelfiles
+        self.class_label = class_label
+        
+        self.num_workers = num_workers
+        self.batch_size = batch_size
+        
+        self.trainloaders = []
+        self.valloaders = []
+        self.testloaders = []
+        
+        self.args = args,
+        self.kwargs = kwargs,
+    
+    def prepare_data(self):
+        # Download data from S3 here 
+        pass 
+    
+    def setup(self, stage: Optional[str] = None):
+        for datafile, labelfile in zip(self.datafiles, self.labelfiles):
+            train, val, test = generate_single_dataloader(
+                datafile=datafile,
+                labelfile=labelfile,
+                class_lable=self.class_label,
+                *self.args,
+                **self.kwargs,
+            )
+            
+            self.trainloaders.append(train)
+            self.valloaders.append(val)
+            self.testloaders.append(test)
+            
+    def train_dataloader(self):
+        return self.trainloaders
+
+    def val_dataloader(self):
+        return self.valloaders
+
+    def test_dataloader(self):
+        return self.testloaders
 
 def clean_sample(
     sample, 

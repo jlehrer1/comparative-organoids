@@ -37,6 +37,7 @@ class GeneClassifier(pl.LightningModule):
             'recall': recall,
         },
         weighted_metrics=False,
+        model=None, 
     ):
         """
         Initialize the gene classifier neural network
@@ -53,7 +54,7 @@ class GeneClassifier(pl.LightningModule):
 
         super(GeneClassifier, self).__init__()
 
-        print(f'Model initialized. {input_dim = }, {output_dim = }. Metrics are {metrics} and {weighted_metrics = }')
+        print(f'Model initialized. {input_dim = }, {output_dim = }. Metrics are {metrics} and {weighted_metrics.keys() = }')
 
         # save metrics for logging at each step
         self.metrics = metrics
@@ -79,25 +80,28 @@ class GeneClassifier(pl.LightningModule):
         self.output_dim = output_dim
 
         # Generate layers based on width and number of layers 
-        layers = self.layers*[
-            nn.Linear(self.width, self.width),
-            nn.ReLU(),
-            # nn.Dropout(0.25),
-            nn.BatchNorm1d(self.width),
-        ]
+        if model is not None:
+            self.model = model 
+        else:
+            layers = self.layers*[
+                nn.Linear(self.width, self.width),
+                nn.ReLU(),
+                # nn.Dropout(0.25),
+                nn.BatchNorm1d(self.width),
+            ]
 
-        # Generate feedforward stack 
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_dim, self.width),
-            *layers,
-            nn.Linear(self.width, output_dim),
-        )
+            # Generate feedforward stack 
+            self.flatten = nn.Flatten()
+            self.linear_relu_stack = nn.Sequential(
+                nn.Linear(input_dim, self.width),
+                *layers,
+                nn.Linear(self.width, output_dim),
+            )
 
     def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+        return (
+            self.model(x) if self.model else self.linear_relu_stack(self.flatten(x))
+        )
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(
