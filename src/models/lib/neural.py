@@ -111,12 +111,12 @@ class GeneClassifier(pl.LightningModule):
 
         return optimizer
 
-    def on_train_start(self):
-        self.logger.log_hyperparams(self.width)
-        self.logger.log_hyperparams(self.layers)
-        self.logger.log_hyperparams(self.lr)
-        self.logger.log_hyperparams(self.momentum)
-        self.logger.log_hyperparams(self.weight_decay)
+    # def on_train_start(self):
+    #     self.logger.log_hyperparams(self.width)
+    #     self.logger.log_hyperparams(self.layers)
+    #     self.logger.log_hyperparams(self.lr)
+    #     self.logger.log_hyperparams(self.momentum)
+    #     self.logger.log_hyperparams(self.weight_decay)
 
     def _compute_metrics(self, y_hat, y, tag, on_epoch=True, on_step=False):
         for name, metric in self.metrics.items():
