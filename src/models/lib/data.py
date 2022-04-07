@@ -214,7 +214,7 @@ class GeneDataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return self.testloaders
-        
+
 def clean_sample(
     sample, 
     refgenes,

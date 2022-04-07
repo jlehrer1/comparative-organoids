@@ -20,26 +20,7 @@ from helper import seed_everything
 seed_everything(42)
 
 class GeneClassifier(pl.LightningModule):
-    def __init__(self, 
-        input_dim: int, 
-        output_dim: int, 
-        weights: List[torch.Tensor]=None,
-        params: Dict[str, float]={
-            'width': 1024,
-            'layers': 2,
-            'lr': 0.001,
-            'momentum': 0,
-            'weight_decay': 0
-        },
-        metrics: Dict[str, Callable]={
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-        },
-        weighted_metrics=False,
-        model=None, 
-    ):
-        """
+    """
         Initialize the gene classifier neural network
 
         Parameters:
@@ -49,76 +30,71 @@ class GeneClassifier(pl.LightningModule):
         params: Dictionary of hyperparameters to use. Must include width, layers, lr, momentum, weight_decay
         metrics: Dictionary of metrics to log, where keys are metric names and values are torchmetrics.functional methods
         weighted_metrics: If True, use class-weighted calculation in metrics. Otherwise, use default 'micro' calculation.
-        """
-
+    """
+    def __init__(
+        self, 
+        input_dim, 
+        output_dim,
+        base_model=None,
+        optimizer=torch.optim.Adam,
+        optim_params: Dict[str, float]={
+            'lr': 0.001,
+            'weight_decay': 0.01,
+        },
+        metrics: Dict[str, Callable]={
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+        },
+        weighted_metrics=False,
+        *args,
+        **kwargs,
+    ):
         super().__init__()
         print(f'Model initialized. {input_dim = }, {output_dim = }. Metrics are {metrics.keys()} and {weighted_metrics = }')
 
-        # save metrics for logging at each step
-        self.metrics = metrics
-
-        # Record entire dict for logging
-        self._hyperparams = params
-
-        # Record metric calculation scheme
-        self.weighted_metrics = weighted_metrics
-
-        # Set hyperparameters
-        self.width = params['width']
-        self.layers = params['layers']
-        self.lr = params['lr']
-        self.momentum = params['momentum']
-        self.weight_decay = params['weight_decay']
-
-        # Save weights for calculation in loss 
-        self.weights = weights
-
-        # Save input/output size, also for metric calculation 
+        if base_model is None:
+            self.base_model = TabNetGeneClassifier(
+                input_dim=input_dim,
+                output_dim=output_dim,
+                *args,
+                **kwargs,
+            )
+        else:
+            self.base_model = base_model
+        
         self.input_dim = input_dim
         self.output_dim = output_dim
-
-        # Generate layers based on width and number of layers 
-        if model is not None:
-            self.model = model 
-        else:
-            layers = self.layers*[
-                nn.Linear(self.width, self.width),
-                nn.ReLU(),
-                # nn.Dropout(0.25),
-                nn.BatchNorm1d(self.width),
-            ]
-
-            # Generate feedforward stack 
-            self.flatten = nn.Flatten()
-            self.linear_relu_stack = nn.Sequential(
-                nn.Linear(input_dim, self.width),
-                *layers,
-                nn.Linear(self.width, output_dim),
-            )
-
+        self.optimizer = optimizer
+        self.optim_params = optim_params
+        self.metrics = metrics
+        self.weighted_metrics = weighted_metrics
+        
     def forward(self, x):
-        return (
-            self.model(x) if self.model else self.linear_relu_stack(self.flatten(x))
-        )
+        out = self.base_model(x)
+        return out
 
-    def configure_optimizers(self):
-        optimizer = torch.optim.SGD(
-            self.parameters(),
-            lr=self.lr, 
-            momentum=self.momentum, 
-            weight_decay=self.weight_decay,
-        )
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        
+        loss = F.cross_entropy(y_hat, y)
+        
+        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
+        self._compute_metrics(y_hat, y, 'train')
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        val_loss = F.cross_entropy(y_hat, y)
 
-        return optimizer
-
-    # def on_train_start(self):
-    #     self.logger.log_hyperparams(self.width)
-    #     self.logger.log_hyperparams(self.layers)
-    #     self.logger.log_hyperparams(self.lr)
-    #     self.logger.log_hyperparams(self.momentum)
-    #     self.logger.log_hyperparams(self.weight_decay)
-
-    def _compute_metrics(self, y_hat, y, tag, on_epoch=True, on_step=False):
+        self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
+        self._compute_metrics(y_hat, y, 'val')
+        
+        return val_loss
+    
+    def _compute_metrics(self, y_hat, y, tag, on_epoch=True, on_step=True):
         for name, metric in self.metrics.items():
             if not self.weighted_metrics: # We dont consider class support in calculation
                 val = metric(y_hat, y, average='weighted', num_classes=self.output_dim)
@@ -139,25 +115,9 @@ class GeneClassifier(pl.LightningModule):
                     logger=True,
                 )
 
-    def training_step(self, batch, batch_idx, dataset_idx):
-        x, y = batch
-
-        y_hat = self(x)
-        loss = F.cross_entropy(y_hat, y, weight=self.weights)
-
-        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
-        self._compute_metrics(y_hat, y, 'train')
-
-        return loss
-    
-    def validation_step(self, batch, batch_idx, dataset_idx):
-        x, y = batch
-        y_hat = self(x)
-        val_loss = F.cross_entropy(y_hat, y, weight=self.weights)
-
-        self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
-        self._compute_metrics(y_hat, y, 'val')
-        return val_loss
+    def configure_optimizers(self):
+        optimizer = self.optimizer(self.parameters(), **self.optim_params)
+        return optimizer
 
 class TabNetGeneClassifier(TabNet):
     """
