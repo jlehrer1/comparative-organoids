@@ -17,10 +17,10 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.utils.class_weight import compute_class_weight
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 from helper import upload, seed_everything
-from lib.data import generate_datasets, clean_sample
+from lib.data import clean_sample
 
 # Set all seeds for reproducibility
 seed_everything(42)

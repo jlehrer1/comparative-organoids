@@ -13,7 +13,7 @@ from sklearn.utils.class_weight import compute_class_weight
 import pytorch_lightning as pl 
 
 import sys, os 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 from helper import seed_everything, gene_intersection
 
@@ -156,64 +156,7 @@ class SequentialLoader:
     def __iter__(self):
         yield from chain(*self.dataloaders)
 
-class GeneDataModule(pl.LightningDataModule):
-    def __init__(
-        self, 
-        datafiles: List[str],
-        labelfiles: List[str],
-        class_label: str,
-        refgenes: List[str],
-        batch_size: int=16,
-        num_workers=32,
-        *args,
-        **kwargs,
-    ):
-        super().__init__()
-        self.__dict__.update(**kwargs)
 
-        self.datafiles = datafiles
-        self.labelfiles = labelfiles
-        self.class_label = class_label
-        self.refgenes = refgenes
-        
-        self.num_workers = num_workers
-        self.batch_size = batch_size
-        
-        self.trainloaders = []
-        self.valloaders = []
-        self.testloaders = []
-        
-        self.args = args
-        self.kwargs = kwargs
-        
-    def prepare_data(self):
-        # Download data from S3 here 
-        pass 
-    
-    def setup(self, stage: Optional[str] = None):
-        trainloaders, valloaders, testloaders = generate_loaders(
-            datafiles=self.datafiles,
-            labelfiles=self.labelfiles,
-            class_label=self.class_label,
-            refgenes=self.refgenes,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            *self.args,
-            **self.kwargs
-        )
-        
-        self.trainloaders = SequentialLoader(trainloaders)
-        self.valloaders = SequentialLoader(valloaders)
-        self.testloaders = SequentialLoader(testloaders)
-        
-    def train_dataloader(self):
-        return self.trainloaders
-
-    def val_dataloader(self):
-        return self.valloaders
-
-    def test_dataloader(self):
-        return self.testloaders
 
 def clean_sample(
     sample, 

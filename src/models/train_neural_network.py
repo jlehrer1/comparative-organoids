@@ -1,29 +1,13 @@
-from email.policy import default
-from ssl import Options
-import random
 import sys
 import argparse
 import pathlib
 import os
 import ast
 from typing import *
-
-import comet_ml
-import pandas as pd 
-import torch
-import numpy as np
-import pytorch_lightning as pl
-import wandb 
-
-from tqdm import tqdm 
-import torch.nn as nn 
-import torch.optim as optim
-from pytorch_lightning.loggers import CometLogger, WandbLogger
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from torch.utils.data import DataLoader
+from lib.lightning_train import generate_trainer
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from lib.train import generate_trainer
+import helper
 from helper import seed_everything
 
 seed_everything(42)
@@ -116,20 +100,26 @@ def make_args() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     parser = make_args()
     here = pathlib.Path(__file__).parent.absolute()
-    data_path = os.path.join(here, '..', '..', 'data', 'processed')
+    data_path = os.path.join(here, '..', '..', 'data', 'interim')
+    label_path = os.path.join(here, '..', '..', 'data', 'processed', 'labels')
 
     args = parser.parse_args()
     params = vars(args)
 
-    trainer, model, traindata, valdata = generate_trainer(
+    info = helper.INTERIM_DATA_AND_LABEL_FILES_LIST
+    datafiles, labelfiles = info.keys(), info.values()
+
+    datafiles = [os.path.join(data_path, f) for f in datafiles]
+    labelfiles = [os.path.join(label_path, f) for f in labelfiles]
+    class_label = 'Type'
+
+    trainer, model, module = generate_trainer(
         here=here, 
         params=params,
-        class_label=params['class_label'],
-        num_workers=params['num_workers'],
-        batch_size=params['batch_size'],
-        weighted_metrics=params['weighted_metrics'],
-        datafiles=[os.path.join(data_path, 'primary.csv')],
-        labelfiles=['meta_primary_labels.csv'],
+        class_label=class_label,
+        datafiles=datafiles,
+        labelfiles=labelfiles,
+        weighted_metrics=True
     )
     
-    trainer.fit(model, traindata, valdata)
+    trainer.fit(model, datamodule=module)

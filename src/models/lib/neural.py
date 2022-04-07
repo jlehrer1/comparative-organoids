@@ -12,7 +12,7 @@ from torchmetrics.functional import accuracy, precision, recall
 from pytorch_tabnet.tab_network import TabNet
 
 import sys, os 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 from helper import seed_everything
 
