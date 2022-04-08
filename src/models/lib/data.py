@@ -111,7 +111,7 @@ class GeneExpressionData(Dataset):
     @property
     def shape(self):
         return (self.__len__(), len(self.features))
-
+    
     @cached_property 
     def class_weights(self):
         labels = self._labeldf.loc[:, self._class_label].values
@@ -141,7 +141,7 @@ def custom_collate(sample, refgenes, currgenes):
     labels = torch.tensor([x[1] for x in sample])
     return data, labels
 
-class CollateLoader(torch.utils.data.DataLoader):
+class CollateLoader(DataLoader):
     def __init__(self, refgenes, currgenes, *args, **kwargs):
         collate_fn = partial(custom_collate, refgenes=refgenes, currgenes=currgenes)
         super().__init__(collate_fn = collate_fn, *args, **kwargs)
@@ -155,8 +155,6 @@ class SequentialLoader:
 
     def __iter__(self):
         yield from chain(*self.dataloaders)
-
-
 
 def clean_sample(
     sample, 
@@ -283,6 +281,7 @@ def generate_single_dataloader(
     test_prop=0.2,
     batch_size=4,
     num_workers=0,
+    shuffle=False,
     *args,
     **kwargs,
 ) -> DataLoader:
@@ -295,31 +294,19 @@ def generate_single_dataloader(
         **kwargs 
     )
 
-    train = CollateLoader(
-        dataset=train, 
-        refgenes=refgenes,
-        currgenes=train.columns,
-        batch_size=batch_size, 
-        num_workers=num_workers,
+    loaders = (
+        CollateLoader(
+                dataset=dataset, 
+                refgenes=refgenes,
+                currgenes=dataset.indices,
+                batch_size=batch_size, 
+                num_workers=num_workers,
+                shuffle=shuffle,
+            )
+        for dataset in [train, val, test]
     )
 
-    val = CollateLoader(
-        dataset=val, 
-        refgenes=refgenes,
-        currgenes=val.columns,
-        batch_size=batch_size, 
-        num_workers=num_workers,
-    )
-
-    test = CollateLoader(
-        dataset=test, 
-        refgenes=refgenes,
-        currgenes=test.columns,
-        batch_size=batch_size, 
-        num_workers=num_workers,
-    )
-
-    return train, val, test 
+    return loaders 
 
 def generate_loaders(
     datafiles: List[str], 
@@ -328,59 +315,36 @@ def generate_loaders(
     refgenes: List[str],
     batch_size: int=4, 
     num_workers: int=0,
+    shuffle=False,
     collocate: bool=False, 
     *args,
     **kwargs,
 ) -> Union[Tuple[List[DataLoader], List[DataLoader], List[DataLoader]], Tuple[DataLoader, DataLoader, DataLoader]]:
 
-    if not collocate:
-        train, val, test = [], [], []
-        for datafile, labelfile in zip(datafiles, labelfiles):
-            trainloader, valloader, testloader = generate_single_dataloader(
-                datafile=datafile,
-                labelfile=labelfile,
-                class_label=class_label, 
-                refgenes=refgenes,
-                batch_size=batch_size,
-                num_workers=num_workers,
-                *args,
-                **kwargs
-            )
-
-            train.append(trainloader)
-            val.append(valloader)
-            test.append(testloader)
-    else:
-        train, val, test = generate_datasets(
-            datafiles=datafiles,
-            labelfiles=labelfiles,
-            class_label=class_label,
+    train, val, test = [], [], []
+    for datafile, labelfile in zip(datafiles, labelfiles):
+        trainloader, valloader, testloader = generate_single_dataloader(
+            datafile=datafile,
+            labelfile=labelfile,
+            class_label=class_label, 
+            refgenes=refgenes,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            shuffle=shuffle,
             *args,
-            **kwargs,
+            **kwargs
         )
 
-        train = CollateLoader(
-            dataset=train, 
-            refgenes=refgenes,
-            batch_size=batch_size, 
-            num_workers=num_workers
-        )
+        train.append(trainloader)
+        val.append(valloader)
+        test.append(testloader)
 
-        val = CollateLoader(
-            dataset=train, 
-            refgenes=refgenes,
-            batch_size=batch_size, 
-            num_workers=num_workers
-        )
-
-        test = CollateLoader(
-            dataset=train, 
-            refgenes=refgenes,
-            batch_size=batch_size, 
-            num_workers=num_workers
-        )
+    if collocate: # Join these together if requested 
+        train, val, test = SequentialLoader(train), SequentialLoader(val), SequentialLoader(test)
 
     return train, val, test 
+
+        
 
 
 

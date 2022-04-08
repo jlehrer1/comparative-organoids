@@ -20,7 +20,7 @@ from sklearn.utils.class_weight import compute_class_weight
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 from helper import upload, seed_everything
-from lib.data import clean_sample
+from .data import clean_sample
 
 # Set all seeds for reproducibility
 seed_everything(42)

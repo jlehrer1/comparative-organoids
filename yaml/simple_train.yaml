@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rna-seq-model-width-${WIDTH}-layers-${LAYERS}-${I}-${NAME}
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: rna-seq-model-5-layer-complexity-weighted
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: rna-seq-model-5-layer-complexity-weighted
+        image: jmlehrer/cell-exploration:latest
+        command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        args: [
+          "wandb login --relogin $(cat wandbcreds) && \
+          python src/data/download_data.py -type='primary' && \
+          python src/data/download_data.py -type='labels' && \
+          python src/models/train_neural_network.py \
+          --width=${WIDTH} \
+          --layers=${LAYERS} \
+          --lr=${LR} \
+          --momentum=${MOMENTUM} \
+          --weight-decay=${WEIGHT_DECAY} \
+          --class-label=${CLASS_LABEL}\
+          --weighted-metrics=${WEIGHTED_METRICS}" 
+        ]
+        resources:
+          limits:
+            memory: 100Gi
+            cpu: "8"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: 32Gi
+            cpu: "8"
+            nvidia.com/gpu: "1"
+        volumeMounts:
+        - name: ephemeral
+          mountPath: "/data"
+        # SystemV shared memory
+        - name: "dshm"
+          mountPath: "/dev/shm"
+      volumes:
+      # Ephemeral storage
+      - name: ephemeral
+        emptyDir: {}
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      tolerations:
+        - key: "nautilus.io/chase-ci"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
