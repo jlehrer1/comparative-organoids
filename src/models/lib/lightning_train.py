@@ -27,7 +27,6 @@ class GeneDataModule(pl.LightningDataModule):
         datafiles: List[str],
         labelfiles: List[str],
         class_label: str,
-        data_path: str,
         refgenes: List[str],
         batch_size: int=16,
         num_workers=32,
@@ -43,7 +42,6 @@ class GeneDataModule(pl.LightningDataModule):
         self.class_label = class_label
         self.refgenes = refgenes
         self.shuffle = shuffle
-        self.data_path = data_path
         
         self.num_workers = num_workers
         self.batch_size = batch_size
@@ -53,37 +51,8 @@ class GeneDataModule(pl.LightningDataModule):
         self.testloaders = []
         
         self.args = args
-        self.kwargs = kwargs
-        
-    def prepare_data(self):
-        data_path = self.data_path
-        info =  helper.INTERIM_DATA_AND_LABEL_FILES_LIST
+        self.kwargs = kwargs             
 
-        datafiles = info.keys()
-        labelfiles = [info[file] for file in datafiles]
-
-        for datafile, labelfile in zip(datafiles, labelfiles):
-            dfpath = os.path.join(data_path, 'interim', datafile)
-            lfpath = os.path.join(data_path, 'processed', 'labels', labelfile)
-
-            if not os.path.isfile(dfpath):
-                print(f'Downloading {dfpath}')
-                download(
-                    remote_name=os.path.join('jlehrer/expression_data/interim/', datafile),
-                    file_name=dfpath
-                )
-            else:
-                print(f'{dfpath} exists, continuing...')
-
-            if not os.path.isfile(lfpath):
-                print(f'Downloading {lfpath}')
-                download(
-                    remote_name=os.path.join('jlehrer/expression_data/labels/', labelfile),
-                    file_name=lfpath,
-                )
-            else:
-                print(f'{lfpath} exists, continuing...\n')    
-                
     def setup(self, stage: Optional[str] = None):
         trainloaders, valloaders, testloaders = generate_loaders(
             datafiles=self.datafiles,
@@ -110,6 +79,31 @@ class GeneDataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return self.testloaders
 
+# This has to be outside of the datamodule 
+# Since we have to download the files to calculate the gene intersection 
+def prepare_data(data_path, datafiles, labelfiles):
+    os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
+    os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
+
+    for datafile, labelfile in zip(datafiles, labelfiles):
+        if not os.path.isfile(datafile):
+            print(f'Downloading {datafile}')
+            download(
+                remote_name=os.path.join('jlehrer/expression_data/interim/', datafile.split('/')[-1]),
+                file_name=datafile,
+            )
+        else:
+            print(f'{datafile} exists, continuing...')
+
+        if not os.path.isfile(labelfile):
+            print(f'Downloading {labelfile}')
+            download(
+                remote_name=os.path.join('jlehrer/expression_data/labels/', labelfile.split('/')[-1]),
+                file_name=labelfile,
+            )
+        else:
+            print(f'{labelfile} exists, continuing...\n')    
+
 def generate_trainer(
     here: str, 
     datafiles: List[str],
@@ -134,10 +128,12 @@ def generate_trainer(
 
     device = ('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f'Device is {device}')
-    data_path = os.path.join(here, '..', '..', 'data', 'processed')
+
+    data_path = os.path.join(here, '..', '..', 'data')
 
     wandb_logger = WandbLogger(
         project=f"cell-classifier-{class_label}",
+        name='TabNet Classifier',
     )
 
     uploadcallback = UploadCallback(
@@ -151,12 +147,17 @@ def generate_trainer(
         verbose=True
     )
 
+    prepare_data(
+        data_path=data_path,
+        datafiles=datafiles,
+        labelfiles=labelfiles,
+    )
+
     refgenes = gene_intersection()
     module = GeneDataModule(
         datafiles=datafiles, 
         labelfiles=labelfiles, 
         class_label='Type', 
-        data_path=data_path,
         refgenes=refgenes,
         skip=3, 
         normalize=True,
@@ -164,7 +165,7 @@ def generate_trainer(
         num_workers=num_workers,
         *args,
         **kwargs,
-    )    
+    )
 
     model = GeneClassifier(
         input_dim=len(refgenes),

@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: rna-seq-model-width-${WIDTH}-layers-${LAYERS}-${I}-${NAME}
+  name: tabnet-model-training
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-model-5-layer-complexity-weighted
+        k8s-app: tabnet-model-training
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-model-5-layer-complexity-weighted
+      - name: tabnet-model-training
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -20,16 +20,7 @@ spec:
           value: "1"
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
-          python src/data/download_data.py -type='primary' && \
-          python src/data/download_data.py -type='labels' && \
-          python src/models/train_neural_network.py \
-          --width=${WIDTH} \
-          --layers=${LAYERS} \
-          --lr=${LR} \
-          --momentum=${MOMENTUM} \
-          --weight-decay=${WEIGHT_DECAY} \
-          --class-label=${CLASS_LABEL}\
-          --weighted-metrics=${WEIGHTED_METRICS}" 
+          python src/models/train_neural_network.py"
         ]
         resources:
           limits:

@@ -100,6 +100,7 @@ def make_args() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     parser = make_args()
     here = pathlib.Path(__file__).parent.absolute()
+
     data_path = os.path.join(here, '..', '..', 'data', 'interim')
     label_path = os.path.join(here, '..', '..', 'data', 'processed', 'labels')
 
@@ -107,19 +108,26 @@ if __name__ == "__main__":
     params = vars(args)
 
     info = helper.INTERIM_DATA_AND_LABEL_FILES_LIST
-    datafiles, labelfiles = info.keys(), info.values()
+
+    datafiles = info.keys()
+    labelfiles = [info[file] for file in datafiles]
 
     datafiles = [os.path.join(data_path, f) for f in datafiles]
     labelfiles = [os.path.join(label_path, f) for f in labelfiles]
+
+    print(datafiles)
+    print(labelfiles)
+
     class_label = 'Type'
 
     trainer, model, module = generate_trainer(
-        here=here, 
-        params=params,
-        class_label=class_label,
         datafiles=datafiles,
         labelfiles=labelfiles,
-        weighted_metrics=True
+        here=here, 
+        class_label=class_label,
+        weighted_metrics=True,
+        num_workers=16,
+        batch_size=8,
     )
     
     trainer.fit(model, datamodule=module)
