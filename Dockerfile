@@ -24,6 +24,7 @@ RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy && \
     pip install pytorch-lightning && \ 
     pip install comet_ml && \ 
     pip install wandb && \ 
-    pip install transposecsv==0.0.5
+    pip install transposecsv==0.0.5 \ 
+    pip install pytorch-tabnet 
 
 COPY . .

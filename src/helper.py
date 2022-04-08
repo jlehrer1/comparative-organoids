@@ -55,7 +55,7 @@ with open(os.path.join(here, '..', 'credentials')) as f:
 
 s3 = boto3.resource(
     's3',
-    endpoint_url="https://s3.nautilus.optiputer.net",
+    endpoint_url="https://s3-west.nrp-nautilus.io/",
     aws_access_key_id=key,
     aws_secret_access_key=access,
 )
