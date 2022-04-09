@@ -23,64 +23,30 @@ from helper import seed_everything, gene_intersection, download
 seed_everything(42)
 
 class GeneDataModule(pl.LightningDataModule):
+    """
+    Creates the DataModule for PyTorch-Lightning training.
+
+    Parameters:
+    **kwargs: The dictionary of keyword-based arguments is passed directly to the generate_dataloaders method, so treat the initialization of
+    this class in the same way the user generates the train, val, test dataloaders.
+    """
     def __init__(
         self, 
-        datafiles: List[str],
-        labelfiles: List[str],
-        class_label: str,
-        refgenes: List[str],
-        test_prop: float=0.2,
-        collocate: bool=False,
-        transpose: bool=False,
-        batch_size: int=16,
-        num_workers=32,
-        shuffle=False,
-        drop_last: bool=False,
         *args,
         **kwargs,
     ):
         super().__init__()
-        self.__dict__.update(**kwargs)
-
-        self.datafiles = datafiles
-        self.labelfiles = labelfiles
-        self.class_label = class_label
-        self.refgenes = refgenes
-        self.shuffle = shuffle
-        self.drop_last = drop_last
-        self.test_prop = test_prop
-        self.collocate = collocate
-        self.transpose = transpose
-
-        self.num_workers = num_workers
-        self.batch_size = batch_size
+        self.args = args 
+        self.kwargs = kwargs
         
-        self.trainloaders = []
-        self.valloaders = []
-        self.testloaders = []
-        
-        self.args = args
-        self.kwargs = kwargs             
-
     def setup(self, stage: Optional[str] = None):
-        print('Creating dataloaders...')
+        print('Creating train/val/test DataLoaders...')
         trainloaders, valloaders, testloaders = generate_dataloaders(
-            datafiles=self.datafiles,
-            labelfiles=self.labelfiles,
-            class_label=self.class_label,
-            refgenes=self.refgenes,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=self.shuffle,
-            drop_last=self.drop_last,
-            collocate=self.collocate, # Join all loaders into one sequential one 
-            transpose=self.transpose,
             *self.args,
             **self.kwargs,
         )
 
         print('Done, continuing to training.')
-
         self.trainloaders = trainloaders
         self.valloaders = valloaders
         self.testloaders = testloaders
@@ -96,7 +62,19 @@ class GeneDataModule(pl.LightningDataModule):
 
 # This has to be outside of the datamodule 
 # Since we have to download the files to calculate the gene intersection 
-def prepare_data(data_path, datafiles, labelfiles):
+def prepare_data(
+    data_path: str, 
+    datafiles: List[str], 
+    labelfiles: List[str],
+) -> None:
+    """
+    Prepare data for model training, by downloading the transposed and clean labels from the S3 bucket
+
+    Parameters:
+    data_path: Path to the top-level folder containing the data subfolders
+    datafiles: List of absolute paths to datafiles 
+    labelfiles: List of absolute paths to labelfiles
+    """
     os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
     os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
 
@@ -123,14 +101,7 @@ def generate_trainer(
     datafiles: List[str],
     labelfiles: List[str],
     class_label: str,
-    num_workers: int=4,
-    batch_size: int=4,
-    drop_last: bool=True,
     weighted_metrics: bool=False,
-    shuffle: bool=False,
-    test_prop: float=0.2,
-    collocate: bool=False, 
-    transpose: bool=False, 
     **kwargs,
 ):
     """
@@ -178,13 +149,6 @@ def generate_trainer(
         labelfiles=labelfiles, 
         class_label='Type', 
         refgenes=refgenes,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        drop_last=drop_last,
-        shuffle=shuffle,
-        test_prop=test_prop,
-        collocate=collocate,
-        transpose=transpose,
         **kwargs,
     )
 

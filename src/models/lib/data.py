@@ -218,6 +218,7 @@ class CollateLoader(DataLoader):
         if refgenes is None and currgenes is not None or refgenes is not None and currgenes is None:
             raise ValueError("If refgenes is passed, currgenes must be passed too. If currgenes is passed, refgenes must be passed too.")
         
+        # Create collate_fn via a partial of the possible collators, depending on if columns intersection is being calculated
         if refgenes is not None:
             collate_fn = partial(_collate_with_refgenes, refgenes=refgenes, currgenes=currgenes, transpose=transpose, normalize=normalize)
         else:
@@ -233,7 +234,6 @@ class CollateLoader(DataLoader):
             if name in kwargs:
                 new_kwargs[key] = kwargs[key]
 
-        print(f'Args passed to DataLoader init are {new_kwargs.keys()}')
         super().__init__(
             dataset=dataset,
             collate_fn=collate_fn, 
@@ -408,7 +408,7 @@ def generate_single_dataloader(
 def generate_dataloaders(
     datafiles: List[str], 
     labelfiles: List[str],
-    collocate: bool=False, 
+    collocate: bool=True, 
     **kwargs,
 ) -> Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]:
 

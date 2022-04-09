@@ -125,6 +125,8 @@ if __name__ == "__main__":
         batch_size=4,
         shuffle=True,
         drop_last=True,
+        skip=3,
+        normalize=True,
     )
     
     trainer.fit(model, datamodule=module)
