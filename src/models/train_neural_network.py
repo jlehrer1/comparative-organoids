@@ -122,9 +122,9 @@ if __name__ == "__main__":
         here=here, 
         class_label=class_label,
         weighted_metrics=True,
-        num_workers=0,
+        num_workers=16,
         batch_size=4,
-        # **params,
+        shuffle=True,
     )
     
     trainer.fit(model, datamodule=module)

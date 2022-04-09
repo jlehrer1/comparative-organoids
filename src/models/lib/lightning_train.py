@@ -54,6 +54,7 @@ class GeneDataModule(pl.LightningDataModule):
         self.kwargs = kwargs             
 
     def setup(self, stage: Optional[str] = None):
+        print('Creating dataloaders...')
         trainloaders, valloaders, testloaders = generate_loaders(
             datafiles=self.datafiles,
             labelfiles=self.labelfiles,
@@ -66,7 +67,9 @@ class GeneDataModule(pl.LightningDataModule):
             *self.args,
             **self.kwargs
         )
-        
+
+        print('Done, continuing to training.')
+
         self.trainloaders = trainloaders
         self.valloaders = valloaders
         self.testloaders = testloaders
@@ -134,7 +137,7 @@ def generate_trainer(
 
     wandb_logger = WandbLogger(
         project=f"cell-classifier-{class_label}",
-        name='TabNet Classifier',
+        name='TabNet Classifier, Shuffle=True',
     )
 
     uploadcallback = UploadCallback(

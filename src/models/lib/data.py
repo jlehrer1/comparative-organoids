@@ -1,4 +1,5 @@
-import linecache 
+import linecache
+from multiprocessing.sharedctypes import Value 
 from typing import *
 from functools import cached_property, partial
 from itertools import chain 
@@ -158,7 +159,6 @@ class CollateLoader(DataLoader):
             **kwargs
         )
 
-
 class SequentialLoader:
     def __init__(self, dataloaders):
         self.dataloaders = dataloaders
@@ -203,6 +203,7 @@ def generate_datasets(
     labelfiles: List[str],
     class_label: str,
     test_prop: float=0.2,
+    combine=False,
     *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset]:
@@ -220,6 +221,19 @@ def generate_datasets(
     Tuple[Dataset, Dataset, Dataset]: Training, validation and test datasets, respectively
     """
     
+    if combine and len(datafiles) == 1:
+        raise ValueError('Cannot combine datasets when number of datafiles == 1.')
+
+    if len(datafiles) == 1:
+        return generate_single_dataset(
+            datafiles[0],
+            labelfiles[0],
+            class_label,
+            test_prop,
+            *args,
+            **kwargs,
+        )
+
     train_datasets, val_datasets, test_datasets = [], [], []
 
     for datafile, labelfile in zip(datafiles, labelfiles):
@@ -244,16 +258,12 @@ def generate_datasets(
 
     # Flexibility to generate single stratified dataset from a single file 
     # Just in generate_single_dataset
-    if len(datafiles) > 1:
-        train = ConcatDataset(train_datasets)
-        val = ConcatDataset(val_datasets)
-        test = ConcatDataset(test_datasets)
-    else:
-        train = train_datasets[0]
-        val = val_datasets[0]
-        test = test_datasets[0]
+    if combine:
+        train_datasets = ConcatDataset(train_datasets)
+        val_datasets = ConcatDataset(val_datasets)
+        test_datasets = ConcatDataset(test_datasets)
 
-    return train, val, test
+    return train_datasets, val_datasets, test_datasets
 
 def generate_single_dataset(
     datafile: str,
@@ -274,14 +284,22 @@ def generate_single_dataset(
     Returns:
     Tuple[Dataset, Dataset]: Train/val/test set, respectively 
     """
+    current_labels = pd.read_csv(labelfile).loc[:, class_label]
+    
+    # Make stratified split on labels
+    trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
+    trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
 
-    train, val, test = generate_datasets(
-        datafiles=[datafile],
-        labelfiles=[labelfile],
-        class_label=class_label,
-        test_prop=test_prop,
-        *args,
-        **kwargs,
+    train, val, test = (
+        GeneExpressionData(
+            filename=datafile,
+            labelname=labelfile,
+            class_label=class_label,
+            indices=indices,
+            *args,
+            **kwargs,
+        )
+        for indices in [trainsplit, valsplit, testsplit]  
     )
 
     return train, val, test 
@@ -291,13 +309,14 @@ def generate_single_dataloader(
     labelfile: str,
     class_label: str,
     refgenes: List[str],
-    batch_size: int,
-    num_workers: int,
+    batch_size: int=4,
+    num_workers: int=0,
     test_prop=0.2,
     shuffle=False,
     *args,
     **kwargs,
 ) -> DataLoader:
+
     train, val, test = generate_single_dataset(
         datafile=datafile,
         labelfile=labelfile,

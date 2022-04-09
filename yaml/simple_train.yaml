@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tabnet-model-training
+  name: tabnet-model-training-shuffle-16-worker
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: tabnet-model-training
+        k8s-app: tabnet-model-training-shuffle-16-worker
     spec:
       restartPolicy: Never
       containers:
-      - name: tabnet-model-training
+      - name: tabnet-model-training-shuffle-16-worker
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
