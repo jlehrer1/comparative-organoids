@@ -62,13 +62,14 @@ class GeneDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
+            collocate=True, # Join all loaders into one sequential one 
             *self.args,
             **self.kwargs
         )
         
-        self.trainloaders = SequentialLoader(trainloaders)
-        self.valloaders = SequentialLoader(valloaders)
-        self.testloaders = SequentialLoader(testloaders)
+        self.trainloaders = trainloaders
+        self.valloaders = valloaders
+        self.testloaders = testloaders
         
     def train_dataloader(self):
         return self.trainloaders
@@ -180,6 +181,7 @@ def generate_trainer(
         logger=wandb_logger,
         callbacks=[
             uploadcallback, 
+            earlystoppingcallback,
         ],
     )
 

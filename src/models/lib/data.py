@@ -142,9 +142,22 @@ def custom_collate(sample, refgenes, currgenes):
     return data, labels
 
 class CollateLoader(DataLoader):
-    def __init__(self, refgenes, currgenes, *args, **kwargs):
+    def __init__(
+        self, 
+        dataset: GeneExpressionData,
+        refgenes: List[str], 
+        currgenes: List[str], 
+        *args, 
+        **kwargs,
+    ) -> None:
         collate_fn = partial(custom_collate, refgenes=refgenes, currgenes=currgenes)
-        super().__init__(collate_fn = collate_fn, *args, **kwargs)
+        super().__init__(
+            dataset=dataset,
+            collate_fn=collate_fn, 
+            *args,
+            **kwargs
+        )
+
 
 class SequentialLoader:
     def __init__(self, dataloaders):
@@ -278,9 +291,9 @@ def generate_single_dataloader(
     labelfile: str,
     class_label: str,
     refgenes: List[str],
+    batch_size: int,
+    num_workers: int,
     test_prop=0.2,
-    batch_size=4,
-    num_workers=0,
     shuffle=False,
     *args,
     **kwargs,
@@ -298,7 +311,7 @@ def generate_single_dataloader(
         CollateLoader(
                 dataset=dataset, 
                 refgenes=refgenes,
-                currgenes=dataset.indices,
+                currgenes=dataset.columns,
                 batch_size=batch_size, 
                 num_workers=num_workers,
                 shuffle=shuffle,
@@ -332,7 +345,7 @@ def generate_loaders(
             num_workers=num_workers,
             shuffle=shuffle,
             *args,
-            **kwargs
+            **kwargs,
         )
 
         train.append(trainloader)

@@ -163,6 +163,7 @@ def gene_intersection() -> List[str]:
     Returns:
     List[str]: List of genes in all uppercase. This standard should be used across the codebase. 
     """
+
     files = DATA_FILES_LIST
     files = [f'{file[:-4]}_T.csv' for file in files]
 
@@ -170,10 +171,12 @@ def gene_intersection() -> List[str]:
     # Cache this file for later 
 
     for file in files:
-        # Read in columns, split by | (since some are PVALB|PVALB), and make sure all are uppercase
-        temp = pd.read_csv(os.path.join(here, '..', 'data', 'interim', file), nrows=1, header=1).columns 
-        temp = [x.split('|')[0].upper().strip() for x in temp]
-        cols.append(set(temp))
+        fpath = os.path.join(here, '..', 'data', 'interim', file)
+        if os.path.isfile(fpath):
+            # Read in columns, split by | (since some are PVALB|PVALB), and make sure all are uppercase
+            temp = pd.read_csv(fpath, nrows=1, header=1).columns 
+            temp = [x.split('|')[0].upper().strip() for x in temp]
+            cols.append(set(temp))
 
     unique = list(set.intersection(*cols))
     unique = sorted(unique)

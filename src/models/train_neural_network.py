@@ -114,10 +114,6 @@ if __name__ == "__main__":
 
     datafiles = [os.path.join(data_path, f) for f in datafiles]
     labelfiles = [os.path.join(label_path, f) for f in labelfiles]
-
-    print(datafiles)
-    print(labelfiles)
-
     class_label = 'Type'
 
     trainer, model, module = generate_trainer(
@@ -126,8 +122,9 @@ if __name__ == "__main__":
         here=here, 
         class_label=class_label,
         weighted_metrics=True,
-        num_workers=16,
-        batch_size=8,
+        num_workers=0,
+        batch_size=4,
+        # **params,
     )
     
     trainer.fit(model, datamodule=module)
