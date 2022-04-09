@@ -7,7 +7,6 @@ import argparse
 from tqdm import tqdm 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import helper 
 from models.lib.data import GeneExpressionData, clean_sample 
 

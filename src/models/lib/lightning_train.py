@@ -1,5 +1,6 @@
 import sys
 import os
+import pathlib 
 from typing import *
 
 import torch
@@ -11,7 +12,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 from .neural import GeneClassifier
 from .train import UploadCallback
-from .data import SequentialLoader, generate_loaders
+from .data import generate_dataloaders
 
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
@@ -63,7 +64,7 @@ class GeneDataModule(pl.LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         print('Creating dataloaders...')
-        trainloaders, valloaders, testloaders = generate_loaders(
+        trainloaders, valloaders, testloaders = generate_dataloaders(
             datafiles=self.datafiles,
             labelfiles=self.labelfiles,
             class_label=self.class_label,
@@ -75,7 +76,7 @@ class GeneDataModule(pl.LightningDataModule):
             collocate=self.collocate, # Join all loaders into one sequential one 
             transpose=self.transpose,
             *self.args,
-            **self.kwargs
+            **self.kwargs,
         )
 
         print('Done, continuing to training.')
@@ -119,7 +120,6 @@ def prepare_data(data_path, datafiles, labelfiles):
             print(f'{labelfile} exists, continuing...\n')    
 
 def generate_trainer(
-    here: str, 
     datafiles: List[str],
     labelfiles: List[str],
     class_label: str,
@@ -131,7 +131,6 @@ def generate_trainer(
     test_prop: float=0.2,
     collocate: bool=False, 
     transpose: bool=False, 
-    *args,
     **kwargs,
 ):
     """
@@ -147,8 +146,9 @@ def generate_trainer(
 
     device = ('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f'Device is {device}')
-
-    data_path = os.path.join(here, '..', '..', 'data')
+    
+    here = pathlib.Path(__file__).parent.absolute()
+    data_path = os.path.join(here, '..', '..', '..', 'data')
 
     wandb_logger = WandbLogger(
         project=f"cell-classifier-{class_label}",
@@ -178,8 +178,6 @@ def generate_trainer(
         labelfiles=labelfiles, 
         class_label='Type', 
         refgenes=refgenes,
-        skip=3, 
-        normalize=True,
         batch_size=batch_size,
         num_workers=num_workers,
         drop_last=drop_last,
@@ -187,7 +185,6 @@ def generate_trainer(
         test_prop=test_prop,
         collocate=collocate,
         transpose=transpose,
-        *args,
         **kwargs,
     )
 

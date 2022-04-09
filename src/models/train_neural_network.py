@@ -119,12 +119,12 @@ if __name__ == "__main__":
     trainer, model, module = generate_trainer(
         datafiles=datafiles,
         labelfiles=labelfiles,
-        here=here, 
         class_label=class_label,
         weighted_metrics=True,
         num_workers=16,
         batch_size=4,
         shuffle=True,
+        drop_last=True,
     )
     
     trainer.fit(model, datamodule=module)

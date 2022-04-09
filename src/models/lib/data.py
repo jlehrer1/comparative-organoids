@@ -3,6 +3,7 @@ from multiprocessing.sharedctypes import Value
 from typing import *
 from functools import cached_property, partial
 from itertools import chain 
+import inspect
 
 import pandas as pd 
 import torch
@@ -39,20 +40,17 @@ class GeneExpressionData(Dataset):
         skip=3,
         cast=True,
         index_col='cell',
-        normalize=False,
-        map_genes=False,
+        sep=',',
+        **kwargs, # To handle extraneous inputs 
     ):
         self.filename = filename
         self.labelname = labelname # alias 
-        self._class_label = class_label
-        self._index_col = index_col 
+        self.class_label = class_label
+        self.index_col = index_col 
         self.skip = skip
         self.cast = cast
-        self.normalize = normalize 
         self.indices = indices
-        self.map_genes = map_genes
-
-        self.refgenes = (gene_intersection() if map_genes else None)
+        self.sep = sep
 
         if indices is None:
             self._labeldf = pd.read_csv(labelname).reset_index(drop=True)
@@ -69,45 +67,39 @@ class GeneExpressionData(Dataset):
             idxs = range(idx.start, idx.stop, step)
             return [self[i] for i in idxs]
 
-        # The actual line in the datafile to get, corresponding to the number in the self._index_col values 
-        data_index = self._labeldf.loc[idx, self._index_col]
+        # The actual line in the datafile to get, corresponding to the number in the self.index_col values 
+        data_index = self._labeldf.loc[idx, self.index_col]
 
         # get gene expression for current cell from csv file
         # We skip some lines because we're reading directly from 
         line = linecache.getline(self.filename, data_index + self.skip)
         
         if self.cast:
-            data = torch.from_numpy(np.array(line.split(','), dtype=np.float32)).float()
+            data = torch.from_numpy(np.array(line.split(self.sep), dtype=np.float32)).float()
         else:
-            data = np.array(line.split(','))
+            data = np.array(line.split(self.sep))
 
-        if self.normalize:
-            data = data / data.max()
-
-        if self.map_genes:
-            data = clean_sample(data, self.refgenes, self.columns)
-
-        label = self._labeldf.loc[idx, self._class_label]
+        label = self._labeldf.loc[idx, self.class_label]
 
         return data, label
 
     def __len__(self):
         return len(self._labeldf) # number of total samples 
 
-    @property
+    @cached_property
     def columns(self): # Just an alias...
         return self.features
 
     @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
     def features(self):
         data = linecache.getline(self.filename, self.skip - 1)
-        data = [x.split('|')[0].upper().strip() for x in data.split(',')]
+        data = [x.split('|')[0].upper().strip() for x in data.split(self.sep)]
 
         return data
 
     @cached_property
     def labels(self):
-        return self._labeldf.loc[:, self._class_label].unique()
+        return self._labeldf.loc[:, self.class_label].unique()
 
     @property
     def shape(self):
@@ -115,7 +107,7 @@ class GeneExpressionData(Dataset):
     
     @cached_property 
     def class_weights(self):
-        labels = self._labeldf.loc[:, self._class_label].values
+        labels = self._labeldf.loc[:, self.class_label].values
 
         return compute_class_weight(
             class_weight='balanced',
@@ -133,43 +125,93 @@ class GeneExpressionData(Dataset):
             f"labelname={self.labelname}, "
             f"skip={self.skip}, "
             f"cast={self.cast}, "
-            f"normalize={self.normalize}, "
             f"indices={self.indices})"
         )
 
-def _collate_with_refgenes_and_transpose(
-    sample: torch.Tensor, 
+def _collate_with_refgenes(
+    sample: List[tuple], 
     refgenes: List[str], 
     currgenes: List[str],
-    transpose: bool=False,
+    transpose: bool,
+    normalize: bool,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Collate minibatch of samples where we're intersecting the columns between refgenes and currgenes,
+    optionally normalizing and transposing.
+
+    Parameters:
+    sample: List of samples from GeneExpressionData object
+    refgenes: List of reference genes
+    currgenes: List of current columns from sample 
+    transpose: boolean, indicates if we should transpose the minibatch (in the case of incorrectly formatted .csv data)
+    normalize: boolean, indicates if we should normalize the minibatch
+
+    Returns:
+    Two torch.Tensors containing the data and labels, respectively
+    """
+
     data = clean_sample(torch.stack([x[0] for x in sample]), refgenes, currgenes)
     labels = torch.tensor([x[1] for x in sample])
 
-    if transpose:
-        data = data.T 
+    return _transform_sample(data, normalize, transpose), labels 
 
-    return data, labels
+def _standard_collate(
+    sample: List[tuple],
+    normalize: bool,
+    transpose: bool,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Collate minibatch of samples, optionally normalizing and transposing. 
 
-def _standard_collate(sample):
+    Parameters:
+    sample: List of GeneExpressionData items to collate
+    transpose: boolean, indicates if we should transpose the minibatch (in the case of incorrectly formatted .csv data)
+    normalize: boolean, indicates if we should normalize the minibatch
+
+    Returns:
+    Two torch.Tensors containing the data and labels, respectively
+    """
+
     data = torch.stack([x[0] for x in sample])
     labels = torch.tensor([x[1] for x in sample])
 
-    return data, labels 
+    return _transform_sample(data, normalize, transpose), labels 
 
-def _collate_only_transpose(sample):
-    data, labels = _standard_collate(sample)
+def _transform_sample(
+    data: torch.Tensor, 
+    normalize: bool, 
+    transpose: bool
+) -> torch.Tensor:
+    """
+    Optionally normalize and tranpose a torch.Tensor
+    """
+    if transpose:
+        data = data.T
 
-    return data.T, labels
+    if normalize:
+        data = torch.nn.functional.normalize(data)
+
+    return data 
 
 class CollateLoader(DataLoader):
+    """
+    Subclass of DataLoader that creates a collate_fn on the fly as required by the user. This is used in the case where we want to calculate the intersection
+    between a sample and the total column intersection of our data. We do this batch-wise instead of sample-wise for speed, since numpy is efficient at working on 2d arrays.
+
+    Parameters:
+    dataset: GeneExpressionDataset to create DataLoader from
+    refgenes: Optional, list of columns to take intersection with 
+    currgenes: Optional, list of current dataset columns
+    transpose: Boolean indicating whether to tranpose the batch data 
+    normalize: Boolean indicating whether to normalize the batch data 
+    """
     def __init__(
         self, 
         dataset: GeneExpressionData,
         refgenes: List[str]=None, 
         currgenes: List[str]=None, 
         transpose: bool=False, 
-        *args, 
+        normalize: bool=False,
         **kwargs,
     ) -> None:
 
@@ -177,20 +219,34 @@ class CollateLoader(DataLoader):
             raise ValueError("If refgenes is passed, currgenes must be passed too. If currgenes is passed, refgenes must be passed too.")
         
         if refgenes is not None:
-            collate_fn = partial(_collate_with_refgenes_and_transpose, refgenes=refgenes, currgenes=currgenes, transpose=transpose)
-        elif refgenes is None and transpose:
-            collate_fn = partial(_collate_only_transpose, transpose=transpose)
+            collate_fn = partial(_collate_with_refgenes, refgenes=refgenes, currgenes=currgenes, transpose=transpose, normalize=normalize)
         else:
-            collate_fn = _standard_collate
+            collate_fn = partial(_standard_collate, normalize=normalize, transpose=transpose)
 
+        allowed_args = inspect.signature(super().__init__).parameters
+        new_kwargs = {}
+
+        # This is awkward, but Dataloader init doesn't handle optional keyword arguments
+        # So we have to take the intersection between the passed **kwargs and the DataLoader named arguments
+        for key in allowed_args:
+            name = allowed_args[key].name
+            if name in kwargs:
+                new_kwargs[key] = kwargs[key]
+
+        print(f'Args passed to DataLoader init are {new_kwargs.keys()}')
         super().__init__(
             dataset=dataset,
             collate_fn=collate_fn, 
-            *args,
-            **kwargs,
+            **new_kwargs,
         )
 
 class SequentialLoader:
+    """
+    Class to sequentially stream samples from an arbitrary number of DataLoaders.
+
+    Parameters:
+    dataloaders: List of DataLoaders or DataLoader derived class, such as the CollateLoader from above 
+    """
     def __init__(self, dataloaders):
         self.dataloaders = dataloaders
 
@@ -201,9 +257,9 @@ class SequentialLoader:
         yield from chain(*self.dataloaders)
 
 def clean_sample(
-    sample, 
-    refgenes,
-    currgenes
+    sample: torch.Tensor, 
+    refgenes: List[str],
+    currgenes: List[str],
 ) -> torch.Tensor:
     # currgenes and refgenes are already sorted
     # Passed from calculate_intersection
@@ -235,7 +291,6 @@ def generate_datasets(
     class_label: str,
     test_prop: float=0.2,
     combine=False,
-    *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset]:
     """
@@ -261,7 +316,6 @@ def generate_datasets(
             labelfiles[0],
             class_label,
             test_prop,
-            *args,
             **kwargs,
         )
 
@@ -282,7 +336,6 @@ def generate_datasets(
                     labelname=labelfile,
                     class_label=class_label,
                     indices=indices.index,
-                    *args,
                     **kwargs,
                 )
             )
@@ -301,7 +354,6 @@ def generate_single_dataset(
     labelfile: str,
     class_label: str,
     test_prop=0.2,
-    *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
@@ -327,7 +379,6 @@ def generate_single_dataset(
             labelname=labelfile,
             class_label=class_label,
             indices=indices,
-            *args,
             **kwargs,
         )
         for indices in [trainsplit, valsplit, testsplit]  
@@ -336,60 +387,30 @@ def generate_single_dataset(
     return train, val, test 
 
 def generate_single_dataloader(
-    datafile: str,
-    labelfile: str,
-    class_label: str,
-    refgenes: List[str],
-    batch_size: int=4,
-    num_workers: int=0,
-    test_prop=0.2,
-    shuffle: bool=False,
-    drop_last: bool=False,
-    transpose: bool=False,
-    *args,
     **kwargs,
-) -> DataLoader:
+) -> Tuple[CollateLoader, CollateLoader, CollateLoader]:
 
     train, val, test = generate_single_dataset(
-        datafile=datafile,
-        labelfile=labelfile,
-        class_label=class_label,
-        test_prop=test_prop,
-        *args,
-        **kwargs 
+        **kwargs,
     )
 
     loaders = (
         CollateLoader(
                 dataset=dataset, 
-                refgenes=refgenes,
-                currgenes=dataset.columns,
-                batch_size=batch_size, 
-                num_workers=num_workers,
-                shuffle=shuffle,
-                transpose=transpose, 
-                drop_last=drop_last,
+                currgenes=(dataset.columns if 'refgenes' in kwargs.keys() else None),
+                **kwargs,
             )
         for dataset in [train, val, test]
     )
 
     return loaders 
 
-def generate_loaders(
+def generate_dataloaders(
     datafiles: List[str], 
     labelfiles: List[str],
-    class_label: str,
-    refgenes: List[str],
-    batch_size: int=4, 
-    num_workers: int=0,
-    shuffle: bool=False,
-    drop_last: bool=False,
-    test_prop: float=0.2,
     collocate: bool=False, 
-    transpose: bool=False, 
-    *args,
     **kwargs,
-) -> Union[Tuple[List[DataLoader], List[DataLoader], List[DataLoader]], Tuple[DataLoader, DataLoader, DataLoader]]:
+) -> Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]:
 
     if len(datafiles) != len(labelfiles):
         raise ValueError("Must have same number of datafiles and labelfiles")
@@ -402,15 +423,6 @@ def generate_loaders(
         trainloader, valloader, testloader = generate_single_dataloader(
             datafile=datafile,
             labelfile=labelfile,
-            class_label=class_label, 
-            refgenes=refgenes,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            shuffle=shuffle,
-            drop_last=drop_last,
-            test_prop=test_prop,
-            transpose=transpose,
-            *args,
             **kwargs,
         )
 
