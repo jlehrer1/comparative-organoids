@@ -137,26 +137,57 @@ class GeneExpressionData(Dataset):
             f"indices={self.indices})"
         )
 
-def custom_collate(sample, refgenes, currgenes):
+def _collate_with_refgenes_and_transpose(
+    sample: torch.Tensor, 
+    refgenes: List[str], 
+    currgenes: List[str],
+    transpose: bool=False,
+) -> Tuple[torch.Tensor, torch.Tensor]:
     data = clean_sample(torch.stack([x[0] for x in sample]), refgenes, currgenes)
     labels = torch.tensor([x[1] for x in sample])
+
+    if transpose:
+        data = data.T 
+
     return data, labels
+
+def _standard_collate(sample):
+    data = torch.stack([x[0] for x in sample])
+    labels = torch.tensor([x[1] for x in sample])
+
+    return data, labels 
+
+def _collate_only_transpose(sample):
+    data, labels = _standard_collate(sample)
+
+    return data.T, labels
 
 class CollateLoader(DataLoader):
     def __init__(
         self, 
         dataset: GeneExpressionData,
-        refgenes: List[str], 
-        currgenes: List[str], 
+        refgenes: List[str]=None, 
+        currgenes: List[str]=None, 
+        transpose: bool=False, 
         *args, 
         **kwargs,
     ) -> None:
-        collate_fn = partial(custom_collate, refgenes=refgenes, currgenes=currgenes)
+
+        if refgenes is None and currgenes is not None or refgenes is not None and currgenes is None:
+            raise ValueError("If refgenes is passed, currgenes must be passed too. If currgenes is passed, refgenes must be passed too.")
+        
+        if refgenes is not None:
+            collate_fn = partial(_collate_with_refgenes_and_transpose, refgenes=refgenes, currgenes=currgenes, transpose=transpose)
+        elif refgenes is None and transpose:
+            collate_fn = partial(_collate_only_transpose, transpose=transpose)
+        else:
+            collate_fn = _standard_collate
+
         super().__init__(
             dataset=dataset,
             collate_fn=collate_fn, 
             *args,
-            **kwargs
+            **kwargs,
         )
 
 class SequentialLoader:
@@ -312,7 +343,9 @@ def generate_single_dataloader(
     batch_size: int=4,
     num_workers: int=0,
     test_prop=0.2,
-    shuffle=False,
+    shuffle: bool=False,
+    drop_last: bool=False,
+    transpose: bool=False,
     *args,
     **kwargs,
 ) -> DataLoader:
@@ -334,6 +367,8 @@ def generate_single_dataloader(
                 batch_size=batch_size, 
                 num_workers=num_workers,
                 shuffle=shuffle,
+                transpose=transpose, 
+                drop_last=drop_last,
             )
         for dataset in [train, val, test]
     )
@@ -347,11 +382,20 @@ def generate_loaders(
     refgenes: List[str],
     batch_size: int=4, 
     num_workers: int=0,
-    shuffle=False,
+    shuffle: bool=False,
+    drop_last: bool=False,
+    test_prop: float=0.2,
     collocate: bool=False, 
+    transpose: bool=False, 
     *args,
     **kwargs,
 ) -> Union[Tuple[List[DataLoader], List[DataLoader], List[DataLoader]], Tuple[DataLoader, DataLoader, DataLoader]]:
+
+    if len(datafiles) != len(labelfiles):
+        raise ValueError("Must have same number of datafiles and labelfiles")
+    
+    if collocate and len(datafiles) == 1:
+        raise ValueError("Cannot collocate dataloaders with only one dataset file")
 
     train, val, test = [], [], []
     for datafile, labelfile in zip(datafiles, labelfiles):
@@ -363,6 +407,9 @@ def generate_loaders(
             batch_size=batch_size,
             num_workers=num_workers,
             shuffle=shuffle,
+            drop_last=drop_last,
+            test_prop=test_prop,
+            transpose=transpose,
             *args,
             **kwargs,
         )
@@ -371,7 +418,12 @@ def generate_loaders(
         val.append(valloader)
         test.append(testloader)
 
-    if collocate: # Join these together if requested 
+    if len(datafiles) == 1:
+        train = train[0]
+        val = val[0]
+        test = test[0]
+
+    if collocate: # Join these together into sequential loader if requested  
         train, val, test = SequentialLoader(train), SequentialLoader(val), SequentialLoader(test)
 
     return train, val, test 

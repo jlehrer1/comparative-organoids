@@ -28,9 +28,13 @@ class GeneDataModule(pl.LightningDataModule):
         labelfiles: List[str],
         class_label: str,
         refgenes: List[str],
+        test_prop: float=0.2,
+        collocate: bool=False,
+        transpose: bool=False,
         batch_size: int=16,
         num_workers=32,
         shuffle=False,
+        drop_last: bool=False,
         *args,
         **kwargs,
     ):
@@ -42,7 +46,11 @@ class GeneDataModule(pl.LightningDataModule):
         self.class_label = class_label
         self.refgenes = refgenes
         self.shuffle = shuffle
-        
+        self.drop_last = drop_last
+        self.test_prop = test_prop
+        self.collocate = collocate
+        self.transpose = transpose
+
         self.num_workers = num_workers
         self.batch_size = batch_size
         
@@ -63,7 +71,9 @@ class GeneDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=self.shuffle,
-            collocate=True, # Join all loaders into one sequential one 
+            drop_last=self.drop_last,
+            collocate=self.collocate, # Join all loaders into one sequential one 
+            transpose=self.transpose,
             *self.args,
             **self.kwargs
         )
@@ -115,7 +125,12 @@ def generate_trainer(
     class_label: str,
     num_workers: int=4,
     batch_size: int=4,
+    drop_last: bool=True,
     weighted_metrics: bool=False,
+    shuffle: bool=False,
+    test_prop: float=0.2,
+    collocate: bool=False, 
+    transpose: bool=False, 
     *args,
     **kwargs,
 ):
@@ -167,6 +182,11 @@ def generate_trainer(
         normalize=True,
         batch_size=batch_size,
         num_workers=num_workers,
+        drop_last=drop_last,
+        shuffle=shuffle,
+        test_prop=test_prop,
+        collocate=collocate,
+        transpose=transpose,
         *args,
         **kwargs,
     )
