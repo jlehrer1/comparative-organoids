@@ -101,7 +101,12 @@ def generate_trainer(
     datafiles: List[str],
     labelfiles: List[str],
     class_label: str,
-    weighted_metrics: bool=False,
+    weighted_metrics: bool,
+    batch_size: int,
+    num_workers: int,
+    optim_params: Dict[str, Any],
+    wandb_name='',
+    *args,
     **kwargs,
 ):
     """
@@ -122,8 +127,7 @@ def generate_trainer(
     data_path = os.path.join(here, '..', '..', '..', 'data')
 
     wandb_logger = WandbLogger(
-        project=f"cell-classifier-{class_label}",
-        name='TabNet Classifier, Shuffle=True',
+        project=f"cell-classifier-{class_label.lower()}",
     )
 
     uploadcallback = UploadCallback(
@@ -147,8 +151,11 @@ def generate_trainer(
     module = GeneDataModule(
         datafiles=datafiles, 
         labelfiles=labelfiles, 
-        class_label='Type', 
+        class_label=class_label, 
         refgenes=refgenes,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        *args,
         **kwargs,
     )
 
@@ -156,6 +163,7 @@ def generate_trainer(
         input_dim=len(refgenes),
         output_dim=19,
         weighted_metrics=weighted_metrics,
+        optim_params=optim_params
     )
     
     trainer = pl.Trainer(
@@ -167,6 +175,7 @@ def generate_trainer(
             uploadcallback, 
             earlystoppingcallback,
         ],
+        max_epochs=kwargs['max_epochs']
     )
 
     return trainer, model, module

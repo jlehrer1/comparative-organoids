@@ -9,15 +9,15 @@ import numpy as np
 from scipy.stats import loguniform
 
 def run_search(
-    num: int, 
+    N: int, 
     class_label: str,
     weighted_metrics: bool 
 ) -> None:
     """
-    Runs hyperparameter search by scaling i GPU jobs, i=1,..,num on the PRP Nautilus cluster.
+    Runs hyperparameter search by scaling i GPU jobs, i=1,..,N on the PRP Nautilus cluster.
 
     Parameters:
-    num: Number of models to train
+    N: Number of models to train
     class_label: Which target label to train for 
     weighted_metrics: Whether to use weighted metric calculations or regular ('weighted' vs 'micro' in Torchmetrics)
     """
@@ -28,23 +28,18 @@ def run_search(
     param_dict = {
         'weighted_metrics': [weighted_metrics],
         'class_label': [class_label],
-        'epochs': [100000],
-        'lr': np.linspace(0.001, 0.1, 10), #(start, stop, num),
-        'batch_size': [2, 4, 16, 32],
-        # 'momentum': np.linspace(0.001, 0.9, 10),
-        'momentum': [0],
-        # 'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
-        'weight_decay': [0],
-        'width': [1024, 2048, 4096],
-        # 'layers': np.arange(10, 25, 5),
-        'layers' : [15],
+        'max_epochs': [1000],
+        'lr': np.linspace(0.001, 0.1, 10),
+        'batch_size': [256, 512, 1024],
+        'momentum': np.linspace(0.001, 0.9, 10),
+        'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
     }
     
     # Generate cartesian product of dictionary 
     params = list(product(*param_dict.values()))
     param_names = list(param_dict.keys())
     
-    for i, params in enumerate(random.sample(params, num)):
+    for i, params in enumerate(random.sample(params, N)):
         for n, p in zip(param_names, params):
             os.environ[n.upper()] = str(p)
 
@@ -67,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--class-label',
         required=False,
-        default='Subtype',
+        default='Type',
         type=str,
         help='Class label to train classifier on',
     )
@@ -75,10 +70,11 @@ if __name__ == "__main__":
     parser.add_argument(
         '--weighted-metrics',
         type=ast.literal_eval, # To evaluate weighted_metrics=False as an actual bool
-        default=False,
+        default=True,
         required=False,
         help='Whether to use class-weighted schemes in metric calculations'
     )
 
     args = parser.parse_args()
-    run_search(args.N, args.class_label, args.weighted_accuracy)
+    args = vars(args)
+    run_search(**args)

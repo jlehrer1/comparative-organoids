@@ -32,8 +32,8 @@ class GeneClassifier(pl.LightningModule):
         input_dim, 
         output_dim,
         base_model=None,
-        optimizer=torch.optim.Adam,
         optim_params: Dict[str, float]={
+            'optimizer': torch.optim.Adam,
             'lr': 0.001,
             'weight_decay': 0.01,
         },
@@ -61,7 +61,6 @@ class GeneClassifier(pl.LightningModule):
         
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.optimizer = optimizer
         self.optim_params = optim_params
         self.metrics = metrics
         self.weighted_metrics = weighted_metrics
@@ -112,7 +111,9 @@ class GeneClassifier(pl.LightningModule):
                 )
 
     def configure_optimizers(self):
-        optimizer = self.optimizer(self.parameters(), **self.optim_params)
+        optimizer = self.optim_params.pop('optimizer')
+        optimizer = optimizer(self.parameters(), **self.optim_params)
+        
         return optimizer
 
 class TabNetGeneClassifier(TabNet):

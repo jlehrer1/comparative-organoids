@@ -5,6 +5,7 @@ import os
 import ast
 from typing import *
 from lib.lightning_train import generate_trainer
+import torch 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import helper
@@ -13,28 +14,27 @@ from helper import seed_everything
 seed_everything(42)
 
 def make_args() -> argparse.ArgumentParser:
-
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--width',
-        required=False,
-        default=1024,
-        help='Width of deep layers in feedforward neural network',
-        type=int,
-    )
+    # parser.add_argument(
+    #     '--width',
+    #     required=False,
+    #     default=1024,
+    #     help='Width of deep layers in feedforward neural network',
+    #     type=int,
+    # )
+
+    # parser.add_argument(
+    #     '--layers',
+    #     required=False,
+    #     default=5,
+    #     help='Number of deep layers in feedforward neural network',
+    #     type=int,
+    # )
 
     parser.add_argument(
-        '--layers',
+        '--max-epochs',
         required=False,
-        default=5,
-        help='Number of deep layers in feedforward neural network',
-        type=int,
-    )
-
-    parser.add_argument(
-        '--epochs',
-        required=False,
-        default=200000,
+        default=1000,
         help='Total number of allowable epochs the model is allowed to train for',
         type=int,
     )
@@ -66,7 +66,7 @@ def make_args() -> argparse.ArgumentParser:
     parser.add_argument(
         '--class-label',
         required=False,
-        default='Subtype',
+        default='Type',
         type=str,
         help='Class label to train classifier on',
     )
@@ -82,7 +82,7 @@ def make_args() -> argparse.ArgumentParser:
     parser.add_argument(
         '--num-workers',
         required=False,
-        default=40,
+        default=32,
         type=int,
         help='Number of workers in DataLoaders'
     )
@@ -106,6 +106,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     params = vars(args)
+    print(params)
 
     info = helper.INTERIM_DATA_AND_LABEL_FILES_LIST
 
@@ -114,19 +115,21 @@ if __name__ == "__main__":
 
     datafiles = [os.path.join(data_path, f) for f in datafiles]
     labelfiles = [os.path.join(label_path, f) for f in labelfiles]
-    class_label = 'Type'
-
+    
     trainer, model, module = generate_trainer(
         datafiles=datafiles,
         labelfiles=labelfiles,
-        class_label=class_label,
-        weighted_metrics=True,
-        num_workers=16,
-        batch_size=4,
         shuffle=True,
         drop_last=True,
         skip=3,
         normalize=True,
+        optim_params={
+            'optimizer': torch.optim.SGD,
+            'lr': params.pop('lr'),
+            'momentum': params.pop('momentum'),
+            'weight_decay': params.pop('weight_decay'),
+        },
+        **params,
     )
     
     trainer.fit(model, datamodule=module)

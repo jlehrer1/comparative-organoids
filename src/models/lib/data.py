@@ -212,6 +212,7 @@ class CollateLoader(DataLoader):
         currgenes: List[str]=None, 
         transpose: bool=False, 
         normalize: bool=False,
+        *args,
         **kwargs,
     ) -> None:
 
@@ -291,6 +292,7 @@ def generate_datasets(
     class_label: str,
     test_prop: float=0.2,
     combine=False,
+    *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset]:
     """
@@ -316,6 +318,7 @@ def generate_datasets(
             labelfiles[0],
             class_label,
             test_prop,
+            *args,
             **kwargs,
         )
 
@@ -336,6 +339,7 @@ def generate_datasets(
                     labelname=labelfile,
                     class_label=class_label,
                     indices=indices.index,
+                    *args,
                     **kwargs,
                 )
             )
@@ -354,6 +358,7 @@ def generate_single_dataset(
     labelfile: str,
     class_label: str,
     test_prop=0.2,
+    *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset, Dataset]:
     """
@@ -379,6 +384,7 @@ def generate_single_dataset(
             labelname=labelfile,
             class_label=class_label,
             indices=indices,
+            *args,
             **kwargs,
         )
         for indices in [trainsplit, valsplit, testsplit]  
@@ -387,10 +393,12 @@ def generate_single_dataset(
     return train, val, test 
 
 def generate_single_dataloader(
+    *args,
     **kwargs,
 ) -> Tuple[CollateLoader, CollateLoader, CollateLoader]:
 
     train, val, test = generate_single_dataset(
+        *args,
         **kwargs,
     )
 
@@ -398,6 +406,7 @@ def generate_single_dataloader(
         CollateLoader(
                 dataset=dataset, 
                 currgenes=(dataset.columns if 'refgenes' in kwargs.keys() else None),
+                *args,
                 **kwargs,
             )
         for dataset in [train, val, test]
@@ -409,6 +418,7 @@ def generate_dataloaders(
     datafiles: List[str], 
     labelfiles: List[str],
     collocate: bool=True, 
+    *args,
     **kwargs,
 ) -> Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]:
 
@@ -423,6 +433,7 @@ def generate_dataloaders(
         trainloader, valloader, testloader = generate_single_dataloader(
             datafile=datafile,
             labelfile=labelfile,
+            *args,
             **kwargs,
         )
 
@@ -439,9 +450,6 @@ def generate_dataloaders(
         train, val, test = SequentialLoader(train), SequentialLoader(val), SequentialLoader(test)
 
     return train, val, test 
-
-        
-
 
 
 
