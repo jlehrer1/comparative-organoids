@@ -24,6 +24,7 @@ class GeneClassifier(pl.LightningModule):
         params: Dictionary of hyperparameters to use. Must include width, layers, lr, momentum, weight_decay
         metrics: Dictionary of metrics to log, where keys are metric names and values are torchmetrics.functional methods
         weighted_metrics: If True, use class-weighted calculation in metrics. Otherwise, use default 'micro' calculation.
+        *args, **kwargs: passed to TabNet base model, otherwise ignored
     """
     def __init__(
         self, 
@@ -52,11 +53,11 @@ class GeneClassifier(pl.LightningModule):
                 input_dim=input_dim,
                 output_dim=output_dim,
                 *args,
-                **kwargs,
+                **kwargs
             )
         else:
             self.base_model = base_model
-        
+
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.optim_params = optim_params
@@ -64,28 +65,37 @@ class GeneClassifier(pl.LightningModule):
         self.weighted_metrics = weighted_metrics
         
     def forward(self, x):
-        out = self.base_model(x)
+        if isinstance(self.base_model, TabNetGeneClassifier):
+            out, _ = self.base_model(x) # Don't need M_loss in forward pass, only in loss calculation for extra sparsity
+        else:
+            out = self.base_model(x)
         return out
 
+    def _step(self, batch, batch_idx):
+        if isinstance(self.base_model, TabNetGeneClassifier):
+            # Hacky and annoying, but the extra M_loss from TabNet means we need to handle this specific case 
+            y_hat, y, loss = self.base_model._step(batch, batch_idx)
+        else:
+            x, y = batch 
+            y_hat = self(x)
+            loss = F.cross_entropy(y_hat, y)
+
+        return y, y_hat, loss 
+
     def training_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        
-        loss = F.cross_entropy(y_hat, y)
-        
+        y, y_hat, loss = self._step(batch, batch_idx)        
+
         self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'train')
         return loss
     
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        val_loss = F.cross_entropy(y_hat, y)
+        y, y_hat, loss = self._step(batch, batch_idx)    
 
-        self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
+        self.log("val_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'val')
         
-        return val_loss
+        return loss
     
     def _compute_metrics(self, y_hat, y, tag, on_epoch=True, on_step=True):
         for name, metric in self.metrics.items():
@@ -122,31 +132,17 @@ class TabNetGeneClassifier(TabNet):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-    # Don't need extra sparsity. See TabNet paper/repository for more information
     def forward(self, x):
         out, M_loss = super().forward(x)
-        return out
+        return out, M_loss 
 
     def _step(self, batch, batch_idx):
         x, y = batch
-        y_hat, M_loss = self(x)
+        y_hat, M_loss = self.forward(x)
         
+        # Add extra sparsity as required by TabNet 
         loss = F.cross_entropy(y_hat, y)
         loss = loss - self.lambda_sparse * M_loss 
 
         return y_hat, y, loss 
 
-    def training_step(self, batch, batch_idx):
-        y_hat, y, loss = self._step(batch, batch_idx)
-
-        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
-        self._compute_metrics(y_hat, y, 'train')
-        return loss
-    
-    def validation_step(self, batch, batch_idx):
-        y_hat, y, val_loss = self._step(batch, batch_idx)
-
-        self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
-        self._compute_metrics(y_hat, y, 'val')
-        
-        return val_loss

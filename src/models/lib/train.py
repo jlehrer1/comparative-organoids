@@ -87,7 +87,6 @@ def train_val_loop(
                 running_loss += loss.item()
                 epoch_loss += loss.item()
 
-
                 if i % mod == 0: # record every 2000 mini batches 
                     metric_results = calculate_metrics(
                         outputs=outputs,
@@ -148,7 +147,7 @@ def test_loop(
     mod,
 ):
     model.eval()
-    
+
     with torch.no_grad():
         for test in testloaders:
             running_loss = 0.0
