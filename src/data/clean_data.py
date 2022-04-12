@@ -103,7 +103,7 @@ def clean_labelsets(upload: bool) -> None:
     # Grab only columns of interest and rename them for column name consistency 
     print('Cleaning labels...')
 
-    # Select only by type and rename labels 
+    # Select only by type and rename labels
     df1_reduced = df1[['Type']]
     df2_reduced = df2[['subclass_label']].rename(columns={'subclass_label': 'Type'})
     df3_reduced = df3[['subclass_label']].rename(columns={'subclass_label': 'Type'})

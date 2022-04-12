@@ -19,8 +19,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 
 from helper import seed_everything, gene_intersection
 
-seed_everything(42)
-
 class GeneExpressionData(Dataset):
     """
     Defines a PyTorch Dataset for a CSV too large to fit in memory. 
@@ -225,16 +223,16 @@ class CollateLoader(DataLoader):
         else:
             collate_fn = partial(_standard_collate, normalize=normalize, transpose=transpose)
 
-        allowed_args = inspect.signature(super().__init__).parameters
-        new_kwargs = {}
-
         # This is awkward, but Dataloader init doesn't handle optional keyword arguments
         # So we have to take the intersection between the passed **kwargs and the DataLoader named arguments
+        allowed_args = inspect.signature(super().__init__).parameters
+        new_kwargs = {}
         for key in allowed_args:
             name = allowed_args[key].name
             if name in kwargs:
                 new_kwargs[key] = kwargs[key]
 
+        # Finally, initialize the DataLoader
         super().__init__(
             dataset=dataset,
             collate_fn=collate_fn, 
@@ -259,7 +257,7 @@ class SequentialLoader:
 
 def clean_sample(
     sample: torch.Tensor, 
-    refgenes: List[str],
+    refgenes: List[str], 
     currgenes: List[str],
 ) -> torch.Tensor:
     # currgenes and refgenes are already sorted

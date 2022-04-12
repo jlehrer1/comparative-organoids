@@ -13,8 +13,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 from helper import seed_everything
 
 # Set all seeds for reproducibility
-seed_everything(42)
-
 class GeneClassifier(pl.LightningModule):
     """
         Initialize the gene classifier neural network
@@ -91,7 +89,7 @@ class GeneClassifier(pl.LightningModule):
     
     def _compute_metrics(self, y_hat, y, tag, on_epoch=True, on_step=True):
         for name, metric in self.metrics.items():
-            if not self.weighted_metrics: # We dont consider class support in calculation
+            if self.weighted_metrics: # We dont consider class support in calculation
                 val = metric(y_hat, y, average='weighted', num_classes=self.output_dim)
                 self.log(
                     f"weighted_{tag}_{name}", 
@@ -113,7 +111,7 @@ class GeneClassifier(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = self.optim_params.pop('optimizer')
         optimizer = optimizer(self.parameters(), **self.optim_params)
-        
+
         return optimizer
 
 class TabNetGeneClassifier(TabNet):
@@ -126,5 +124,29 @@ class TabNetGeneClassifier(TabNet):
 
     # Don't need extra sparsity. See TabNet paper/repository for more information
     def forward(self, x):
-        out, _ = super().forward(x)
+        out, M_loss = super().forward(x)
         return out
+
+    def _step(self, batch, batch_idx):
+        x, y = batch
+        y_hat, M_loss = self(x)
+        
+        loss = F.cross_entropy(y_hat, y)
+        loss = loss - self.lambda_sparse * M_loss 
+
+        return y_hat, y, loss 
+
+    def training_step(self, batch, batch_idx):
+        y_hat, y, loss = self._step(batch, batch_idx)
+
+        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
+        self._compute_metrics(y_hat, y, 'train')
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        y_hat, y, val_loss = self._step(batch, batch_idx)
+
+        self.log("val_loss", val_loss, logger=True, on_epoch=True, on_step=True)
+        self._compute_metrics(y_hat, y, 'val')
+        
+        return val_loss

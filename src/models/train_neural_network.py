@@ -9,9 +9,6 @@ import torch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import helper
-from helper import seed_everything
-
-seed_everything(42)
 
 def make_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()

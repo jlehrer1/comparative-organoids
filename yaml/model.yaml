@@ -21,10 +21,13 @@ spec:
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
           python src/models/train_neural_network.py \
+          --num-workers=32 \ 
           --lr=${LR} \
           --momentum=${MOMENTUM} \
           --weight-decay=${WEIGHT_DECAY} \
+          
           --class-label=${CLASS_LABEL} \
+          --batch-size=${BATCH_SIZE} \ 
           --weighted-metrics=${WEIGHTED_METRICS}" 
         ]
         resources:

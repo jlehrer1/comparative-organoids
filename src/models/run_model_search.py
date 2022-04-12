@@ -11,7 +11,6 @@ from scipy.stats import loguniform
 def run_search(
     N: int, 
     class_label: str,
-    weighted_metrics: bool 
 ) -> None:
     """
     Runs hyperparameter search by scaling i GPU jobs, i=1,..,N on the PRP Nautilus cluster.
@@ -26,12 +25,12 @@ def run_search(
     yaml_path = os.path.join(here, '..', '..', 'yaml', 'model.yaml')
 
     param_dict = {
-        'weighted_metrics': [weighted_metrics],
+        'weighted_metrics': [True],
         'class_label': [class_label],
         'max_epochs': [1000],
-        'lr': np.linspace(0.001, 0.1, 10),
-        'batch_size': [256, 512, 1024],
-        'momentum': np.linspace(0.001, 0.9, 10),
+        'lr': loguniform.rvs(0.001, 0.1, size=10),
+        'batch_size': [16, 32, 64, 256, 512, 1024],
+        'momentum': loguniform.rvs(0.001, 0.9, size=10),
         'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
     }
     
@@ -65,14 +64,6 @@ if __name__ == "__main__":
         default='Type',
         type=str,
         help='Class label to train classifier on',
-    )
-
-    parser.add_argument(
-        '--weighted-metrics',
-        type=ast.literal_eval, # To evaluate weighted_metrics=False as an actual bool
-        default=True,
-        required=False,
-        help='Whether to use class-weighted schemes in metric calculations'
     )
 
     args = parser.parse_args()

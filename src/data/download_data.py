@@ -96,7 +96,9 @@ def download_raw_from_s3(
             local_path
         )
 
-def download_raw_expression_matrices(upload: bool) -> None:
+def download_raw_expression_matrices(
+    upload: bool,
+) -> None:
     """Downloads all raw datasets and label sets from cells.ucsc.edu, and then unzips them locally
     
     Parameters:
@@ -112,7 +114,7 @@ def download_raw_expression_matrices(upload: bool) -> None:
         labelfile = f'{file[:-4]}_labels.tsv'
         labelfile_path = os.path.join(data_path, 'raw', labelfile)
 
-        datalink, labellink = links 
+        datalink, labellink = links
 
         # First, make the required folders if they do not exist 
         for dir in 'raw', 'interim', 'processed':
@@ -159,6 +161,12 @@ def download_raw_expression_matrices(upload: bool) -> None:
 
     print('Done.')
 
+def download_labels():
+    datasets = helper.DATA_FILES_AND_URLS_DICT
+
+    for name, (_, labelurl) in datasets.items():
+        pass 
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -209,5 +217,7 @@ if __name__ == "__main__":
         download_raw_from_s3(key, local)
     elif type == 'processed' or type == 'clean':
         download_clean_from_s3(key, local)
+    elif type= == 'labels':
+        download_labels()
     else:
         raise ValueError('Unknown type specified for data downloading.')

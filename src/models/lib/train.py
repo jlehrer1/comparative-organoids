@@ -18,9 +18,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 from helper import upload, seed_everything
 from .data import clean_sample
 
-# Set all seeds for reproducibility
-seed_everything(42)
-
 class UploadCallback(pl.callbacks.Callback):
     """Custom PyTorch callback for uploading model checkpoints to the braingeneers S3 bucket.
     

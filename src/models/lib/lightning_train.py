@@ -19,9 +19,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 import helper 
 from helper import seed_everything, gene_intersection, download
 
-# Set all seeds for reproducibility
-seed_everything(42)
-
 class GeneDataModule(pl.LightningDataModule):
     """
     Creates the DataModule for PyTorch-Lightning training.
@@ -127,7 +124,7 @@ def generate_trainer(
     data_path = os.path.join(here, '..', '..', '..', 'data')
 
     wandb_logger = WandbLogger(
-        project=f"cell-classifier-{class_label.lower()}",
+        project=f"tabnet-classifer-sweep",
     )
 
     uploadcallback = UploadCallback(
