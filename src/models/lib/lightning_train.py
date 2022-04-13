@@ -16,8 +16,7 @@ from .data import generate_dataloaders
 
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-import helper 
-from helper import seed_everything, gene_intersection, download
+from helper import gene_intersection, download
 
 class GeneDataModule(pl.LightningDataModule):
     """

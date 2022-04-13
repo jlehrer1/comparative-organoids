@@ -4,7 +4,7 @@ import sys
 import argparse
 import urllib 
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 import helper 
 
 here = pathlib.Path(__file__).parent.absolute()
@@ -96,77 +96,6 @@ def download_raw_from_s3(
             local_path
         )
 
-def download_raw_expression_matrices(
-    upload: bool,
-) -> None:
-    """Downloads all raw datasets and label sets from cells.ucsc.edu, and then unzips them locally
-    
-    Parameters:
-    upload: Whether or not to also upload data to S3 bucket 
-    """
-
-    # {local file name: [dataset url, labelset url]}
-    datasets = helper.DATA_FILES_AND_URLS_DICT
-
-    for file, links in datasets.items():
-        datafile_path = os.path.join(data_path, 'raw', file)
-
-        labelfile = f'{file[:-4]}_labels.tsv'
-        labelfile_path = os.path.join(data_path, 'raw', labelfile)
-
-        datalink, labellink = links
-
-        # First, make the required folders if they do not exist 
-        for dir in 'raw', 'interim', 'processed':
-            os.makedirs(os.path.join(data_path, dir), exist_ok=True)
-
-        # Download and unzip data file if it doesn't exist 
-        if not os.path.isfile(os.path.join(data_path, 'raw', file)):
-            print(f'Downloading zipped data for {file}')
-            urllib.request.urlretrieve(
-                datalink,
-                f'{datafile_path}.gz',
-            )
-
-            print(f'Unzipping {file}')
-            os.system(
-                f'zcat < {datafile_path}.gz > {datafile_path}'
-            )
-
-            print(f'Deleting compressed data')
-            os.system(
-                f'rm -rf {datafile_path}.gz'
-            )
-
-        # Download label file if it doesn't exist 
-        if not os.path.isfile(os.path.join(data_path, 'raw', labelfile_path)):
-            print(f'Downloading label for {file}')
-            urllib.request.urlretrieve(
-                labellink,
-                labelfile_path,
-            )
-
-        # If upload boolean is passed, also upload these files to the braingeneersdev s3 bucket
-        if upload:
-            print(f'Uploading {file} and {labelfile} to braingeneersdev S3 bucket')
-            helper.upload(
-                datafile_path,
-                os.path.join('jlehrer', 'expression_data', 'raw', file)
-            )
-
-            helper.upload(
-                labelfile_path,
-                os.path.join('jlehrer', 'expression_data', 'raw', f'{file[:-4]}_labels.tsv')
-            )
-
-    print('Done.')
-
-def download_labels():
-    datasets = helper.DATA_FILES_AND_URLS_DICT
-
-    for name, (_, labelurl) in datasets.items():
-        pass 
-    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -175,13 +104,6 @@ if __name__ == "__main__":
         required=False,
         default='clean',
         help="Type of data to download"
-    )
-
-    parser.add_argument(
-        '--s3-upload',
-        required=False,
-        action='store_true',
-        help='If passed, also upload data to braingeneersdev/jlehrer/expression_data/raw, if the method accepts this option'
     )
 
     parser.add_argument(
@@ -202,22 +124,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     type = args.type
-    upload = args.s3_upload
     key = args.key 
     local = args.local_name 
 
     if local is not None and not key:
         parser.error('Error: If --local-name is passed in specified download, s3 key must be passed as well via --key')
 
-    if type == 'external':
-        download_raw_expression_matrices(upload=upload)
     if type == 'interim':
         download_interim_from_s3(key, local)
     elif type == 'raw':
         download_raw_from_s3(key, local)
     elif type == 'processed' or type == 'clean':
         download_clean_from_s3(key, local)
-    elif type= == 'labels':
-        download_labels()
     else:
         raise ValueError('Unknown type specified for data downloading.')
