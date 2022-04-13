@@ -20,14 +20,9 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 from helper import seed_everything, gene_intersection
 
 class GeneExpressionData(Dataset):
+
     """
     Defines a PyTorch Dataset for a CSV too large to fit in memory. 
-
-    Init params:
-    filename: Path to csv data file, where rows are samples and columns are features
-    labelname: Path to label file, where column '# labels' defines classification labels
-    class_label: Label to train on, must be in labelname file 
-    indices=None: List of indices to use in dataset. If None, all indices given in labelname are used.
     """
     def __init__(
         self, 
@@ -41,6 +36,26 @@ class GeneExpressionData(Dataset):
         sep=',',
         **kwargs, # To handle extraneous inputs 
     ):
+        """Initialization method for GeneExpressionData
+
+        :param filename: Path to csv data file, where rows are samples and columns are features
+        :type filename: str
+        :param labelname: Path to label file, where column '# labels' defines classification labels
+        :type labelname: str
+        :param class_label: Label to train on, must be in labelname file 
+        :type class_label: str
+        :param indices: List of indices to use in dataset. If None, all indices given in labelname are used., defaults to None
+        :type indices: Iterable[int], optional
+        :param skip: number of lines to skip in datafile csv, since header lines are often unneeded, defaults to 3
+        :type skip: int, optional
+        :param cast: cast sample to float32, defaults to True
+        :type cast: bool, optional
+        :param index_col: column in labelfile that contains numerical indices of datafiles, defaults to 'cell'
+        :type index_col: str, optional
+        :param sep: separator for labelfile and datafile, defaults to ','
+        :type sep: str, optional
+        """
+
         self.filename = filename
         self.labelname = labelname # alias 
         self.class_label = class_label
@@ -55,7 +70,15 @@ class GeneExpressionData(Dataset):
         else:
             self._labeldf = pd.read_csv(labelname).loc[indices, :].reset_index(drop=True)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
+        """Get sample at index
+
+        :param idx: Numerical index between 0, len(self) -1 
+        :type idx: int
+        :raises ValueError: Errors in the case of unbounded slicing, which is normally supported in this method 
+        :return: Returns a data, label sample
+        :rtype: Tuple[torch.Tensor, Any]
+        """        
         # Handle slicing 
         if isinstance(idx, slice):
             if idx.start is None or idx.stop is None:
@@ -135,19 +158,23 @@ def _collate_with_refgenes(
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Collate minibatch of samples where we're intersecting the columns between refgenes and currgenes,
-    optionally normalizing and transposing.
 
-    Parameters:
-    sample: List of samples from GeneExpressionData object
-    refgenes: List of reference genes
-    currgenes: List of current columns from sample 
-    transpose: boolean, indicates if we should transpose the minibatch (in the case of incorrectly formatted .csv data)
-    normalize: boolean, indicates if we should normalize the minibatch
 
-    Returns:
-    Two torch.Tensors containing the data and labels, respectively
+    :param sample: List of samples from GeneExpressionData object
+    :type sample: List[tuple]
+    :param refgenes: List of reference genes
+    :type refgenes: List[str]
+    :param currgenes: List of current columns from sample 
+    :type currgenes: List[str]
+    :param transpose: boolean, indicates if we should transpose the minibatch (in the case of incorrectly formatted .csv data)
+    :type transpose: bool
+    :param normalize: boolean, indicates if we should normalize the minibatch
+    :type normalize: bool
+    :return: Two torch.Tensors containing the data and labels, respectively
+    :rtype: Tuple[torch.Tensor, torch.Tensor]
     """
 
+ 
     data = clean_sample(torch.stack([x[0] for x in sample]), refgenes, currgenes)
     labels = torch.tensor([x[1] for x in sample])
 
@@ -161,15 +188,15 @@ def _standard_collate(
     """
     Collate minibatch of samples, optionally normalizing and transposing. 
 
-    Parameters:
-    sample: List of GeneExpressionData items to collate
-    transpose: boolean, indicates if we should transpose the minibatch (in the case of incorrectly formatted .csv data)
-    normalize: boolean, indicates if we should normalize the minibatch
-
-    Returns:
-    Two torch.Tensors containing the data and labels, respectively
-    """
-
+    :param sample: List of GeneExpressionData items to collate
+    :type sample: List[tuple]
+    :param normalize: boolean, indicates if we should transpose the minibatch (in the case of incorrectly formatted .csv data)
+    :type normalize: bool
+    :param transpose: boolean, indicates if we should normalize the minibatch
+    :type transpose: bool
+    :return: Collated samples and labels, respectively
+    :rtype: Tuple[torch.Tensor, torch.Tensor]
+    """    
     data = torch.stack([x[0] for x in sample])
     labels = torch.tensor([x[1] for x in sample])
 
@@ -180,9 +207,17 @@ def _transform_sample(
     normalize: bool, 
     transpose: bool
 ) -> torch.Tensor:
-    """
-    Optionally normalize and tranpose a torch.Tensor
-    """
+    """Optionally normalize and tranpose a torch.Tensor
+
+    :param data: Input sample
+    :type data: torch.Tensor
+    :param normalize: To normalize sample or not 
+    :type normalize: bool
+    :param transpose: to transpose sample or not 
+    :type transpose: bool
+    :return: Modified sample 
+    :rtype: torch.Tensor
+    """    
     if transpose:
         data = data.T
 
@@ -192,17 +227,6 @@ def _transform_sample(
     return data 
 
 class CollateLoader(DataLoader):
-    """
-    Subclass of DataLoader that creates a collate_fn on the fly as required by the user. This is used in the case where we want to calculate the intersection
-    between a sample and the total column intersection of our data. We do this batch-wise instead of sample-wise for speed, since numpy is efficient at working on 2d arrays.
-
-    Parameters:
-    dataset: GeneExpressionDataset to create DataLoader from
-    refgenes: Optional, list of columns to take intersection with 
-    currgenes: Optional, list of current dataset columns
-    transpose: Boolean indicating whether to tranpose the batch data 
-    normalize: Boolean indicating whether to normalize the batch data 
-    """
     def __init__(
         self, 
         dataset: GeneExpressionData,
@@ -213,7 +237,20 @@ class CollateLoader(DataLoader):
         *args,
         **kwargs,
     ) -> None:
+        """Initializes a CollateLoader for efficient numerical batch-wise transformations
 
+        :param dataset: GeneExpressionDataset to create DataLoader from
+        :type dataset: GeneExpressionData
+        :param refgenes: Optional, list of columns to take intersection with , defaults to None
+        :type refgenes: List[str], optional
+        :param currgenes: Optional, list of current dataset columns, defaults to None
+        :type currgenes: List[str], optional
+        :param transpose: Boolean indicating whether to tranpose the batch data , defaults to False
+        :type transpose: bool, optional
+        :param normalize: Boolean indicating whether to normalize the batch data, defaults to False
+        :type normalize: bool, optional
+        :raises ValueError: If refgenes are passed, currgenes also have to be passed otherwise we dont know what to align with
+        """    
         if refgenes is None and currgenes is not None or refgenes is not None and currgenes is None:
             raise ValueError("If refgenes is passed, currgenes must be passed too. If currgenes is passed, refgenes must be passed too.")
         
@@ -243,8 +280,8 @@ class SequentialLoader:
     """
     Class to sequentially stream samples from an arbitrary number of DataLoaders.
 
-    Parameters:
-    dataloaders: List of DataLoaders or DataLoader derived class, such as the CollateLoader from above 
+    param dataloaders: List of DataLoaders or DataLoader derived class, such as the CollateLoader from above 
+    :type dataloaders: List[Union[DataLoader, SequentialLoader]]
     """
     def __init__(self, dataloaders):
         self.dataloaders = dataloaders
@@ -261,20 +298,19 @@ def clean_sample(
     currgenes: List[str],
 ) -> torch.Tensor:
     # currgenes and refgenes are already sorted
-    # Passed from calculate_intersection
-
+    # Passed froem calculate_intersection
     """
     Remove uneeded gene columns for given sample.
 
-    Arguments:
-    sample: np.ndarray
-        n samples to clean
-    refgenes:
-        list of reference genes from helper.generate_intersection(), contains the genes we want to keep
-    currgenes:
-        list of reference genes for the current sample
+    :param sample: n samples to clean
+    :type sample: torch.Tensor
+    :param refgenes: list of reference genes from helper.generate_intersection(), contains the genes we want to keep
+    :type refgenes: List[str]
+    :param currgenes: list of reference genes for the current sample
+    :type currgenes: List[str]
+    :return: Sample reordered and intersected with the list of refgenes
+    :rtype: torch.Tensor
     """
-
     intersection = np.intersect1d(currgenes, refgenes, return_indices=True)
     indices = intersection[1] # List of indices in currgenes that equal refgenes 
     
@@ -296,17 +332,22 @@ def generate_datasets(
     """
     Generates the COMBINED train/val/test datasets with stratified label splitting. 
     This means that the proportion of each label is the same in the training, validation and test set. 
-    
-    Parameters:
-    datafiles: List of absolute paths to csv files under data_path/ that define cell x expression matrices
-    labelfiles: List of absolute paths to csv files under data_path/ that define cell x class matrices
-    class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
-    test_prop: Proportion of data to use as test set 
 
-    Returns:
-    Tuple[Dataset, Dataset, Dataset]: Training, validation and test datasets, respectively
-    """
-    
+
+    :param datafiles: List of absolute paths to csv files under data_path/ that define cell x expression matrices
+    :type datafiles: List[str]
+    :param labelfiles: ist of absolute paths to csv files under data_path/ that define cell x class matrices
+    :type labelfiles: List[str]
+    :param class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
+    :type class_label: str
+    :param test_prop: Proportion of data to use as test set , defaults to 0.2
+    :type test_prop: float, optional
+    :param combine: Whether to join Datasets into ConcatDataset, defaults to False
+    :type combine: bool, optional
+    :raises ValueError: Errors if user requests to combine datasets but there is only one. This is probability misinformed and should raise an error.
+    :return: Training, validation and test datasets, respectively
+    :rtype: Tuple[Dataset, Dataset]
+    """    
     if combine and len(datafiles) == 1:
         raise ValueError('Cannot combine datasets when number of datafiles == 1.')
 
@@ -362,14 +403,17 @@ def generate_single_dataset(
     """
     Generate a train/test split for the given datafile and labelfile.
 
-    Parameters:
-    datafile: Path to dataset csv file
-    labelfile: Path to label csv file 
-    class_label: Column (label) in labelfile to train on 
-
-    Returns:
-    Tuple[Dataset, Dataset]: Train/val/test set, respectively 
-    """
+    :param datafile: Path to dataset csv file
+    :type datafile: str
+    :param labelfile: Path to label csv file 
+    :type labelfile: str
+    :param class_label: Column (label) in labelfile to train on 
+    :type class_label: str
+    :param test_prop: Proportion of dataset to use in val/test, defaults to 0.2
+    :type test_prop: float, optional
+    :return: train, val, test Datasets
+    :rtype: Tuple[Dataset, Dataset, Dataset]
+    """    
     current_labels = pd.read_csv(labelfile).loc[:, class_label]
     
     # Make stratified split on labels
@@ -394,7 +438,12 @@ def generate_single_dataloader(
     *args,
     **kwargs,
 ) -> Tuple[CollateLoader, CollateLoader, CollateLoader]:
+    """
+    Generates a train, val, test CollateLoader
 
+    :return: train, val, test loaders
+    :rtype: Tuple[CollateLoader, CollateLoader, CollateLoader]
+    """
     train, val, test = generate_single_dataset(
         *args,
         **kwargs,
@@ -419,7 +468,20 @@ def generate_dataloaders(
     *args,
     **kwargs,
 ) -> Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]:
+    """
+    Generates DataLoaders for training, either as a combined list from each datafile or a SequentialLoader to allow sequentially sampling between DataLoaders or DataLoader derived classes.
 
+    :param datafiles: List of absolute paths to datafiles
+    :type datafiles: List[str]
+    :param labelfiles: List of absolute paths to labelfiles
+    :type labelfiles: List[str]
+    :param collocate: Whether to combine DataLoaders into one SequentialLoader to allow sequential sampling from all continuously, defaults to True
+    :type collocate: bool, optional
+    :raises ValueError: Errors if num(labelfiles) != num(datafiles)
+    :raises ValueError: Errors if user requests to collocate but only one loader is passed -- probably misinformed 
+    :return: Either lists containing train, val, test or SequentialLoader's for train, val, test 
+    :rtype: Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]
+    """
     if len(datafiles) != len(labelfiles):
         raise ValueError("Must have same number of datafiles and labelfiles")
     

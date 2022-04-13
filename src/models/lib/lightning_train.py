@@ -21,10 +21,6 @@ from helper import gene_intersection, download
 class GeneDataModule(pl.LightningDataModule):
     """
     Creates the DataModule for PyTorch-Lightning training.
-
-    Parameters:
-    **kwargs: The dictionary of keyword-based arguments is passed directly to the generate_dataloaders method, so treat the initialization of
-    this class in the same way the user generates the train, val, test dataloaders.
     """
     def __init__(
         self, 
@@ -68,11 +64,13 @@ def prepare_data(
     """
     Prepare data for model training, by downloading the transposed and clean labels from the S3 bucket
 
-    Parameters:
-    data_path: Path to the top-level folder containing the data subfolders
-    datafiles: List of absolute paths to datafiles 
-    labelfiles: List of absolute paths to labelfiles
-    """
+    :param data_path: Path to the top-level folder containing the data subfolders
+    :type data_path: str
+    :param datafiles: List of absolute paths to datafiles 
+    :type datafiles: List[str]
+    :param labelfiles: List of absolute paths to labelfiles
+    :type labelfiles: List[str]
+    """    
     os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
     os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
 
@@ -110,12 +108,24 @@ def generate_trainer(
     """
     Generates PyTorch Lightning trainer and datasets for model training.
 
-    Parameters:
-    here: Absolute path to __file__
-    params: Dictionary of hyperparameters for model training
-
-    Returns:
-    Tuple[trainer, model, traindata, valdata]: Tuple of PyTorch-Lightning trainer, model instance, and train and validation dataloaders for training.
+    :param datafiles: List of absolute paths to datafiles
+    :type datafiles: List[str]
+    :param labelfiles: List of absolute paths to labelfiles
+    :type labelfiles: List[str]
+    :param class_label: Class label to train on 
+    :type class_label: str
+    :param weighted_metrics: To use weighted metrics in model training 
+    :type weighted_metrics: bool
+    :param batch_size: Batch size in dataloader
+    :type batch_size: int
+    :param num_workers: Number of workers in dataloader
+    :type num_workers: int
+    :param optim_params: Dictionary defining optimizer and any needed/optional arguments for optimizer initializatiom
+    :type optim_params: Dict[str, Any]
+    :param wandb_name: Name of run in Wandb.ai, defaults to ''
+    :type wandb_name: str, optional
+    :return: Trainer, model, datamodule 
+    :rtype: _type_
     """
 
     device = ('cuda:0' if torch.cuda.is_available() else 'cpu')

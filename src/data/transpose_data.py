@@ -19,13 +19,18 @@ def transpose_files(
     """
     Calculates the tranpose of the given expression matrices from data/raw
 
-    files: List of files to transpose, must all be in data/raw/
-    chunksize: Number of lines to read in from each file, defaults to 400
-    upload_chunks: Whether to upload the transposed chunks of the file to the S3 bucket under the upload_chunks path
-    upload_file: Whether to upload the transposed file to the S3 bucket under the upload_file path 
-    no_cache: Whether to recalculate the transpose, regardless of if it exists or not
-    """
 
+    :param files: List of files to transpose, must all be in data/raw/
+    :type files: List[str]
+    :param chunksize: Number of lines to read in from each file, defaults to 400
+    :type chunksize: int
+    :param upload_chunks: Whether to upload the transposed chunks of the file to the S3 bucket under the upload_chunks path
+    :type upload_chunks: bool
+    :param upload_file: Whether to upload the transposed file to the S3 bucket under the upload_file path 
+    :type upload_file: bool
+    :param no_cache: Whether to recalculate the transpose, regardless of if it exists or not
+    :type no_cache: bool
+    """
     here = pathlib.Path(__file__).parent.absolute()
     data_path = os.path.join(here, '..', '..', 'data')
 

@@ -10,14 +10,17 @@ import helper
 here = pathlib.Path(__file__).parent.absolute()
 data_path = os.path.join(here, '..', '..', 'data')
 
-def _download_from_key(key, localpath):
-    """
-    Helper function that downloads all files recursively from the given key (folder) from the braingeneersdev S3 bucket
-    
-    Parameters:
-    key: S3 folder (key) to start downloading recursively from
-    localpath: Optional argument, downloads to a subfolder under the data/processed/ folder # TODO add folder generation
-    """
+def _download_from_key(
+    key: str, 
+    localpath: str,
+) -> None:
+    """Helper function that downloads all files recursively from the given key (folder) from the braingeneersdev S3 bucket
+
+    :param key: S3 folder (key) to start downloading recursively from
+    :type key: str
+    :param localpath: Optional argument, downloads to a subfolder under the data/processed/ folder # TODO add folder generation
+    :type localpath: str 
+    """    
 
     print(f'Key is {key}')
     reduced_files = helper.list_objects(key)
@@ -33,13 +36,17 @@ def _download_from_key(key, localpath):
                 f,
                 os.path.join(localpath, f.split('/')[-1]) # Just the file name in the list of objects
             )
-
 def download_clean_from_s3(
     file: str=None,
     local_path: str=None,
 ) -> None:
-    """Downloads the cleaned data from s3 to be used in model training."""
+    """Downloads the cleaned data from s3 to be used in model training
 
+    :param file: file name to download from braingeneersdev S3 bucket, defaults to None
+    :type file: str, optional
+    :param local_path: path to download file to, defaults to None
+    :type local_path: str, optional
+    """    
     os.makedirs(os.path.join(data_path, 'processed'), exist_ok=True)
     if not file: # No single file passed, so download recursively
         print('Downloading all clean data...')
@@ -59,8 +66,13 @@ def download_interim_from_s3(
     file: str=None,
     local_path: str=None,
 ) -> None:
-    """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned."""
+    """Downloads the interim data from S3. Interim data is in the correct structural format but has not been cleaned
 
+    :param file: _description_, defaults to None
+    :type file: str, optional
+    :param local_path: _description_, defaults to None
+    :type local_path: str, optional
+    """
     os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
 
     if not file:
@@ -80,8 +92,14 @@ def download_raw_from_s3(
     file: str=None,
     local_path: str=None,
 ) -> None:
-    """Downloads the raw expression matrices from s3"""
+    """Downloads the raw expression matrices from s3
 
+
+    :param file: _description_, defaults to None
+    :type file: str, optional
+    :param local_path: _description_, defaults to None
+    :type local_path: str, optional
+    """
     os.makedirs(os.path.join(data_path, 'raw'), exist_ok=True)
     if not file: 
         print('Downloading all raw data')
