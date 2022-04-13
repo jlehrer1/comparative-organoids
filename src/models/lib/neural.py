@@ -65,18 +65,14 @@ class GeneClassifier(pl.LightningModule):
         self.weighted_metrics = weighted_metrics
         
     def forward(self, x):
-        if isinstance(self.base_model, TabNetGeneClassifier):
-            out, _ = self.base_model(x) # Don't need M_loss in forward pass, only in loss calculation for extra sparsity
-        else:
-            out = self.base_model(x)
-        return out
+        return self.base_model(x)
 
     def _step(self, batch, batch_idx):
         if isinstance(self.base_model, TabNetGeneClassifier):
             # Hacky and annoying, but the extra M_loss from TabNet means we need to handle this specific case 
             y_hat, y, loss = self.base_model._step(batch, batch_idx)
         else:
-            x, y = batch 
+            x, y = batch
             y_hat = self(x)
             loss = F.cross_entropy(y_hat, y)
 
@@ -87,6 +83,7 @@ class GeneClassifier(pl.LightningModule):
 
         self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'train')
+
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -134,15 +131,14 @@ class TabNetGeneClassifier(TabNet):
 
     def forward(self, x):
         out, M_loss = super().forward(x)
-        return out, M_loss 
+        return out, M_loss
 
+    # leaving this in case we ever want to add lambda_sparse parameter, should be easy 
     def _step(self, batch, batch_idx):
         x, y = batch
-        y_hat, M_loss = self.forward(x)
+        y_hat, _ = self.forward(x)
         
         # Add extra sparsity as required by TabNet 
         loss = F.cross_entropy(y_hat, y)
-        loss = loss - self.lambda_sparse * M_loss 
 
-        return y_hat, y, loss 
-
+        return y_hat, y, loss

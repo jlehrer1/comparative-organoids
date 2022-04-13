@@ -41,6 +41,8 @@ class GeneDataModule(pl.LightningDataModule):
         trainloaders, valloaders, testloaders = generate_dataloaders(
             *self.args,
             **self.kwargs,
+            pin_memory=True,
+
         )
 
         print('Done, continuing to training.')
@@ -172,7 +174,8 @@ def generate_trainer(
             uploadcallback, 
             earlystoppingcallback,
         ],
-        max_epochs=kwargs['max_epochs']
+        max_epochs=kwargs['max_epochs'],
+        val_check_interval=0.25, # Calculate validation every quarter epoch instead of full since dataset is large
     )
 
     return trainer, model, module

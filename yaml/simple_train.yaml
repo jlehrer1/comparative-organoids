@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
-metadata:
-  name: tabnet-model-training-shuffle-16-worker
+metadata: 
+  name: tabnet-model-training-shuffle-96-worker
 spec:
   backoffLimit: 0
   completions: 1
@@ -12,7 +12,7 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: tabnet-model-training-shuffle-16-worker
+      - name: tabnet-model-training-shuffle-96-worker
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -20,16 +20,16 @@ spec:
           value: "1"
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
-          python src/models/train_neural_network.py"
+          python src/models/train_neural_network.py --num-workers=96"
         ]
         resources:
           limits:
-            memory: 100Gi
-            cpu: "16"
+            memory: 256Gi
+            cpu: "72"
             nvidia.com/gpu: "1"
           requests:
-            memory: 64Gi
-            cpu: "16"
+            memory: 128Gi
+            cpu: "64"
             nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral

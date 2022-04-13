@@ -29,7 +29,7 @@ def run_search(
         'class_label': [class_label],
         'max_epochs': [1000],
         'lr': loguniform.rvs(0.001, 0.1, size=10),
-        'batch_size': [16, 32, 64, 256, 512, 1024],
+        'batch_size': [32],
         'momentum': loguniform.rvs(0.001, 0.9, size=10),
         'weight_decay': loguniform.rvs(0.001, 0.1, size=10),
     }

@@ -25,10 +25,10 @@ spec:
           --lr=${LR} \
           --momentum=${MOMENTUM} \
           --weight-decay=${WEIGHT_DECAY} \
-          
           --class-label=${CLASS_LABEL} \
           --batch-size=${BATCH_SIZE} \ 
-          --weighted-metrics=${WEIGHTED_METRICS}" 
+          --weighted-metrics=${WEIGHTED_METRICS} \
+          --num-workers=64" 
         ]
         resources:
           limits:
