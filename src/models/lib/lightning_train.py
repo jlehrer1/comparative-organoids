@@ -144,7 +144,7 @@ def generate_trainer(
     )
 
     earlystoppingcallback = EarlyStopping(
-        monitor="train_loss",
+        monitor="val_loss",
         patience=50,
         verbose=True
     )
@@ -184,7 +184,8 @@ def generate_trainer(
             earlystoppingcallback,
         ],
         max_epochs=kwargs['max_epochs'],
-        val_check_interval=0.25, # Calculate validation every quarter epoch instead of full since dataset is large
+        val_check_interval=0.25, # Calculate validation every quarter epoch instead of full since dataset is large, and would like to test this 
+        profiler="advanced",
     )
 
     return trainer, model, module

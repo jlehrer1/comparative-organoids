@@ -4,6 +4,7 @@ from typing import *
 from functools import cached_property, partial
 from itertools import chain 
 import inspect
+import warnings 
 
 import pandas as pd 
 import torch
@@ -20,23 +21,24 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 from helper import seed_everything, gene_intersection
 
 class GeneExpressionData(Dataset):
-
     """
     Defines a PyTorch Dataset for a CSV too large to fit in memory. 
     """
     def __init__(
         self, 
-        filename: str, 
-        labelname: str, 
+        filename: str,
+        labelname: str,
         class_label: str,
         indices: Iterable[int]=None,
         skip=3,
         cast=True,
-        index_col='cell',
         sep=',',
+        index_col=None,
+        columns: List[any]=None,
         **kwargs, # To handle extraneous inputs 
     ):
-        """Initialization method for GeneExpressionData
+        """
+        Initialization method for GeneExpressionData
 
         :param filename: Path to csv data file, where rows are samples and columns are features
         :type filename: str
@@ -64,11 +66,12 @@ class GeneExpressionData(Dataset):
         self.cast = cast
         self.indices = indices
         self.sep = sep
+        self._cols = columns
 
         if indices is None:
-            self._labeldf = pd.read_csv(labelname).reset_index(drop=True)
+            self._labeldf = pd.read_csv(labelname, sep=self.sep).reset_index(drop=True)
         else:
-            self._labeldf = pd.read_csv(labelname).loc[indices, :].reset_index(drop=True)
+            self._labeldf = pd.read_csv(labelname, sep=self.sep).loc[indices, :].reset_index(drop=True)
 
     def __getitem__(self, idx: int):
         """Get sample at index
@@ -82,14 +85,16 @@ class GeneExpressionData(Dataset):
         # Handle slicing 
         if isinstance(idx, slice):
             if idx.start is None or idx.stop is None:
-                raise ValueError(f"Error: Unlike other iterables, {self.__class__.__name__} does not support unbounded slicing since samples are being read as needed from disk, which may result in memory errors.")
+                raise ValueError(
+                    f"Error: Unlike other iterables, {self.__class__.__name__} does not support unbounded slicing since samples are being read as needed from disk, which may result in memory errors."
+                )
 
             step = (1 if idx.step is None else idx.step)
             idxs = range(idx.start, idx.stop, step)
             return [self[i] for i in idxs]
 
-        # The actual line in the datafile to get, corresponding to the number in the self.index_col values 
-        data_index = self._labeldf.loc[idx, self.index_col]
+        # The actual line in the datafile to get, corresponding to the number in the self.index_col values, if we need to
+        data_index = (self._labeldf.loc[idx, self.index_col] if self.index_col is not None else idx)
 
         # get gene expression for current cell from csv file
         # We skip some lines because we're reading directly from 
@@ -113,10 +118,12 @@ class GeneExpressionData(Dataset):
 
     @cached_property # Worth caching, since this is a list comprehension on up to 50k strings. Annoying. 
     def features(self):
-        data = linecache.getline(self.filename, self.skip - 1)
-        data = [x.split('|')[0].upper().strip() for x in data.split(self.sep)]
-
-        return data
+        if self._cols is not None:
+            return self._cols 
+        else:
+            data = linecache.getline(self.filename, self.skip - 1)
+            data = [x.split('|')[0].upper().strip() for x in data.split(self.sep)]
+            return data
 
     @cached_property
     def labels(self):
@@ -148,6 +155,66 @@ class GeneExpressionData(Dataset):
             f"cast={self.cast}, "
             f"indices={self.indices})"
         )
+
+class GeneExpressionDataInMem(Dataset):
+    def __init__(self,
+        matrix: np.ndarray,
+        labels: List[any]=None,
+        labelfile: str=None, 
+        class_label: str=None,
+        indices: Iterable[int]=None,
+        index_col=None,
+        sep=',',
+        columns: List[any]=None,
+    ) -> None:
+        super().__init__()
+
+        if labels is not None and labelfile is not None:
+            raise ValueError("Either a list of labels may be passed or a .csv file to read from, but not both.")
+
+        if labelfile is not None and class_label is None:
+            raise ValueError(f"If labelfile is passed, column to corresponding class must be passed in class_label. Got {class_label = }")
+
+        if labels is not None and class_label is not None:
+            warnings.warn(f"{class_label = } but labels passed, using labels and ignoring class_label. To silence this warning remove the class_labels positional or keyword argument.")
+
+        self.data = matrix 
+        self.labels = labels 
+        self.labelfile = labelfile 
+        self.class_label = class_label 
+        self.indices = indices 
+        self.index_col = index_col
+        self.sep = sep 
+        self._cols = columns 
+
+        if labelfile is not None:
+            if indices is None:
+                self._labeldf = pd.read_csv(labelfile, sep=self.sep).reset_index(drop=True)
+            else:
+                self._labeldf = pd.read_csv(labelfile, sep=self.sep).loc[indices, :].reset_index(drop=True)
+        
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            step = (1 if idx.step is None else idx.step)
+            idxs = range(idx.start, idx.stop, step)
+            return [self[i] for i in idxs]
+
+        if self.labels is not None:
+            label = self.labels[idx]
+        else:
+            label = self._labeldf[idx, self.class_label]
+
+        return (
+            torch.from_numpy(self.data[idx]), 
+            label
+        )
+    
+    def __len__(self):
+        return len(self.data)
+
+    @property 
+    def columns(self):
+        return self._cols  
 
 def _collate_with_refgenes(
     sample: List[tuple], 
@@ -207,7 +274,8 @@ def _transform_sample(
     normalize: bool, 
     transpose: bool
 ) -> torch.Tensor:
-    """Optionally normalize and tranpose a torch.Tensor
+    """
+    Optionally normalize and tranpose a torch.Tensor
 
     :param data: Input sample
     :type data: torch.Tensor
@@ -237,7 +305,8 @@ class CollateLoader(DataLoader):
         *args,
         **kwargs,
     ) -> None:
-        """Initializes a CollateLoader for efficient numerical batch-wise transformations
+        """
+        Initializes a CollateLoader for efficient numerical batch-wise transformations
 
         :param dataset: GeneExpressionDataset to create DataLoader from
         :type dataset: GeneExpressionData
@@ -280,7 +349,7 @@ class SequentialLoader:
     """
     Class to sequentially stream samples from an arbitrary number of DataLoaders.
 
-    param dataloaders: List of DataLoaders or DataLoader derived class, such as the CollateLoader from above 
+    :param dataloaders: List of DataLoaders or DataLoader derived class, such as the CollateLoader from above 
     :type dataloaders: List[Union[DataLoader, SequentialLoader]]
     """
     def __init__(self, dataloaders):
@@ -482,6 +551,7 @@ def generate_dataloaders(
     :return: Either lists containing train, val, test or SequentialLoader's for train, val, test 
     :rtype: Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]
     """
+    
     if len(datafiles) != len(labelfiles):
         raise ValueError("Must have same number of datafiles and labelfiles")
     

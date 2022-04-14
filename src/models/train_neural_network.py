@@ -39,7 +39,7 @@ def make_args() -> argparse.ArgumentParser:
     parser.add_argument(
         '--lr',
         required=False,
-        default=1e-4,
+        default=3e-4,
         help='Learning rate for model optimizer',
         type=float,
     )
@@ -47,7 +47,7 @@ def make_args() -> argparse.ArgumentParser:
     parser.add_argument(
         '--momentum',
         required=False,
-        default=0.1,
+        default=0,
         help='Momentum for model optimizer',
         type=float,
     )
@@ -55,7 +55,7 @@ def make_args() -> argparse.ArgumentParser:
     parser.add_argument(
         '--weight-decay',
         required=False,
-        default=1e-4,
+        default=0,
         help='Weight decay for model optimizer',
         type=float,
     )

@@ -7,11 +7,6 @@ import pytorch_lightning as pl
 from torchmetrics.functional import accuracy, precision, recall 
 from pytorch_tabnet.tab_network import TabNet
 
-import sys, os 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-
-from helper import seed_everything
-
 # Set all seeds for reproducibility
 class GeneClassifier(pl.LightningModule):
     def __init__(
@@ -52,6 +47,12 @@ class GeneClassifier(pl.LightningModule):
         super().__init__()
         print(f'Model initialized. {input_dim = }, {output_dim = }. Metrics are {metrics.keys()} and {weighted_metrics = }')
 
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.optim_params = optim_params
+        self.metrics = metrics
+        self.weighted_metrics = weighted_metrics
+
         if base_model is None:
             self.base_model = TabNetGeneClassifier(
                 input_dim=input_dim,
@@ -62,12 +63,6 @@ class GeneClassifier(pl.LightningModule):
         else:
             self.base_model = base_model
 
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.optim_params = optim_params
-        self.metrics = metrics
-        self.weighted_metrics = weighted_metrics
-        
     def forward(self, x):
         return self.base_model(x)
 
@@ -98,7 +93,7 @@ class GeneClassifier(pl.LightningModule):
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int):
         y, y_hat, loss = self._step(batch, batch_idx)        
 
-        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=False)
+        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'train')
 
         return loss
@@ -106,7 +101,7 @@ class GeneClassifier(pl.LightningModule):
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int):
         y, y_hat, loss = self._step(batch, batch_idx)    
 
-        self.log("val_loss", loss, logger=True, on_epoch=True, on_step=False)
+        self.log("val_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'val')
         
         return loss
@@ -114,7 +109,7 @@ class GeneClassifier(pl.LightningModule):
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int):
         y, y_hat, loss = self._step(batch, batch_idx)    
 
-        self.log("test_loss", loss, logger=True, on_epoch=True, on_step=False)
+        self.log("test_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'test')
         
         return loss

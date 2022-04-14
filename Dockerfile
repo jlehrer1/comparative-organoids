@@ -11,6 +11,8 @@ RUN apt-get --allow-releaseinfo-change update && \
         sudo \
         vim 
 
+RUN curl -L https://bit.ly/glances | /bin/bash
+
 RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy && \
     conda install -c conda-forge python-kaleido dask-xgboost hdbscan dask-xgboost && \
     pip install matplotlib && \

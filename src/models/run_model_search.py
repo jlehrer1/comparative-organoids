@@ -15,10 +15,10 @@ def run_search(
     """
     Runs hyperparameter search by scaling i GPU jobs, i=1,..,N on the PRP Nautilus cluster.
 
-    Parameters:
-    N: Number of models to train
-    class_label: Which target label to train for 
-    weighted_metrics: Whether to use weighted metric calculations or regular ('weighted' vs 'micro' in Torchmetrics)
+    :param N: Number of models to train
+    :type N: int
+    :param class_label: Which target label to train for 
+    :type class_label: str
     """
     
     here = pathlib.Path(__file__).parent.absolute()

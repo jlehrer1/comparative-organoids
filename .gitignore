@@ -114,3 +114,4 @@ wandbcreds
 wandb/*
 *.ckpt
 */wandb/*
+data/mouse/*
