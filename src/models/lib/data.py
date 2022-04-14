@@ -156,57 +156,55 @@ class GeneExpressionData(Dataset):
             f"indices={self.indices})"
         )
 
-class GeneExpressionDataInMem(Dataset):
+class NumpyStream(Dataset):
     def __init__(self,
         matrix: np.ndarray,
         labels: List[any]=None,
         labelfile: str=None, 
         class_label: str=None,
-        indices: Iterable[int]=None,
         index_col=None,
         sep=',',
         columns: List[any]=None,
     ) -> None:
         super().__init__()
 
+        # Make sure labels and labelfile aren't both passed 
         if labels is not None and labelfile is not None:
             raise ValueError("Either a list of labels may be passed or a .csv file to read from, but not both.")
 
-        if labelfile is not None and class_label is None:
-            raise ValueError(f"If labelfile is passed, column to corresponding class must be passed in class_label. Got {class_label = }")
+        # Make sure neither labels nor labelfile isn't passed 
+        if labels is None and labelfile is None:
+            raise ValueError("One of labels or labelfile must be passed.")
 
+        # If labelfile is passed, then we need an associated column to pull the class_label from 
+        if labelfile is not None and class_label is None:
+            raise ValueError(f"If labelfile is passed, column to corresponding class must be passed in class_label. Got {class_label = }.")
+
+        # If we're using labels but the user passes a class label, just warn 
         if labels is not None and class_label is not None:
             warnings.warn(f"{class_label = } but labels passed, using labels and ignoring class_label. To silence this warning remove the class_labels positional or keyword argument.")
 
         self.data = matrix 
-        self.labels = labels 
         self.labelfile = labelfile 
         self.class_label = class_label 
-        self.indices = indices 
         self.index_col = index_col
         self.sep = sep 
         self._cols = columns 
 
+        # We have a labelfile and some specified indices 
         if labelfile is not None:
-            if indices is None:
-                self._labeldf = pd.read_csv(labelfile, sep=self.sep).reset_index(drop=True)
-            else:
-                self._labeldf = pd.read_csv(labelfile, sep=self.sep).loc[indices, :].reset_index(drop=True)
-        
+                self.labels = pd.read_csv(labelfile, sep=self.sep).reset_index(drop=True).loc[:, class_label].values 
+        else:
+            self.labels = labels 
+
     def __getitem__(self, idx):
         if isinstance(idx, slice):
             step = (1 if idx.step is None else idx.step)
             idxs = range(idx.start, idx.stop, step)
             return [self[i] for i in idxs]
-
-        if self.labels is not None:
-            label = self.labels[idx]
-        else:
-            label = self._labeldf[idx, self.class_label]
-
         return (
             torch.from_numpy(self.data[idx]), 
-            label
+            self.labels[idx]
         )
     
     def __len__(self):
