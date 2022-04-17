@@ -10,6 +10,7 @@ import pathlib
 import pandas as pd 
 import torch
 import numpy as np
+import scanpy as sc 
 
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from sklearn.model_selection import train_test_split
@@ -164,6 +165,8 @@ class NumpyStream(Dataset):
         index_col=None,
         sep=',',
         columns: List[any]=None,
+        *args,
+        **kwargs,
     ) -> None:
         super().__init__()
 
@@ -245,9 +248,19 @@ class CollateLoader(DataLoader):
         
         # Create collate_fn via a partial of the possible collators, depending on if columns intersection is being calculated
         if refgenes is not None:
-            collate_fn = partial(_collate_with_refgenes, refgenes=refgenes, currgenes=currgenes, transpose=transpose, normalize=normalize)
+            collate_fn = partial(
+                _collate_with_refgenes, 
+                refgenes=refgenes, 
+                currgenes=currgenes, 
+                transpose=transpose, 
+                normalize=normalize
+            )
         else:
-            collate_fn = partial(_standard_collate, normalize=normalize, transpose=transpose)
+            collate_fn = partial(
+                _standard_collate, 
+                normalize=normalize, 
+                transpose=transpose
+            )
 
         # This is awkward, but Dataloader init doesn't handle optional keyword arguments
         # So we have to take the intersection between the passed **kwargs and the DataLoader named arguments
@@ -306,7 +319,6 @@ def _collate_with_refgenes(
     :rtype: Tuple[torch.Tensor, torch.Tensor]
     """
 
- 
     data = clean_sample(torch.stack([x[0] for x in sample]), refgenes, currgenes)
     labels = torch.tensor([x[1] for x in sample])
 
@@ -476,34 +488,30 @@ def generate_single_dataset(
     :rtype: Tuple[Dataset, Dataset, Dataset]
     """    
     current_labels = pd.read_csv(labelfile, sep=sep).loc[:, class_label]
-    
     suffix = pathlib.Path(datafile).suffix
-    print(f'{suffix = }')
+
+    # Make stratified split on labels
+    trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
+    trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
+
     if suffix == '.h5ad':
         data = sc.read_h5ad(datafile)
-        X_train, X_test, y_train, y_test = train_test_split(data, current_labels.values, stratify=current_labels.values, test_size=test_prop)
 
-        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=test_prop) # 0.25 x 0.8 = 0.2\
-        
         train, val, test = (
             NumpyStream(
-                matrix=matrix,
-                labels=labels,
+                matrix=data.X[split.index],
+                labels=split.values,
                 class_label=class_label,
                 *args,
                 **kwargs,
             )
-            for matrix, labels in zip([X_train, X_val, X_test], [y_train, y_val, y_test])
+            for split in [trainsplit, valsplit, testsplit]
         )
         
     else:
         if suffix != '.csv' or suffix != '.tsv':
             warnings.warn(f'Extension {suffix} not recognized, \
                 interpreting as .csv. To silence this warning, pass in explicit file types.')
-    
-        # Make stratified split on labels
-        trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
-        trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
 
         train, val, test = (
             GeneExpressionData(
@@ -529,6 +537,7 @@ def generate_single_dataloader(
     :return: train, val, test loaders
     :rtype: Tuple[CollateLoader, CollateLoader, CollateLoader]
     """
+
     train, val, test = generate_single_dataset(
         *args,
         **kwargs,
@@ -571,8 +580,9 @@ def generate_dataloaders(
     if len(datafiles) != len(labelfiles):
         raise ValueError("Must have same number of datafiles and labelfiles")
     
+    # We dont need this error check, just handle it later.
     if collocate and len(datafiles) == 1:
-        raise ValueError("Cannot collocate dataloaders with only one dataset file")
+        warnings.warn("Cannot collocate dataloaders with only one dataset file, ignoring. Pass collocate=False to silence this warning.")
 
     train, val, test = [], [], []
     for datafile, labelfile in zip(datafiles, labelfiles):
@@ -592,7 +602,8 @@ def generate_dataloaders(
         val = val[0]
         test = test[0]
 
-    if collocate: # Join these together into sequential loader if requested  
+    if collocate and len(datafiles) > 1: 
+        # Join these together into sequential loader if requested, shouldn't error if only one training file passed, though
         train, val, test = SequentialLoader(train), SequentialLoader(val), SequentialLoader(test)
 
     return train, val, test 

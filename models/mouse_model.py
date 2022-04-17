@@ -1,27 +1,18 @@
-import scanpy as sc
 import os
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import LabelEncoder 
-import torch
-from sklearn.model_selection import train_test_split
-
+import pathlib 
 import os, sys
-sys.path.append('./src')
+import pytorch_lightning as pl 
+
+sys.path.append(os.path.join(os.path.abspath(__file__), '..', 'src'))
 from src.models.lib.data import *
-labelfile = 'data/mouse/Adult Inhibitory Neurons in Mouse_labels.tsv'
+from src.models.lib.lightning_train import DataModule
 
-mouse_atlas = sc.read_h5ad('data/mouse/MouseAdultInhibitoryNeurons.h5ad')
-label_df = pd.read_csv(labelfile, sep='\t')
+here = pathlib.Path(__file__).parent.resolve()
 
-mo_data = sc.read_h5ad('data/mouse/Mo_PV_paper_TDTomato_mouseonly.h5ad')
-
-X_train, X_test, y_train, y_test = train_test_split(mouse_atlas.X, label_df['numeric_class'].values)
-
-atlas_train = NumpyStreamble(
-    matrix=X_train,
-    labels=y_train,
+module = DataModule(
+    datafiles=[os.path.join(here, '..', 'data', 'mouse', 'MouseAdultInhibitoryNeurons.h5ad')],
+    labelfile=[os.path.join(here, '..', 'data', 'mouse', 'Adult Inhibitory Neurons in Mouse_labels.tsv')],
+    class_label='numeric_class',
     sep='\t',
-    columns=list(mouse_atlas.var.index),
-    class_label='ingore'
 )
+

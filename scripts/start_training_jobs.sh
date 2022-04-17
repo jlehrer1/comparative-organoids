@@ -5,4 +5,3 @@ do
         export LAYERS=${LAYERS} WIDTH=${WIDTH} && envsubst < yaml/model.yaml | kubectl create -f - 
     done
 done
-    

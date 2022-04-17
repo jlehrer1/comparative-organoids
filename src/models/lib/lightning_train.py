@@ -18,7 +18,7 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from helper import gene_intersection, download
 
-class GeneDataModule(pl.LightningDataModule):
+class DataModule(pl.LightningDataModule):
     """
     Creates the DataModule for PyTorch-Lightning training.
     """
@@ -155,7 +155,7 @@ def generate_trainer(
     )
 
     refgenes = gene_intersection()
-    module = GeneDataModule(
+    module = DataModule(
         datafiles=datafiles, 
         labelfiles=labelfiles, 
         class_label=class_label, 
