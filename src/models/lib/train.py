@@ -284,8 +284,3 @@ def total_class_weights(
         class_weight='balanced',
     )).float()
 
-def num_labels(labelfiles, class_label):
-    val = []
-    for file in labelfiles:
-        val.append(pd.read_csv(file).loc[:, class_label].values.max())
-    return max(val)

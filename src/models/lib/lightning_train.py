@@ -4,7 +4,8 @@ import pathlib
 from typing import *
 
 import torch
-import wandb 
+import pandas as pd 
+from functools import cached_property
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
@@ -24,35 +25,61 @@ class DataModule(pl.LightningDataModule):
     """
     def __init__(
         self, 
+        datafiles,
+        labelfiles,
+        class_label,
         *args,
         **kwargs,
     ):
         super().__init__()
+
+        self.datafiles = datafiles 
+        self.labelfiles = labelfiles 
+        self.class_label = class_label
+
         self.args = args 
         self.kwargs = kwargs
         
     def setup(self, stage: Optional[str] = None):
         print('Creating train/val/test DataLoaders...')
-        trainloaders, valloaders, testloaders = generate_dataloaders(
+        trainloader, valloader, testloader = generate_dataloaders(
+            datafiles=self.datafiles,
+            labelfiles=self.labelfiles,
+            class_label=self.class_label,
             *self.args,
             **self.kwargs,
             pin_memory=True, # For gpu training
         )
 
         print('Done, continuing to training.')
-        self.trainloaders = trainloaders
-        self.valloaders = valloaders
-        self.testloaders = testloaders
+        self.trainloader = trainloader
+        self.valloader = valloader
+        self.testloader = testloader
         
     def train_dataloader(self):
-        return self.trainloaders
+        return self.trainloader
 
     def val_dataloader(self):
-        return self.valloaders
+        return self.valloader
 
     def test_dataloader(self):
-        return self.testloaders
+        return self.testloader
 
+    @cached_property
+    def num_labels(self):
+        val = []
+        for file in self.labelfiles:
+            val.append(pd.read_csv(file).loc[:, self.class_label].values.max())
+
+        return max(val) + 1
+
+    @cached_property
+    def num_features(self):
+        if 'refgenes' in self.kwargs:
+            return len(self.kwargs['refgenes'])
+        else:
+            return next(iter(self.trainloader))[0].shape[1]
+    
 # This has to be outside of the datamodule 
 # Since we have to download the files to calculate the gene intersection 
 def prepare_data(
@@ -124,7 +151,7 @@ def generate_trainer(
     :param wandb_name: Name of run in Wandb.ai, defaults to ''
     :type wandb_name: str, optional
     :return: Trainer, model, datamodule 
-    :rtype: _type_
+    :rtype: Trainer, model, datamodule 
     """
 
     device = ('cuda:0' if torch.cuda.is_available() else 'cpu')

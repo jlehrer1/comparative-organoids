@@ -183,31 +183,31 @@ def gene_intersection() -> List[str]:
 
     return unique 
 
-def gene_intersection(
-    files: List[str],
-    *args,
-    **kwargs
-):
-    """
-    Calculate the column intersection between multiple expression matrices
+# def gene_intersection(
+#     files: List[str],
+#     *args,
+#     **kwargs
+# ):
+#     """
+#     Calculate the column intersection between multiple expression matrices
 
-    :param files: List of absolute paths to expression matrices
-    :type files: List[str]
-    :return: List of unique intersecting columns between all files
-    :rtype: List[str]
-    """
-    import dask.dataframe as dd 
+#     :param files: List of absolute paths to expression matrices
+#     :type files: List[str]
+#     :return: List of unique intersecting columns between all files
+#     :rtype: List[str]
+#     """
+#     import dask.dataframe as dd 
     
-    cols = []
-    for file in files:
-        temp = pd.read_csv(file, nrows=1, *args, **kwargs).columns 
-        temp = [x.split('|')[0].upper().strip() for x in temp]
-        cols.append(set(temp))
+#     cols = []
+#     for file in files:
+#         temp = pd.read_csv(file, nrows=1, *args, **kwargs).columns 
+#         temp = [x.split('|')[0].upper().strip() for x in temp]
+#         cols.append(set(temp))
     
-    unique = list(set.intersection(*cols))
-    unique = sorted(unique)
+#     unique = list(set.intersection(*cols))
+#     unique = sorted(unique)
     
-    return unique 
+#     return unique 
 
 def seed_everything(
     seed: int
