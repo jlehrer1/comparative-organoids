@@ -36,8 +36,7 @@ class GeneDataModule(pl.LightningDataModule):
         trainloaders, valloaders, testloaders = generate_dataloaders(
             *self.args,
             **self.kwargs,
-            pin_memory=True,
-
+            pin_memory=True, # For gpu training
         )
 
         print('Done, continuing to training.')

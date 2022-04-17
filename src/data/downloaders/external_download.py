@@ -30,7 +30,7 @@ def download_raw_expression_matrices(
     """    
     # {local file name: [dataset url, labelset url]}
     datasets = (datasets if datasets is not None else helper.DATA_FILES_AND_URLS_DICT)
-    data_path = (datapath if datapath is not None else os.path.join(here, '..', '..', 'data'))
+    data_path = (datapath if datapath is not None else os.path.join(here, '..', '..', '..', 'data'))
 
     for file, links in datasets.items():
         datafile_path = os.path.join(data_path, 'raw', file)
@@ -44,8 +44,7 @@ def download_raw_expression_matrices(
             os.makedirs(os.path.join(data_path, dir), exist_ok=True)
 
         # Download and unzip data file if it doesn't exist 
-
-        if not os.path.isfile(os.path.join(data_path, 'raw', file)):
+        if not os.path.isfile(datafile_path):
             print(f'Downloading zipped data for {file}')
             urllib.request.urlretrieve(
                 datalink,
@@ -87,14 +86,16 @@ def download_labels(
     :type datapath: str, optional
     """    
     datasets = helper.DATA_FILES_AND_URLS_DICT
-
-    data_path = (datapath if datapath is not None else os.path.join(here, '..', '..', 'data'))
+    data_path = (datapath if datapath is not None else os.path.join(here, '..', '..', '..', 'data', 'raw', 'labels'))
+    
+    if not os.path.isdir(data_path):
+        os.makedirs(data_path, exist_ok=True)
 
     for labelfile, (_, labellink) in datasets.items():
-        labelfile_path = os.path.join(data_path, 'raw', 'labels', labelfile)
+        labelfile_path = os.path.join(data_path, f"{labelfile[:-4]}_labels.tsv")
 
         # Download label file if it doesn't exist 
-        if not os.path.isfile(os.path.join(data_path, 'raw', labelfile_path)):
+        if not os.path.isfile(labelfile_path):
             print(f'Downloading label for {labelfile}')
             urllib.request.urlretrieve(
                 labellink,
@@ -113,7 +114,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--data',
-        type=str,
         required=False,
         help="If passed, download raw expression matrices",
         action='store_true'
@@ -121,7 +121,6 @@ if __name__ == "__main__":
 
     parser.add_argument(
         '--labels',
-        type=str,
         required=False,
         help="If passed, download raw labelfiles",
         action='store_true'
@@ -129,10 +128,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         '--no-unzip',
-        type=str,
         required=False,
         help="If passed, expression matrices won't be unzipped",
-        action='store_true'
+        action='store_false'
     )
 
     parser.add_argument(

@@ -134,7 +134,7 @@ class GeneClassifier(pl.LightningModule):
         :type on_epoch: bool, optional
         :param on_step: log on step, defaults to True
         :type on_step: bool, optional
-        """    
+        """
         for name, metric in self.metrics.items():
             if self.weighted_metrics: # We dont consider class support in calculation
                 val = metric(y_hat, y, average='weighted', num_classes=self.output_dim)

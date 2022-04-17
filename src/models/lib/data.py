@@ -35,7 +35,7 @@ class GeneExpressionData(Dataset):
         sep=',',
         index_col=None,
         columns: List[any]=None,
-        **kwargs, # To handle extraneous inputs 
+        **kwargs, # To handle extraneous inputs
     ):
         """
         Initialization method for GeneExpressionData
@@ -44,7 +44,7 @@ class GeneExpressionData(Dataset):
         :type filename: str
         :param labelname: Path to label file, where column '# labels' defines classification labels
         :type labelname: str
-        :param class_label: Label to train on, must be in labelname file 
+        :param class_label: Label to train on, must be in labelname file
         :type class_label: str
         :param indices: List of indices to use in dataset. If None, all indices given in labelname are used., defaults to None
         :type indices: Iterable[int], optional
@@ -184,12 +184,15 @@ class NumpyStream(Dataset):
         if labels is not None and class_label is not None:
             warnings.warn(f"{class_label = } but labels passed, using labels and ignoring class_label. To silence this warning remove the class_labels positional or keyword argument.")
 
-        self.data = matrix 
-        self.labelfile = labelfile 
-        self.class_label = class_label 
+        if columns is None:
+            warnings.warn(f"{self.__class__.__name__} initialized without columns. This will error if training with multiple Datasets with posssibly columns.")
+
+        self.data = matrix
+        self.labelfile = labelfile
+        self.class_label = class_label
         self.index_col = index_col
-        self.sep = sep 
-        self._cols = columns 
+        self.sep = sep
+        self._cols = columns
 
         # We have a labelfile and some specified indices 
         if labelfile is not None:
@@ -202,6 +205,7 @@ class NumpyStream(Dataset):
             step = (1 if idx.step is None else idx.step)
             idxs = range(idx.start, idx.stop, step)
             return [self[i] for i in idxs]
+
         return (
             torch.from_numpy(self.data[idx]), 
             self.labels[idx]
@@ -214,6 +218,75 @@ class NumpyStream(Dataset):
     def columns(self):
         return self._cols  
 
+class CollateLoader(DataLoader):
+    def __init__(
+        self,
+        dataset: Type[Dataset],
+        refgenes: List[str]=None,
+        currgenes: List[str]=None,
+        transpose: bool=False, 
+        normalize: bool=False,
+        *args,
+        **kwargs,
+    ) -> None:
+        """
+        Initializes a CollateLoader for efficient numerical batch-wise transformations
+
+        :param dataset: GeneExpressionDataset to create DataLoader from
+        :type dataset: Type[Dataset]
+        :param refgenes: Optional, list of columns to take intersection with , defaults to None
+        :type refgenes: List[str], optional
+        :param currgenes: Optional, list of current dataset columns, defaults to None
+        :type currgenes: List[str], optional
+        :param transpose: Boolean indicating whether to tranpose the batch data , defaults to False
+        :type transpose: bool, optional
+        :param normalize: Boolean indicating whether to normalize the batch data, defaults to False
+        :type normalize: bool, optional
+        :raises ValueError: If refgenes are passed, currgenes also have to be passed otherwise we dont know what to align with
+        """
+
+        if refgenes is None and currgenes is not None or refgenes is not None and currgenes is None:
+            raise ValueError("If refgenes is passed, currgenes must be passed too. If currgenes is passed, refgenes must be passed too.")
+        
+        # Create collate_fn via a partial of the possible collators, depending on if columns intersection is being calculated
+        if refgenes is not None:
+            collate_fn = partial(_collate_with_refgenes, refgenes=refgenes, currgenes=currgenes, transpose=transpose, normalize=normalize)
+        else:
+            collate_fn = partial(_standard_collate, normalize=normalize, transpose=transpose)
+
+        # This is awkward, but Dataloader init doesn't handle optional keyword arguments
+        # So we have to take the intersection between the passed **kwargs and the DataLoader named arguments
+        allowed_args = inspect.signature(super().__init__).parameters
+        new_kwargs = {}
+
+        for key in allowed_args:
+            name = allowed_args[key].name
+            if name in kwargs:
+                new_kwargs[key] = kwargs[key]
+
+        # Finally, initialize the DataLoader
+        super().__init__(
+            dataset=dataset,
+            collate_fn=collate_fn,
+            **new_kwargs,
+        )
+
+class SequentialLoader:
+    """
+    Class to sequentially stream samples from an arbitrary number of DataLoaders.
+
+    :param dataloaders: List of DataLoaders or DataLoader derived class, such as the CollateLoader from above 
+    :type dataloaders: List[Union[DataLoader, SequentialLoader]]
+    """
+    def __init__(self, dataloaders):
+        self.dataloaders = dataloaders
+
+    def __len__(self):
+        return sum([len(dl) for dl in self.dataloaders])
+
+    def __iter__(self):
+        yield from chain(*self.dataloaders)
+
 def _collate_with_refgenes(
     sample: List[tuple], 
     refgenes: List[str], 
@@ -223,7 +296,6 @@ def _collate_with_refgenes(
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Collate minibatch of samples where we're intersecting the columns between refgenes and currgenes,
-
 
     :param sample: List of samples from GeneExpressionData object
     :type sample: List[tuple]
@@ -292,73 +364,6 @@ def _transform_sample(
 
     return data 
 
-class CollateLoader(DataLoader):
-    def __init__(
-        self, 
-        dataset: GeneExpressionData,
-        refgenes: List[str]=None, 
-        currgenes: List[str]=None, 
-        transpose: bool=False, 
-        normalize: bool=False,
-        *args,
-        **kwargs,
-    ) -> None:
-        """
-        Initializes a CollateLoader for efficient numerical batch-wise transformations
-
-        :param dataset: GeneExpressionDataset to create DataLoader from
-        :type dataset: GeneExpressionData
-        :param refgenes: Optional, list of columns to take intersection with , defaults to None
-        :type refgenes: List[str], optional
-        :param currgenes: Optional, list of current dataset columns, defaults to None
-        :type currgenes: List[str], optional
-        :param transpose: Boolean indicating whether to tranpose the batch data , defaults to False
-        :type transpose: bool, optional
-        :param normalize: Boolean indicating whether to normalize the batch data, defaults to False
-        :type normalize: bool, optional
-        :raises ValueError: If refgenes are passed, currgenes also have to be passed otherwise we dont know what to align with
-        """    
-        if refgenes is None and currgenes is not None or refgenes is not None and currgenes is None:
-            raise ValueError("If refgenes is passed, currgenes must be passed too. If currgenes is passed, refgenes must be passed too.")
-        
-        # Create collate_fn via a partial of the possible collators, depending on if columns intersection is being calculated
-        if refgenes is not None:
-            collate_fn = partial(_collate_with_refgenes, refgenes=refgenes, currgenes=currgenes, transpose=transpose, normalize=normalize)
-        else:
-            collate_fn = partial(_standard_collate, normalize=normalize, transpose=transpose)
-
-        # This is awkward, but Dataloader init doesn't handle optional keyword arguments
-        # So we have to take the intersection between the passed **kwargs and the DataLoader named arguments
-        allowed_args = inspect.signature(super().__init__).parameters
-        new_kwargs = {}
-        for key in allowed_args:
-            name = allowed_args[key].name
-            if name in kwargs:
-                new_kwargs[key] = kwargs[key]
-
-        # Finally, initialize the DataLoader
-        super().__init__(
-            dataset=dataset,
-            collate_fn=collate_fn, 
-            **new_kwargs,
-        )
-
-class SequentialLoader:
-    """
-    Class to sequentially stream samples from an arbitrary number of DataLoaders.
-
-    :param dataloaders: List of DataLoaders or DataLoader derived class, such as the CollateLoader from above 
-    :type dataloaders: List[Union[DataLoader, SequentialLoader]]
-    """
-    def __init__(self, dataloaders):
-        self.dataloaders = dataloaders
-
-    def __len__(self):
-        return sum([len(dl) for dl in self.dataloaders])
-
-    def __iter__(self):
-        yield from chain(*self.dataloaders)
-
 def clean_sample(
     sample: torch.Tensor, 
     refgenes: List[str], 
@@ -399,7 +404,6 @@ def generate_datasets(
     """
     Generates the COMBINED train/val/test datasets with stratified label splitting. 
     This means that the proportion of each label is the same in the training, validation and test set. 
-
 
     :param datafiles: List of absolute paths to csv files under data_path/ that define cell x expression matrices
     :type datafiles: List[str]
