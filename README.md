@@ -1,34 +1,29 @@
-# *CerebalCell*: A Deep Learning Model for Classifying Cortical Cells
+# **SIMS**: Scalable, Interpretable Modeling for Single-Cell RNA-Seq Data Classification
 
-This codebase serves as the main repository for my work at the [One Brain](https://mostajo-radji.com/) group at the UCSC Genomics Insitute, where I'm using deep learning to classifying single cells from RNA-seq expression data. 
+SIMS is a pipeline for building interpretable and accurate classifiers for intentifying any target on single-cell rna-seq data. The SIMS model is based on [TabNet](https://arxiv.org/abs/1908.07442), a self-attention based model specifically built for large-scale tabular datasets.
 
-The concept is simple: we want to understand the distribution of cells in brain organoids grown from various cell lines, and how accurately they model the cortical tissue in a real human brain. So, we train a model to classify cells into their cortical subtype from human tissue, then use this trained model to classify organoid cells. This will give us a quantitative way to compare organoid protocols, in our mission to understand the cell makeup and function of the human cortex. 
+SIMS takes in a list of arbitrarily many expression matrices along with their corresponding target variables. The expression matrices may be AnnData objects with format `h5ad`, or `.csv`. 
+They must be in the matrix form `cell x gene`, and NOT `gene x cell`, since our training samples are the transcriptomes of individual cells.
 
-All source code is in `src/`.
-### `src/data/`
-This folder holds all scripts and methods for downloading, unzipping, renaming, and transposing the raw expression matrices from all dataset. 
+The data is formated like so:
+- All matrices are cell x expression
+- All label files contain a common column, known as the `class_label`, on which to train the model 
+- `datafiles` and `labelfiles` are the absolute paths to the expression matrices and labels, respectively
 
-`data_methods.py`: Contains source methods for combining and cleaning all external datasets.  
-`clean_data.py`: Contains script for combining and cleaning all external datasets to be label-consistent and column order consistent for model training.  
-`download_data.py`: Contains source methods for downloading and unzipping the raw expression matrices from cells.ucsc.edu, as well as methods for downloading data from the braingeneersdev S3 bucket, once the data is processed and uploaded there.
-`transpose_data.py`: Since all expression matrices are `gene x cell` and we want to train on `cell x gene` so we can classify individual cells, this script calculates the transpose of all `data/raw` data and writes it to `data/interim`. This is nontrivial, and uses my library [transposecsv](https://github.com/jlehrer1/transpose-csv).  
+A call to generate and train the SIMS model looks like the following:
 
-We run these files in the following order:
-1. `download_data.py --type=raw` downloads and unzips the raw expression matrices. 
-2. `transpose_data.py` calculates the tranpose of the expression matrices and uploads them to the braingeneersdev S3 bucket under `jlehrer/interim_expression_data/`.
-3. `clean_data.py --labels` Categorically encodes the labels, removes outliers & entries we don't want in our training data and uploads them to the braingeneersdev S3 bucket under `jlehrer/expression_data/labels`.
-4. `clean_data.py --features` Makes label names consistent, calculates the intersection of genes across all datasets, reorders the columns consistently and uploads these processed expression matrices to `jlehrer/expression_data/data`.
+```python 
 
-### `src/models`
-This folder contains all scripts and methods for defining our neural network model, defining our dataset, training our model and deploying it to the Nautilus cluster for distributed training.  
+from src.models.lib.lightning_train import generate_trainer 
 
-`lib/data.py`: The PyTorch dataset for reading in csv files too big to fit in memory, as well as methods that generate the train, test and validation split across an arbitrary number of data and label files.  
-`lib/neural.py`: The PyTorch Lightning NN architecture. 
-`train_neural_network.py`: Trains the NN model locally.
-`run_model_search.py`: Sets up an fixed number of jobs on the Nautilus cluster training the NN model on GPU, with randomly initialized hyperparameters.
+trainer, model, data = generate_trainer(
+    datafiles=['cortical_cells.csv', 'cortical_cells_2.csv', 'external/cortical_cells_3.h5ad'], # Notice we can mix and match file types
+    labelfiles=['l1.csv', 'l2.csv', 'l3.csv'],
+    class_label='cell_state', # Train to predict cell state!
+    batch_size=4,
+)
 
-### `src/visualization`
-Contains all code for plot generation for data exploration and the paper.
+trainer.fit(model, datamodule=data)
+```
 
-`visualize.py`: Contains code for UMAP plot generation.
-
+This will train a derivation of the TabNet model on the given expression matrices with target variable given by the `class_label` column in each label file.

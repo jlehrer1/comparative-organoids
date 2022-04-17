@@ -5,6 +5,7 @@ from functools import cached_property, partial
 from itertools import chain 
 import inspect
 import warnings 
+import pathlib
 
 import pandas as pd 
 import torch
@@ -17,8 +18,6 @@ import pytorch_lightning as pl
 
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-
-from helper import seed_everything, gene_intersection
 
 class GeneExpressionData(Dataset):
     """
@@ -192,7 +191,7 @@ class NumpyStream(Dataset):
         self.class_label = class_label
         self.index_col = index_col
         self.sep = sep
-        self._cols = columns
+        self.columns = columns
 
         # We have a labelfile and some specified indices 
         if labelfile is not None:
@@ -213,10 +212,6 @@ class NumpyStream(Dataset):
     
     def __len__(self):
         return len(self.data)
-
-    @property 
-    def columns(self):
-        return self._cols  
 
 class CollateLoader(DataLoader):
     def __init__(
@@ -435,24 +430,18 @@ def generate_datasets(
     train_datasets, val_datasets, test_datasets = [], [], []
 
     for datafile, labelfile in zip(datafiles, labelfiles):
-        # Read in current labelfile
-        current_labels = pd.read_csv(labelfile).loc[:, class_label]
-        
-        # Make stratified split on labels
-        trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
-        trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
+        train, val, test = generate_single_dataset(
+            datafile,
+            labelfile,
+            class_label,
+            test_prop,
+            *args,
+            **kwargs,
+        )
 
-        for indices, data_list in zip([trainsplit, valsplit, testsplit], [train_datasets, val_datasets, test_datasets]):
-            data_list.append(
-                GeneExpressionData(
-                    filename=datafile,
-                    labelname=labelfile,
-                    class_label=class_label,
-                    indices=indices.index,
-                    *args,
-                    **kwargs,
-                )
-            )
+        train_datasets.append(train)
+        val_datasets.append(val)
+        test_datasets.append(test)
 
     # Flexibility to generate single stratified dataset from a single file 
     # Just in generate_single_dataset
@@ -468,6 +457,7 @@ def generate_single_dataset(
     labelfile: str,
     class_label: str,
     test_prop=0.2,
+    sep=',',
     *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset, Dataset]:
@@ -485,23 +475,47 @@ def generate_single_dataset(
     :return: train, val, test Datasets
     :rtype: Tuple[Dataset, Dataset, Dataset]
     """    
-    current_labels = pd.read_csv(labelfile).loc[:, class_label]
+    current_labels = pd.read_csv(labelfile, sep=sep).loc[:, class_label]
     
-    # Make stratified split on labels
-    trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
-    trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
+    suffix = pathlib.Path(datafile).suffix
+    print(f'{suffix = }')
+    if suffix == '.h5ad':
+        data = sc.read_h5ad(datafile)
+        X_train, X_test, y_train, y_test = train_test_split(data, current_labels.values, stratify=current_labels.values, test_size=test_prop)
 
-    train, val, test = (
-        GeneExpressionData(
-            filename=datafile,
-            labelname=labelfile,
-            class_label=class_label,
-            indices=indices,
-            *args,
-            **kwargs,
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=test_prop) # 0.25 x 0.8 = 0.2\
+        
+        train, val, test = (
+            NumpyStream(
+                matrix=matrix,
+                labels=labels,
+                class_label=class_label,
+                *args,
+                **kwargs,
+            )
+            for matrix, labels in zip([X_train, X_val, X_test], [y_train, y_val, y_test])
         )
-        for indices in [trainsplit, valsplit, testsplit]  
-    )
+        
+    else:
+        if suffix != '.csv' or suffix != '.tsv':
+            warnings.warn(f'Extension {suffix} not recognized, \
+                interpreting as .csv. To silence this warning, pass in explicit file types.')
+    
+        # Make stratified split on labels
+        trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
+        trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
+
+        train, val, test = (
+            GeneExpressionData(
+                filename=datafile,
+                labelname=labelfile,
+                class_label=class_label,
+                indices=indices,
+                *args,
+                **kwargs,
+            )
+            for indices in [trainsplit, valsplit, testsplit]  
+        )
 
     return train, val, test 
 
