@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rna-seq-to-h5ad
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: rna-seq-to-h5ad
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: rna-seq-to-h5ad
+        image: jmlehrer/cell-exploration:latest
+        command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        args: [
+          "python src/data/downloaders/external_download.py --data \
+          python src/data/to_h5ad.py --file='primary_bhaduri.tsv'"
+        ]
+        resources:
+          limits:
+            memory: 100Gi
+            cpu: "64"
+          requests:
+            memory: 72Gi
+            cpu: "32"
+        volumeMounts:
+        - name: ephemeral
+          mountPath: "/data"
+      volumes:
+      # Ephemeral storage
+      - name: ephemeral
+        emptyDir: {}

@@ -4,8 +4,8 @@ import os, sys
 from pytorch_lightning import Trainer 
 
 sys.path.append(os.path.join(os.path.abspath(__file__), '..', 'src'))
-from src.models.lib.neural import GeneClassifier
-from src.models.lib.lightning_train import DataModule
+from ..src.models.lib.neural import GeneClassifier
+from ..src.models.lib.lightning_train import DataModule
 
 here = pathlib.Path(__file__).parent.resolve()
 
@@ -14,6 +14,10 @@ module = DataModule(
     labelfiles=[os.path.join(here, '..', 'data', 'mouse', 'Adult Inhibitory Neurons in Mouse_labels.tsv')],
     class_label='numeric_class',
     sep='\t',
+    batch_size=4,
+    num_workers=0,
+    drop_last=True,
+    shuffle=True,
 )
 
 model = GeneClassifier(

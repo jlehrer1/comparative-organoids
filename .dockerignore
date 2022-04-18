@@ -1,4 +1,5 @@
 data/*
+src/data/converter_chunks/*
 notebooks/*
 remote/*
 yaml/*
