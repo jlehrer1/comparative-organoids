@@ -28,6 +28,8 @@ RUN conda install --yes boto3 tenacity pandas numpy pip plotly scipy && \
     pip install wandb && \ 
     pip install transposecsv==0.0.5 \ 
     pip install pytorch-tabnet \
-    pip install bigcsv==0.0.6
+    pip install bigcsv==0.0.6 \ 
+    pip install scanpy \ 
+    pip install anndata 
 
 COPY . .

@@ -5,6 +5,7 @@ from typing import *
 
 import torch
 import pandas as pd 
+import anndata as an
 from functools import cached_property
 
 import pytorch_lightning as pl
@@ -16,7 +17,9 @@ from .train import UploadCallback
 from .data import generate_dataloaders
 
 import sys, os 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+from os.path import join, dirname, abspath 
+sys.path.append(join(dirname(abspath(__file__)), '..', '..'))
+
 from helper import gene_intersection, download
 
 class DataModule(pl.LightningDataModule):
@@ -68,8 +71,9 @@ class DataModule(pl.LightningDataModule):
     @cached_property
     def num_labels(self):
         val = []
+        sep = self.kwargs['sep'] if 'sep' in self.kwargs else ','
         for file in self.labelfiles:
-            val.append(pd.read_csv(file).loc[:, self.class_label].values.max())
+            val.append(pd.read_csv(file, sep=sep).loc[:, self.class_label].values.max())
 
         return max(val) + 1
 
@@ -77,8 +81,12 @@ class DataModule(pl.LightningDataModule):
     def num_features(self):
         if 'refgenes' in self.kwargs:
             return len(self.kwargs['refgenes'])
-        else:
+        elif hasattr(self, 'trainloader'):
             return next(iter(self.trainloader))[0].shape[1]
+        elif pathlib.Path(self.datafiles[0]).suffix == '.h5ad':
+            return an.read_h5ad(self.datafiles[0]).X.shape[1]
+        else:
+            return pd.read_csv(self.datafiles[0], nrows=1).shape[1]
     
 # This has to be outside of the datamodule 
 # Since we have to download the files to calculate the gene intersection 
