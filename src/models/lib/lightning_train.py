@@ -134,7 +134,10 @@ def generate_trainer(
     weighted_metrics: bool,
     batch_size: int,
     num_workers: int,
-    optim_params: Dict[str, Any],
+    optim_params: Dict[str, Any]={
+        'optimizer': torch.optim.SGD,
+        'lr': 0.001,
+    },
     wandb_name='',
     *args,
     **kwargs,
@@ -177,11 +180,11 @@ def generate_trainer(
         desc=f'TabNet Gene Classifier'
     )
 
-    earlystoppingcallback = EarlyStopping(
-        monitor="val_loss",
-        patience=50,
-        verbose=True
-    )
+    # earlystoppingcallback = EarlyStopping(
+    #     monitor="val_loss",
+    #     patience=50,
+    #     verbose=True
+    # )
 
     prepare_data(
         data_path=data_path,
@@ -213,11 +216,8 @@ def generate_trainer(
         logger=wandb_logger,
         callbacks=[
             uploadcallback, 
-            earlystoppingcallback,
         ],
-        max_epochs=kwargs['max_epochs'],
         val_check_interval=0.25, # Calculate validation every quarter epoch instead of full since dataset is large, and would like to test this 
-        profiler="advanced",
     )
 
     return trainer, model, module

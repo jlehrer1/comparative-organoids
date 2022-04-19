@@ -25,6 +25,7 @@ class GeneClassifier(pl.LightningModule):
             'recall': recall,
         },
         weighted_metrics=False,
+        weights=None,
         *args,
         **kwargs,
     ):
@@ -52,6 +53,7 @@ class GeneClassifier(pl.LightningModule):
         self.optim_params = optim_params
         self.metrics = metrics
         self.weighted_metrics = weighted_metrics
+        self.weights = weights 
 
         if base_model is None:
             self.base_model = TabNetGeneClassifier(
@@ -86,7 +88,7 @@ class GeneClassifier(pl.LightningModule):
         else:
             x, y = batch
             y_hat = self(x)
-            loss = F.cross_entropy(y_hat, y)
+            loss = F.cross_entropy(y_hat, y, weights=self.weights)
 
         return y, y_hat, loss 
 

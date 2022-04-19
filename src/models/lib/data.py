@@ -15,6 +15,7 @@ import scanpy as sc
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from scipy.sparse import issparse
 import pytorch_lightning as pl 
 
 import sys, os 
@@ -182,9 +183,9 @@ class NumpyStream(Dataset):
         if labelfile is not None and class_label is None:
             raise ValueError(f"If labelfile is passed, column to corresponding class must be passed in class_label. Got {class_label = }.")
 
-        # If we're using labels but the user passes a class label, just warn 
-        if labels is not None and class_label is not None:
-            warnings.warn(f"{class_label = } but labels passed, using labels and ignoring class_label. To silence this warning remove the class_labels positional or keyword argument.")
+        # # If we're using labels but the user passes a class label, just warn 
+        # if labels is not None and class_label is not None:
+        #     warnings.warn(f"{class_label = } but labels passed, using labels and ignoring class_label. To silence this warning remove the class_labels positional or keyword argument.")
 
         if columns is None:
             warnings.warn(f"{self.__class__.__name__} initialized without columns. This will error if training with multiple Datasets with posssibly columns.")
@@ -198,7 +199,7 @@ class NumpyStream(Dataset):
 
         # We have a labelfile and some specified indices 
         if labelfile is not None:
-                self.labels = pd.read_csv(labelfile, sep=self.sep).reset_index(drop=True).loc[:, class_label].values 
+            self.labels = pd.read_csv(labelfile, sep=self.sep).reset_index(drop=True).loc[:, class_label].values 
         else:
             self.labels = labels 
 
@@ -208,8 +209,14 @@ class NumpyStream(Dataset):
             idxs = range(idx.start, idx.stop, step)
             return [self[i] for i in idxs]
 
+        data = self.data[idx]
+
+        # If matrix is sparse, then densify it for training
+        if issparse(data):
+            data = data.todense()
+
         return (
-            torch.from_numpy(self.data[idx]), 
+            torch.from_numpy(data), 
             self.labels[idx]
         )
     
@@ -501,7 +508,6 @@ def generate_single_dataset(
 
     if suffix == '.h5ad':
         data = sc.read_h5ad(datafile)
-
         train, val, test = (
             NumpyStream(
                 matrix=data.X[split.index],
@@ -515,7 +521,7 @@ def generate_single_dataset(
         
     else:
         if suffix != '.csv' or suffix != '.tsv':
-            warnings.warn(f'Extension {suffix} not recognized, \
+            print(f'Extension {suffix} not recognized, \
                 interpreting as .csv. To silence this warning, pass in explicit file types.')
 
         train, val, test = (
@@ -614,6 +620,30 @@ def generate_dataloaders(
 
     return train, val, test 
 
+def total_class_weights(
+    labelfiles: List[str],
+    class_label: str,
+) -> torch.Tensor:
+    """
+    Compute class weights for the entire label set 
 
+    :param labelfiles: List of absolute paths to label files
+    :type labelfiles: List[str]
+    :param class_label: Target label to calculate weight distribution on 
+    :type class_label: str
+    :return: Tensor of class weights for model training
+    :rtype: torch.Tensor
+    """
+    comb = []
 
+    for file in labelfiles:
+        comb.extend(
+            pd.read_csv(file).loc[:, class_label].values
+        )
+
+    return torch.from_numpy(compute_class_weight(
+        classes=np.unique(comb),
+        y=comb,
+        class_weight='balanced',
+    )).float()
 

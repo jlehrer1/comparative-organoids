@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata: 
-  name: mouse-model-workers
+  name: mouse-model-more-lr-batch-64
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: mouse-model-workers
+        k8s-app: mouse-model-more-lr-batch-64
     spec:
       restartPolicy: Never
       containers:
-      - name: mouse-model-workers
+      - name: mouse-model-more-lr-batch-64
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:

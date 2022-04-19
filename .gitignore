@@ -116,3 +116,4 @@ wandb/*
 */wandb/*
 data/mouse/*
 src/data/converter_chunks/*
+data/retina/*
