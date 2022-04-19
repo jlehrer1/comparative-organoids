@@ -189,12 +189,10 @@ def generate_trainer(
         labelfiles=labelfiles,
     )
 
-    refgenes = gene_intersection()
     module = DataModule(
         datafiles=datafiles, 
         labelfiles=labelfiles, 
         class_label=class_label, 
-        refgenes=refgenes,
         batch_size=batch_size,
         num_workers=num_workers,
         *args,
@@ -202,8 +200,8 @@ def generate_trainer(
     )
 
     model = GeneClassifier(
-        input_dim=len(refgenes),
-        output_dim=19,
+        input_dim=module.num_features,
+        output_dim=module.num_labels,
         weighted_metrics=weighted_metrics,
         optim_params=optim_params
     )

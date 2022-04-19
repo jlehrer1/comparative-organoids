@@ -37,6 +37,10 @@ if __name__ == "__main__":
     here = pathlib.Path(__file__).parent.absolute()
     data_path = join(here, '..', '..', 'data', 'raw')
 
+    # Create intermediate directories if they don't exist
+    os.makedirs(data_path, exist_ok=True)
+    os.makedirs(join(here, 'converter_chunks'), exist_ok=True)
+
     args = parser.parse_args()
 
     file = args.file

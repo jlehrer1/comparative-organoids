@@ -5,6 +5,7 @@ import argparse
 import urllib 
 from typing import *
 
+from os.path import join, isfile, isdir 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 import helper 
 
@@ -30,21 +31,23 @@ def download_raw_expression_matrices(
     """    
     # {local file name: [dataset url, labelset url]}
     datasets = (datasets if datasets is not None else helper.DATA_FILES_AND_URLS_DICT)
-    data_path = (datapath if datapath is not None else os.path.join(here, '..', '..', '..', 'data'))
+    data_path = (datapath if datapath is not None else join(here, '..', '..', '..', 'data', 'raw'))
+
+    if not isdir(data_path):
+        print(f'Generating data path {data_path}')
+        os.makedirs(data_path, exist_ok=True)
 
     for file, links in datasets.items():
-        datafile_path = os.path.join(data_path, 'raw', file)
-
         labelfile = f'{file[:-4]}_labels.tsv'
-
         datalink, _ = links
 
+        datafile_path = join(data_path, file)
         # First, make the required folders if they do not exist 
         for dir in 'raw':
-            os.makedirs(os.path.join(data_path, dir), exist_ok=True)
+            os.makedirs(join(data_path, dir), exist_ok=True)
 
         # Download and unzip data file if it doesn't exist 
-        if not os.path.isfile(datafile_path):
+        if not isfile(datafile_path):
             print(f'Downloading zipped data for {file}')
             urllib.request.urlretrieve(
                 datalink,
@@ -62,13 +65,12 @@ def download_raw_expression_matrices(
                     f'rm -rf {datafile_path}.gz'
                 )
 
-
         # If upload boolean is passed, also upload these files to the braingeneersdev s3 bucket
         if upload:
             print(f'Uploading {file} and {labelfile} to braingeneersdev S3 bucket')
             helper.upload(
                 datafile_path,
-                os.path.join('jlehrer', 'expression_data', 'raw', file)
+                join('jlehrer', 'expression_data', 'raw', file)
             )
 
 def download_labels(
@@ -147,8 +149,8 @@ if __name__ == "__main__":
     no_unzip = args.no_unzip
     upload = args.s3_upload 
 
-    if not data and no_unzip:
-        raise ValueError("--no-unzip option invalid for label set download, since label sets are not compressed")
+    # if not data and no_unzip:
+    #     raise ValueError("--no-unzip option invalid for label set download, since label sets are not compressed")
         
     if data:
         download_raw_expression_matrices(

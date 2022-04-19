@@ -470,6 +470,7 @@ def generate_single_dataset(
     class_label: str,
     test_prop=0.2,
     sep=',',
+    subset=None,
     *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset, Dataset]:
@@ -487,8 +488,12 @@ def generate_single_dataset(
     :return: train, val, test Datasets
     :rtype: Tuple[Dataset, Dataset, Dataset]
     """    
-    current_labels = pd.read_csv(labelfile, sep=sep).loc[:, class_label]
     suffix = pathlib.Path(datafile).suffix
+
+    if subset is not None:
+        current_labels = pd.read_csv(labelfile, sep=sep).loc[subset, class_label]
+    else:
+        current_labels = pd.read_csv(labelfile, sep=sep).loc[:, class_label]
 
     # Make stratified split on labels
     trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
@@ -546,7 +551,6 @@ def generate_single_dataloader(
     loaders = (
         CollateLoader(
                 dataset=dataset, 
-                currgenes=(dataset.columns if 'refgenes' in kwargs.keys() else None),
                 *args,
                 **kwargs,
             )
@@ -580,9 +584,11 @@ def generate_dataloaders(
     if len(datafiles) != len(labelfiles):
         raise ValueError("Must have same number of datafiles and labelfiles")
     
+    if not collocate:
+        warnings.warn(f"{collocate =}, so multiple files will return multiple DataLoaders and cannot be trained sequentially with PyTorch-Lightning")
     # We dont need this error check, just handle it later.
-    if collocate and len(datafiles) == 1:
-        warnings.warn("Cannot collocate dataloaders with only one dataset file, ignoring. Pass collocate=False to silence this warning.")
+    # if collocate and len(datafiles) == 1:
+    #     warnings.warn("Cannot collocate dataloaders with only one dataset file, ignoring. Pass collocate=False to silence this warning.")
 
     train, val, test = [], [], []
     for datafile, labelfile in zip(datafiles, labelfiles):

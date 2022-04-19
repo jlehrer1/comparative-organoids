@@ -19,8 +19,8 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "1"
         args: [
-          "python src/data/downloaders/external_download.py --data \
-          python src/data/to_h5ad.py --file='primary_bhaduri.tsv'"
+          "python src/data/downloaders/external_download.py --data && \
+          python src/data/to_h5ad.py"
         ]
         resources:
           limits:

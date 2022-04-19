@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata: 
+  name: mouse-model-workers
+spec:
+  backoffLimit: 0
+  completions: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: mouse-model-workers
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: mouse-model-workers
+        image: jmlehrer/cell-exploration:latest
+        command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        args: [
+          "wandb login --relogin $(cat wandbcreds) && \
+          python models/mouse_model.py"
+        ]
+        resources:
+          limits:
+            memory: 256Gi
+            cpu: "32"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: 64Gi
+            cpu: "32"
+            nvidia.com/gpu: "1"
+        volumeMounts:
+        - name: ephemeral
+          mountPath: "/data"
+        # SystemV shared memory
+        - name: "dshm"
+          mountPath: "/dev/shm"
+      volumes:
+      # Ephemeral storage
+      - name: ephemeral
+        emptyDir: {}
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      tolerations:
+        - key: "nautilus.io/chase-ci"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
