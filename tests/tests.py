@@ -3,10 +3,11 @@ import os
 import sys
 import pandas as pd
 import numpy as np
+import torch
 from torch.utils.data import *
 from tqdm import tqdm
-import linecache 
 from pytorch_tabnet.tab_model import TabNetClassifier
+
 sys.path.append('../src/')
 sys.path.append('..')
 
@@ -42,7 +43,13 @@ def map_cols_test():
     assert torch.equal(res, desired)
     
 def _test_first_n_samples(n, datafile, labelfile):
-    data = GeneExpressionData(datafile, labelfile, 'Type', skip=3)
+    data = GeneExpressionData(
+        datafile, 
+        labelfile, 
+        'Type', 
+        skip=3,
+        index_col='cell'
+    )
     cols = data.columns
     
     # Generate dict with half precision values to read this into my 16gb memory
@@ -54,8 +61,8 @@ def _test_first_n_samples(n, datafile, labelfile):
     similar = []
     for i in range(n):
         datasample = data[i][0]
+
         dfsample = torch.from_numpy(data_df.loc[label_df.loc[i, 'cell'], :].values).float()
-        
         isclose = all(torch.isclose(datasample, dfsample))
         similar.append(isclose)
     

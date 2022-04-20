@@ -64,6 +64,7 @@ trainer, model, module = generate_trainer(
     },
     max_epochs=500,
     normalize=True,
+    subset=list(range(0, 100000, 10))
 )
 
 # train model

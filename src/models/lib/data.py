@@ -95,7 +95,9 @@ class GeneExpressionData(Dataset):
             return [self[i] for i in idxs]
 
         # The actual line in the datafile to get, corresponding to the number in the self.index_col values, if we need to
-        data_index = (self._labeldf.loc[idx, self.index_col] if self.index_col is not None else idx)
+        data_index = (
+            self._labeldf.loc[idx, self.index_col] if self.index_col is not None else idx
+        )
 
         # get gene expression for current cell from csv file
         # We skip some lines because we're reading directly from 
@@ -533,7 +535,7 @@ def generate_single_dataset(
                 *args,
                 **kwargs,
             )
-            for indices in [trainsplit, valsplit, testsplit]  
+            for indices in [trainsplit.index, valsplit.index, testsplit.index]  
         )
 
     return train, val, test 
