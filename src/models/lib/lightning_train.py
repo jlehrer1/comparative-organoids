@@ -139,6 +139,7 @@ def generate_trainer(
         'lr': 0.001,
     },
     wandb_name='',
+    weights=None,
     *args,
     **kwargs,
 ):
@@ -206,7 +207,8 @@ def generate_trainer(
         input_dim=module.num_features,
         output_dim=module.num_labels,
         weighted_metrics=weighted_metrics,
-        optim_params=optim_params
+        optim_params=optim_params,
+        weights=weights,
     )
     
     trainer = pl.Trainer(
@@ -217,7 +219,7 @@ def generate_trainer(
         callbacks=[
             uploadcallback, 
         ],
-        val_check_interval=0.25, # Calculate validation every quarter epoch instead of full since dataset is large, and would like to test this 
+        # val_check_interval=0.25, # Calculate validation every quarter epoch instead of full since dataset is large, and would like to test this 
     )
 
     return trainer, model, module

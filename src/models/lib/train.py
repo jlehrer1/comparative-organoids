@@ -257,30 +257,4 @@ def _inner_computation(
     
     return running_loss, record
 
-def total_class_weights(
-    labelfiles: List[str],
-    class_label: str,
-) -> torch.Tensor:
-    """
-    Compute class weights for the entire label set of N labels.
-
-    Parameters:
-    labelfiles: List of absolute paths to label files
-
-    Returns:
-    np.array: Array of class weights for classes 0,...,N-1
-    """
-
-    comb = []
-
-    for file in labelfiles:
-        comb.extend(
-            pd.read_csv(file).loc[:, class_label].values
-        )
-
-    return torch.from_numpy(compute_class_weight(
-        classes=np.unique(comb),
-        y=comb,
-        class_weight='balanced',
-    )).float()
 

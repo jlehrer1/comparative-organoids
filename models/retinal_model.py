@@ -37,8 +37,8 @@ trainer, model, module = generate_trainer(
     class_label='class_label',
     drop_last=True,
     shuffle=True,
-    batch_size=64,
-    num_workers=64,
+    batch_size=4,
+    num_workers=0,
     weighted_metrics=True,
     optim_params={
         'optimizer': torch.optim.SGD,

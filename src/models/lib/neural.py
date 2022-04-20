@@ -59,6 +59,7 @@ class GeneClassifier(pl.LightningModule):
             self.base_model = TabNetGeneClassifier(
                 input_dim=input_dim,
                 output_dim=output_dim,
+                weights=weights,
                 *args,
                 **kwargs
             )
@@ -88,7 +89,7 @@ class GeneClassifier(pl.LightningModule):
         else:
             x, y = batch
             y_hat = self(x)
-            loss = F.cross_entropy(y_hat, y, weights=self.weights)
+            loss = F.cross_entropy(y_hat, y, weight=self.weights)
 
         return y, y_hat, loss 
 
@@ -168,8 +169,9 @@ class TabNetGeneClassifier(TabNet):
     Just a simple wrapper to only return the regular output instead the output and M_loss as defined in the tabnet paper.
     This allows me to use a single train/val/test loop for both models. 
     """
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, weights, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.weights = weights
 
     def forward(self, x):
         out, M_loss = super().forward(x)
@@ -178,9 +180,9 @@ class TabNetGeneClassifier(TabNet):
     # leaving this in case we ever want to add lambda_sparse parameter, should be easy 
     def _step(self, batch, batch_idx):
         x, y = batch
+
+        # Ignore sparsity M_loss for now, data is already sparse
         y_hat, _ = self.forward(x)
-        
-        # Add extra sparsity as required by TabNet 
-        loss = F.cross_entropy(y_hat, y)
+        loss = F.cross_entropy(y_hat, y, weight=self.weights)
 
         return y_hat, y, loss

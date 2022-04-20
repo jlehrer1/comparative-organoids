@@ -39,7 +39,16 @@ class GeneExpressionData(Dataset):
         **kwargs, # To handle extraneous inputs
     ):
         """
-        Initialization method for GeneExpressionData
+        Initialization method for GeneExpressionData.
+
+        The filename contains a delimited text file where ROWS are cells and the COLUMNS are the genes measured. The labelname is a delimited text file 
+        containing the class_label column, and optionally an index_col. 
+
+        Since dropping rows we don't want to train on is nontrivial in the case of the csv, since the csv would have to be read into memory and modified (often this is not computationaly feasible),
+        we instead just drop the rows in the labelname file. Then the index_col column specifies the actual row numbers of the samples we want. Equivalently, the index_col is the numeric equivalent to 
+        the labelname index after dropping the unwanted rows.
+
+        For this reason, index_col must be purely numeric, as the i-th entry of labelfile.loc[:, index_col] contains the actual line number of the i-th sample in the data file. 
 
         :param filename: Path to csv data file, where rows are samples and columns are features
         :type filename: str
@@ -94,7 +103,7 @@ class GeneExpressionData(Dataset):
             idxs = range(idx.start, idx.stop, step)
             return [self[i] for i in idxs]
 
-        # The actual line in the datafile to get, corresponding to the number in the self.index_col values, if we need to
+        # The actual line in the datafile to get, corresponding to the number in the self.index_col values, otherwise the line at index "idx"
         data_index = (
             self._labeldf.loc[idx, self.index_col] if self.index_col is not None else idx
         )
@@ -185,12 +194,8 @@ class NumpyStream(Dataset):
         if labelfile is not None and class_label is None:
             raise ValueError(f"If labelfile is passed, column to corresponding class must be passed in class_label. Got {class_label = }.")
 
-        # # If we're using labels but the user passes a class label, just warn 
-        # if labels is not None and class_label is not None:
-        #     warnings.warn(f"{class_label = } but labels passed, using labels and ignoring class_label. To silence this warning remove the class_labels positional or keyword argument.")
-
         if columns is None:
-            warnings.warn(f"{self.__class__.__name__} initialized without columns. This will error if training with multiple Datasets with posssibly columns.")
+            warnings.warn(f"{self.__class__.__name__} initialized without columns. This will error if training with multiple Datasets with potentially different columns.")
 
         self.data = matrix
         self.labelfile = labelfile
@@ -522,7 +527,7 @@ def generate_single_dataset(
         )
         
     else:
-        if suffix != '.csv' or suffix != '.tsv':
+        if suffix != '.csv' and suffix != '.tsv':
             print(f'Extension {suffix} not recognized, \
                 interpreting as .csv. To silence this warning, pass in explicit file types.')
 
@@ -592,11 +597,8 @@ def generate_dataloaders(
     if len(datafiles) != len(labelfiles):
         raise ValueError("Must have same number of datafiles and labelfiles")
     
-    if not collocate:
+    if not collocate and len(datafiles) > 1:
         warnings.warn(f"{collocate =}, so multiple files will return multiple DataLoaders and cannot be trained sequentially with PyTorch-Lightning")
-    # We dont need this error check, just handle it later.
-    # if collocate and len(datafiles) == 1:
-    #     warnings.warn("Cannot collocate dataloaders with only one dataset file, ignoring. Pass collocate=False to silence this warning.")
 
     train, val, test = [], [], []
     for datafile, labelfile in zip(datafiles, labelfiles):

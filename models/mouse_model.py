@@ -49,6 +49,7 @@ trainer, model, module = generate_trainer(
     datafiles=datafiles,
     labelfiles=labelfiles,
     class_label='numeric_class',
+    index_col='cell',
     drop_last=True,
     shuffle=True,
     batch_size=64,
@@ -64,7 +65,6 @@ trainer, model, module = generate_trainer(
     },
     max_epochs=500,
     normalize=True,
-    subset=list(range(0, 100000, 10))
 )
 
 # train model
