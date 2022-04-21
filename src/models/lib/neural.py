@@ -24,6 +24,7 @@ class GeneClassifier(pl.LightningModule):
             'precision': precision,
             'recall': recall,
         },
+        scheduler_params: Dict[str, float]=None,
         weighted_metrics=False,
         weights=None,
         *args,
@@ -51,12 +52,11 @@ class GeneClassifier(pl.LightningModule):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.optim_params = optim_params
+        self.scheduler_params = scheduler_params
         self.metrics = metrics
         self.weighted_metrics = weighted_metrics
         self.weights = weights 
             
-        print(f'{self.weights = }')
-
         if base_model is None:
             self.base_model = TabNetGeneClassifier(
                 input_dim=input_dim,
@@ -162,10 +162,20 @@ class GeneClassifier(pl.LightningModule):
                 )
 
     def configure_optimizers(self):
-        optimizer = self.optim_params.pop('optimizer')
-        optimizer = optimizer(self.parameters(), **self.optim_params)
+        if 'optimizer' in self.optim_params:
+            optimizer = self.optim_params.pop('optimizer')
+            optimizer = optimizer(self.parameters(), **self.optim_params)
+        else:
+            optimizer = torch.optim.Adam(self.parameters(), lr=0.02, momentum=0.02)
 
-        return optimizer
+        if self.scheduler_params is not None:
+            scheduler = self.scheduler_params.pop('scheduler')
+            scheduler = scheduler(optimizer, **self.scheduler_params)
+
+        if self.scheduler_params is None:
+            return optimizer
+        else:
+            return [optimizer], [scheduler]
 
 class TabNetGeneClassifier(TabNet):
     """

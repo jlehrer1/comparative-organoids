@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata: 
-  name: mouse-model
+  name: mouse-model-more-lr-no-decay
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: mouse-model
+        k8s-app: mouse-model-more-lr-no-decay
     spec:
       restartPolicy: Never
       containers:
-      - name: mouse-model
+      - name: mouse-model-more-lr-no-decay
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -20,7 +20,10 @@ spec:
           value: "1"
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
-          python models/mouse_model.py"
+          python models/mouse_model.py \
+          --lr=0.03 \
+          --weight-decay=0 \
+          --name=mouse-model-more-lr-no-decay"
         ]
         resources:
           limits:

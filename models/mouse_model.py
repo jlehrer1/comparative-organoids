@@ -3,6 +3,7 @@ import pathlib
 import sys
 import anndata as an
 import torch 
+import argparse 
 
 from os.path import join, dirname, abspath
 sys.path.append(join(dirname(abspath(__file__)), '..', 'src'))
@@ -10,6 +11,31 @@ sys.path.append(join(dirname(abspath(__file__)), '..', 'src'))
 from helper import download
 from models.lib.lightning_train import generate_trainer
 from models.lib.data import total_class_weights
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--lr',
+    type=float,
+    default=0.02,
+    required=False,
+)
+
+parser.add_argument(
+    '--weight-decay',
+    type=float,
+    default=3e-4,
+    required=False,
+)
+
+parser.add_argument(
+    '--name',
+    type=str,
+    default=None,
+    required=False,
+)
+
+args = parser.parse_args()
+lr, weight_decay, name = args.lr, args.weight_decay, args.name
 
 data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'mouse_data')
 
@@ -49,19 +75,25 @@ trainer, model, module = generate_trainer(
     index_col='cell',
     drop_last=True,
     shuffle=True,
-    batch_size=64,
+    batch_size=32,
     num_workers=64,
     refgenes=refgenes,
     currgenes=g2,
     weighted_metrics=True,
     optim_params = {
         'optimizer': torch.optim.Adam,
-        'lr': 0.02,
-        'weight_decay': 3e-4,
+        'lr': lr, 
+        'weight_decay': weight_decay,
+    },
+    scheduler_params={
+        'scheduler': torch.optim.lr_scheduler.StepLR,
+        'step_size': 30,
+        'gamma': 0.001,
     },
     max_epochs=500,
     normalize=True,
-    weights=total_class_weights([join(data_path, 'MouseAdultInhibitoryNeurons_labels.csv')], 'numeric_class', 'cuda:0')
+    weights=total_class_weights([join(data_path, 'MouseAdultInhibitoryNeurons_labels.csv')], 'numeric_class', 'cuda:0'),
+    wandb_name=name,
 )
 
 # train model

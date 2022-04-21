@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata: 
-  name: retina-model-batch-32
+  name: retina-model-overfit
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: retina-model-batch-32
+        k8s-app: retina-model-overfit
     spec:
       restartPolicy: Never
       containers:
-      - name: retina-model-batch-32
+      - name: retina-model-overfit
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -20,7 +20,10 @@ spec:
           value: "1"
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
-          python models/retina_model.py"
+          python models/retina_model.py \
+          --lr=0.03 \
+          --weight-decay=0 \
+          --name=retina-model-overfit"
         ]
         resources:
           limits:

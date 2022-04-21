@@ -131,15 +131,16 @@ def generate_trainer(
     datafiles: List[str],
     labelfiles: List[str],
     class_label: str,
-    weighted_metrics: bool,
     batch_size: int,
     num_workers: int,
     optim_params: Dict[str, Any]={
-        'optimizer': torch.optim.SGD,
-        'lr': 0.001,
+        'optimizer': torch.optim.Adam,
+        'lr': 0.02,
     },
-    wandb_name='',
-    weights=None,
+    weighted_metrics: bool=None,
+    scheduler_params: Dict[str, float]=None,
+    wandb_name: str=None,
+    weights: torch.Tensor=None,
     *args,
     **kwargs,
 ):
@@ -174,6 +175,7 @@ def generate_trainer(
 
     wandb_logger = WandbLogger(
         project=f"tabnet-classifer-sweep",
+        name=wandb_name
     )
 
     uploadcallback = UploadCallback(
@@ -208,6 +210,7 @@ def generate_trainer(
         output_dim=module.num_labels,
         weighted_metrics=weighted_metrics,
         optim_params=optim_params,
+        scheduler_params=scheduler_params,
         weights=weights,
     )
     
