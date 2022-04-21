@@ -5,15 +5,13 @@ import anndata as an
 import torch 
 
 from os.path import join, dirname, abspath
-from pytorch_lightning import Trainer 
-from pytorch_lightning.loggers import WandbLogger 
-
 sys.path.append(join(dirname(abspath(__file__)), '..', 'src'))
 
 from helper import download
 from models.lib.lightning_train import generate_trainer
+from models.lib.data import total_class_weights
 
-data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'retina_data')
+data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'retina')
 
 print('Making data folder')
 os.makedirs(data_path, exist_ok=True)
@@ -35,21 +33,21 @@ trainer, model, module = generate_trainer(
     datafiles=datafiles,
     labelfiles=labelfiles,
     class_label='class_label',
+    index_col='cell',
     drop_last=True,
     shuffle=True,
-    batch_size=4,
-    num_workers=0,
+    normalize=True,
+    batch_size=32,
+    num_workers=32,
     weighted_metrics=True,
-    optim_params={
-        'optimizer': torch.optim.SGD,
-        'lr': 0.001,
-        'weight_decay': 1e-4,
-        'momentum': 1e-4,
+    optim_params = {
+        'optimizer': torch.optim.Adam,
+        'lr': 0.02,
+        'weight_decay': 3e-4,
     },
     max_epochs=500,
-    normalize=True,
     skip=3,
-    index_col='cell',
+    weights=total_class_weights([join(data_path, 'retina_labels_numeric.csv')], 'class_label', 'cuda:0')
 )
 
 # train model

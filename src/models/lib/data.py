@@ -627,6 +627,7 @@ def generate_dataloaders(
 def total_class_weights(
     labelfiles: List[str],
     class_label: str,
+    device: str=None,
 ) -> torch.Tensor:
     """
     Compute class weights for the entire label set 
@@ -645,9 +646,13 @@ def total_class_weights(
             pd.read_csv(file).loc[:, class_label].values
         )
 
-    return torch.from_numpy(compute_class_weight(
-        classes=np.unique(comb),
-        y=comb,
-        class_weight='balanced',
-    )).float()
+    weights = torch.from_numpy(compute_class_weight(
+            classes=np.unique(comb),
+            y=comb,
+            class_weight='balanced',
+        )).float()
+
+    return (
+        weights.to(device) if device is not None else weights
+    )
 

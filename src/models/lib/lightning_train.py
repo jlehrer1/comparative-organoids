@@ -214,11 +214,11 @@ def generate_trainer(
     trainer = pl.Trainer(
         gpus=(1 if torch.cuda.is_available() else 0),
         auto_lr_find=False,
-        gradient_clip_val=0.5,
+        # gradient_clip_val=0.5,
         logger=wandb_logger,
-        callbacks=[
-            uploadcallback, 
-        ],
+        # callbacks=[
+        #     uploadcallback, 
+        # ],
         # val_check_interval=0.25, # Calculate validation every quarter epoch instead of full since dataset is large, and would like to test this 
     )
 

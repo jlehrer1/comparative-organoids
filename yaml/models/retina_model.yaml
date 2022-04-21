@@ -1,37 +1,46 @@
 apiVersion: batch/v1
 kind: Job
-metadata:
-  name: rna-seq-sleep
+metadata: 
+  name: retina-model-batch-32
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: rna-seq-sleep
+        k8s-app: retina-model-batch-32
     spec:
       restartPolicy: Never
       containers:
-      - name: rna-seq-sleep
+      - name: retina-model-batch-32
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
-        args: ["sleep 1000000"]
+        args: [
+          "wandb login --relogin $(cat wandbcreds) && \
+          python models/retina_model.py"
+        ]
         resources:
           limits:
-            memory: 100Gi
-            cpu: "16"
+            memory: 256Gi
+            cpu: "32"
             nvidia.com/gpu: "1"
           requests:
             memory: 64Gi
-            cpu: "4"
+            cpu: "32"
             nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral
           mountPath: "/data"
+        # SystemV shared memory
+        - name: "dshm"
+          mountPath: "/dev/shm"
       volumes:
       # Ephemeral storage
       - name: ephemeral
         emptyDir: {}
+      - name: dshm
+        emptyDir:
+          medium: Memory

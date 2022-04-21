@@ -11,7 +11,7 @@ from pytorch_tabnet.tab_network import TabNet
 class GeneClassifier(pl.LightningModule):
     def __init__(
         self, 
-        input_dim: int, 
+        input_dim: int,
         output_dim: int,
         base_model=None,
         optim_params: Dict[str, float]={
@@ -54,6 +54,8 @@ class GeneClassifier(pl.LightningModule):
         self.metrics = metrics
         self.weighted_metrics = weighted_metrics
         self.weights = weights 
+            
+        print(f'{self.weights = }')
 
         if base_model is None:
             self.base_model = TabNetGeneClassifier(
@@ -82,7 +84,8 @@ class GeneClassifier(pl.LightningModule):
         :type batch_idx: int
         :return: label tensor, logits tensor, loss 
         :rtype: Tuple[torch.Tensor, torch.Tensor, float]
-        """        
+        """
+
         if isinstance(self.base_model, TabNetGeneClassifier):
             # Hacky and annoying, but the extra M_loss from TabNet means we need to handle this specific case 
             y_hat, y, loss = self.base_model._step(batch, batch_idx)
@@ -91,10 +94,10 @@ class GeneClassifier(pl.LightningModule):
             y_hat = self(x)
             loss = F.cross_entropy(y_hat, y, weight=self.weights)
 
-        return y, y_hat, loss 
+        return y, y_hat, loss
 
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int):
-        y, y_hat, loss = self._step(batch, batch_idx)        
+        y, y_hat, loss = self._step(batch, batch_idx)
 
         self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'train')
@@ -102,7 +105,7 @@ class GeneClassifier(pl.LightningModule):
         return loss
     
     def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int):
-        y, y_hat, loss = self._step(batch, batch_idx)    
+        y, y_hat, loss = self._step(batch, batch_idx)
 
         self.log("val_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'val')

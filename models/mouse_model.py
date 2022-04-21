@@ -5,14 +5,11 @@ import anndata as an
 import torch 
 
 from os.path import join, dirname, abspath
-from pytorch_lightning import Trainer 
-from pytorch_lightning.loggers import WandbLogger 
-
 sys.path.append(join(dirname(abspath(__file__)), '..', 'src'))
 
-from helper import download, list_objects
-from models.lib.neural import GeneClassifier
-from models.lib.lightning_train import DataModule, generate_trainer
+from helper import download
+from models.lib.lightning_train import generate_trainer
+from models.lib.data import total_class_weights
 
 data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'mouse_data')
 
@@ -57,14 +54,14 @@ trainer, model, module = generate_trainer(
     refgenes=refgenes,
     currgenes=g2,
     weighted_metrics=True,
-    optim_params={
-        'optimizer': torch.optim.SGD,
-        'lr': 0.001,
-        'weight_decay': 1e-4,
-        'momentum': 1e-4,
+    optim_params = {
+        'optimizer': torch.optim.Adam,
+        'lr': 0.02,
+        'weight_decay': 3e-4,
     },
     max_epochs=500,
     normalize=True,
+    weights=total_class_weights([join(data_path, 'MouseAdultInhibitoryNeurons_labels.csv')], 'numeric_class', 'cuda:0')
 )
 
 # train model
