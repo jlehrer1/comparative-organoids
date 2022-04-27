@@ -210,11 +210,19 @@ class NumpyStream(Dataset):
         else:
             self.labels = labels 
 
+        # if index_col is not None:
+        #     self.labels = (
+        #         pd.read_csv(labelfile, sep=self.sep).loc[:, index_col].values 
+        #     )
+        # else:
+        #     self.labels = (
+        #         pd.read_csv(labelfile, sep=self.sep).index.values 
+        #     )
+
     def __getitem__(self, idx):
         if isinstance(idx, slice):
-            step = (1 if idx.step is None else idx.step)
-            idxs = range(idx.start, idx.stop, step)
-            return [self[i] for i in idxs]
+            it = list(range(idx.start or 0, idx.stop or len(self), idx.step or 1))
+            return [self[i] for i in it]
 
         data = self.data[idx]
 
@@ -518,14 +526,13 @@ def generate_single_dataset(
         train, val, test = (
             NumpyStream(
                 matrix=data.X[split.index],
-                labels=split.values,
+                labels=split,
                 class_label=class_label,
                 *args,
                 **kwargs,
             )
             for split in [trainsplit, valsplit, testsplit]
         )
-        
     else:
         if suffix != '.csv' and suffix != '.tsv':
             print(f'Extension {suffix} not recognized, \

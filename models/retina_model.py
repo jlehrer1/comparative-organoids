@@ -62,8 +62,8 @@ trainer, model, module = generate_trainer(
     drop_last=True,
     shuffle=True,
     normalize=True,
-    batch_size=32,
-    num_workers=64,
+    batch_size=4,
+    num_workers=0,
     weighted_metrics=True,
     optim_params = {
         'optimizer': torch.optim.Adam,
@@ -77,7 +77,7 @@ trainer, model, module = generate_trainer(
     },
     max_epochs=500,
     skip=3,
-    weights=total_class_weights([join(data_path, 'retina_labels_numeric.csv')], 'class_label', 'cuda:0'),
+    weights=total_class_weights([join(data_path, 'retina_labels_numeric.csv')], 'class_label'),
     wandb_name=name,
 )
 

@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata: 
-  name: retina-model-overfit
+  name: retina-model-with-decay
 spec:
-  backoffLimit: 0
+  backoffLimit: 5
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: retina-model-overfit
+        k8s-app: retina-model-with-decay
     spec:
       restartPolicy: Never
       containers:
-      - name: retina-model-overfit
+      - name: retina-model-with-decay
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -22,8 +22,8 @@ spec:
           "wandb login --relogin $(cat wandbcreds) && \
           python models/retina_model.py \
           --lr=0.03 \
-          --weight-decay=0 \
-          --name=retina-model-overfit"
+          --weight-decay=0.0001 \
+          --name=retina-model-with-decay"
         ]
         resources:
           limits:
@@ -31,7 +31,7 @@ spec:
             cpu: "32"
             nvidia.com/gpu: "1"
           requests:
-            memory: 64Gi
+            memory: 128Gi
             cpu: "32"
             nvidia.com/gpu: "1"
         volumeMounts:

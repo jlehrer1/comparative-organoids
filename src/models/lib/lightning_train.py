@@ -141,6 +141,7 @@ def generate_trainer(
     scheduler_params: Dict[str, float]=None,
     wandb_name: str=None,
     weights: torch.Tensor=None,
+    max_epochs=500,
     *args,
     **kwargs,
 ):
@@ -219,6 +220,7 @@ def generate_trainer(
         auto_lr_find=False,
         # gradient_clip_val=0.5,
         logger=wandb_logger,
+        max_epochs=max_epochs,
         # callbacks=[
         #     uploadcallback, 
         # ],
