@@ -4,13 +4,16 @@ import sys
 import anndata as an
 import torch 
 import argparse 
+import pytorch_lightning as pl 
+from pytorch_lightning.loggers import WandbLogger
 
 from os.path import join, dirname, abspath
 sys.path.append(join(dirname(abspath(__file__)), '..', 'src'))
 
 from helper import download
-from models.lib.lightning_train import generate_trainer
-from models.lib.data import total_class_weights
+from models.lib.data import *
+from models.lib.neural import *
+from models.lib.lightning_train import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -54,31 +57,46 @@ for file in ['retina_T.csv', 'retina_labels_numeric.csv']:
 datafiles=[join(data_path, 'retina_T.csv')]
 labelfiles=[join(data_path, 'retina_labels_numeric.csv')]
 
-trainer, model, module = generate_trainer(
+device = ('cuda:0' if torch.cuda.is_available() else None)
+module = DataModule(
     datafiles=datafiles,
     labelfiles=labelfiles,
     class_label='class_label',
     index_col='cell',
-    drop_last=True,
+    batch_size=16,
+    num_workers=32,
+    skip=3,
     shuffle=True,
+    drop_last=True,
     normalize=True,
-    batch_size=4,
-    num_workers=0,
-    weighted_metrics=True,
-    optim_params = {
+)
+
+model = TabNetLightning(
+    input_dim=module.num_features,
+    output_dim=module.num_labels,
+    optim_params={
         'optimizer': torch.optim.Adam,
-        'lr': lr,
-        'weight_decay': weight_decay,
+        'lr': 0.2,
+        'weight_decay': 0,
     },
     scheduler_params={
-        'scheduler': torch.optim.lr_scheduler.StepLR,
-        'step_size': 30,
-        'gamma': 0.001,
+        'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
+        'factor': 0.001,
     },
-    max_epochs=500,
-    skip=3,
-    weights=total_class_weights([join(data_path, 'retina_labels_numeric.csv')], 'class_label'),
-    wandb_name=name,
+    weights=total_class_weights(labelfiles, 'class_label', device),
+)
+
+wandb_logger = WandbLogger(
+    project=f"Tabnet-retina-model",
+    name='local-retina-model'
+)
+
+trainer = pl.Trainer(
+    gpus=(1 if torch.cuda.is_available() else 0),
+    auto_lr_find=False,
+    logger=wandb_logger,
+    max_epochs=100,
+    gradient_clip_val=0.5,
 )
 
 # train model

@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata: 
-  name: retina-model-with-decay
+  name: retina-model-02-lr-no-decay
 spec:
   backoffLimit: 5
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: retina-model-with-decay
+        k8s-app: retina-model-02-lr-no-decay
     spec:
       restartPolicy: Never
       containers:
-      - name: retina-model-with-decay
+      - name: retina-model-02-lr-no-decay
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -21,9 +21,9 @@ spec:
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
           python models/retina_model.py \
-          --lr=0.03 \
-          --weight-decay=0.0001 \
-          --name=retina-model-with-decay"
+          --lr=0.2 \
+          --weight-decay=0.0 \
+          --name=retina-model-02-lr-no-decay"
         ]
         resources:
           limits:
@@ -31,8 +31,8 @@ spec:
             cpu: "32"
             nvidia.com/gpu: "1"
           requests:
-            memory: 128Gi
-            cpu: "32"
+            memory: 32Gi
+            cpu: "16"
             nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral

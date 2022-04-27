@@ -181,7 +181,7 @@ def generate_trainer(
 
     uploadcallback = UploadCallback(
         path=os.path.join(here, 'checkpoints'),
-        desc=f'TabNet Gene Classifier'
+        desc=wandb_name
     )
 
     # earlystoppingcallback = EarlyStopping(

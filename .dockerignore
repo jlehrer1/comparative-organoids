@@ -8,3 +8,5 @@ src/visualization/*.png
 .git/*
 .git*
 __pycache__/*/*
+scripts/*
+tabnet*

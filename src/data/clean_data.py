@@ -95,6 +95,7 @@ def clean_labelsets(upload: bool) -> None:
 
     # Rename cells so we have label consistency across classes 
     print('Mapping target labels to be consistent')
+    
     df1['Type'] = df1['Type'].replace(df1_mapping)
     df2['subclass_label'] = df2['subclass_label'].replace(df2_mapping)
     df3['subclass_label'] = df3['subclass_label'].replace(df3_mapping)

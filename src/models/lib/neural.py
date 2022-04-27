@@ -184,8 +184,12 @@ class GeneClassifier(pl.LightningModule):
 
         if self.scheduler_params is None:
             return optimizer
-        else:
-            return [optimizer], [scheduler]
+
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': scheduler,
+            'monitor': 'train_loss',
+        }
 
 class TabNetGeneClassifier(TabNet):
     """
@@ -340,8 +344,12 @@ class TabNetLightning(pl.LightningModule):
 
         if self.scheduler_params is None:
             return optimizer
-        else:
-            return [optimizer], [scheduler]
+        
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': scheduler,
+            'monitor': 'train_loss',
+        }
     
     def _compute_metrics(self, 
         y_hat: torch.Tensor, 
