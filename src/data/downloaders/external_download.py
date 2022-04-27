@@ -15,7 +15,8 @@ def download_raw_expression_matrices(
     datasets: Dict[str, Tuple[str, str]]=None,
     upload: bool=False,
     unzip: bool=True,
-    datapath: str=None
+    sep='\t',
+    datapath: str=None,
 ) -> None:
     """Downloads all raw datasets and label sets from cells.ucsc.edu, and then unzips them locally
 
@@ -38,10 +39,12 @@ def download_raw_expression_matrices(
         os.makedirs(data_path, exist_ok=True)
 
     for file, links in datasets.items():
-        labelfile = f'{file[:-4]}_labels.tsv'
-        datalink, _ = links
+        labelfile = f'labels_{file}'
+        datalink, labellink = links
+        print(datalink ,labellink)
 
         datafile_path = join(data_path, file)
+        labelfile_path = join(data_path, labelfile)
         # First, make the required folders if they do not exist 
         for dir in 'raw':
             os.makedirs(join(data_path, dir), exist_ok=True)
@@ -53,7 +56,6 @@ def download_raw_expression_matrices(
                 datalink,
                 f'{datafile_path}.gz',
             )
-
             if unzip:
                 print(f'Unzipping {file}')
                 os.system(
@@ -64,6 +66,12 @@ def download_raw_expression_matrices(
                 os.system(
                     f'rm -rf {datafile_path}.gz'
                 )
+
+        if not isfile(labelfile_path):
+            urllib.request.urlretrieve(
+                labellink,
+                labelfile_path,
+            )
 
         # If upload boolean is passed, also upload these files to the braingeneersdev s3 bucket
         if upload:

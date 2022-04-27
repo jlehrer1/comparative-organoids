@@ -4,6 +4,7 @@ import pathlib
 from typing import *
 
 import torch
+import numpy as np 
 import pandas as pd 
 import anndata as an
 from functools import cached_property
@@ -11,6 +12,7 @@ from functools import cached_property
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from sklearn.preprocessing import LabelEncoder 
 
 from .neural import GeneClassifier
 from .train import UploadCallback
@@ -21,28 +23,114 @@ from os.path import join, dirname, abspath
 sys.path.append(join(dirname(abspath(__file__)), '..', '..'))
 
 from helper import gene_intersection, download
+from data.downloaders.external_download import download_raw_expression_matrices
+
+here = pathlib.Path(__file__).parent.absolute()
 
 class DataModule(pl.LightningDataModule):
-    """
-    Creates the DataModule for PyTorch-Lightning training.
-    """
     def __init__(
         self, 
-        datafiles,
-        labelfiles,
-        class_label,
+        class_label: str,
+        datafiles: List[str]=None,
+        labelfiles: List[str]=None,
+        urls: Dict[str, List[str]]=None,
+        unzip: bool=False,
+        sep: str='\t',
+        datapath: str=None,
+        is_assumed_numeric: bool=True,
         *args,
         **kwargs,
     ):
+        """
+        Creates the DataModule for PyTorch-Lightning training.
+
+        This either takes a dictionary of URLs with the format 
+            urls = {dataset_name.extension: 
+                        [
+                            datafileurl,
+                            labelfileurl,
+                        ]
+                    }
+
+        OR two lists containing the absolute paths to the datafiles and labelfiles, respectively.
+
+        :param class_label: Class label to train on. Must be in all label files 
+        :type class_label: str
+        :param datafiles: List of absolute paths to datafiles, if not using URLS. defaults to None
+        :type datafiles: List[str], optional
+        :param labelfiles: List of absolute paths to labelfiles, if not using URLS. defaults to None
+        :type labelfiles: List[str], optional
+        :param urls: Dictionary of URLS to download, as specified in the above docstring, defaults to None
+        :type urls: Dict[str, List[str, str]], optional
+        :param unzip: Boolean, whether to unzip the datafiles in the url, defaults to False
+        :type unzip: bool, optional
+        :param sep: Separator to use in reading in both datafiles and labelfiles. WARNING: Must be homogeneous between all datafile and labelfiles, defaults to '\t'
+        :type sep: str, optional
+        :param datapath: Path to local directory to download datafiles and labelfiles to, if using URL. defaults to None
+        :type datapath: str, optional
+        :param is_assumed_numeric: If the class_label column in all labelfiles is numeric. Otherwise, we automatically apply sklearn.preprocessing.LabelEncoder to the intersection of all possible labels, defaults to True
+        :type is_assumed_numeric: bool, optional
+        :raises ValueError: If both a dictionary of URL's is passed and labelfiles/datafiles are passed. We can only handle one, not a mix of both, since there isn't a way to determine easily if a string is an external url or not. 
+
+        """    
         super().__init__()
 
+        if urls is not None and datafiles is not None or urls is not None and labelfiles is not None:
+            raise ValueError("Either a dictionary of data to download, or paths to datafiles and labelfiles are supported, but not both.")
+
+        self.class_label = class_label
         self.datafiles = datafiles 
         self.labelfiles = labelfiles 
-        self.class_label = class_label
+
+        self.urls = urls 
+        self.unzip = unzip 
+        self.sep = sep 
+        self.datapath = (
+            datapath if datapath is not None else join(here, '..', '..', '..', 'data', 'raw')
+        )
+        self.is_assumed_numeric = is_assumed_numeric
 
         self.args = args 
         self.kwargs = kwargs
         
+    def prepare_data(self):
+        if self.urls is not None:
+            download_raw_expression_matrices(
+                self.urls,
+                unzip=self.unzip,
+                sep=self.sep,
+                datapath=self.datapath,
+            )
+        
+        if not self.is_assumed_numeric:
+            if self.urls is not None:
+                # Since we specifically formulated this download format in download_raw_expression_matrices
+                labelfiles = [join(self.datapath, f'labels_{file}') for file in self.urls.keys()]
+            else:
+                labelfiles = self.labelfiles 
+            
+            unique_targets = list(
+                set(np.concatenate([pd.read_csv(df, sep=self.sep).loc[:, self.class_label].unique() for df in labelfiles]))
+            )
+            
+            le = LabelEncoder()
+            le = le.fit(unique_targets)
+            
+            for file in labelfiles:
+                labels = pd.read_csv(file, sep=self.sep)
+
+                labels = labels.rename(
+                    columns={
+                        self.class_label: f'categorical_{self.class_label}'
+                    }
+                )
+                
+                labels.loc[:, self.class_label] = le.transform(
+                    labels.loc[:,f'categorical_{self.class_label}']
+                )
+
+                labels.to_csv(file, index=False) # Don't need to re-index here 
+
     def setup(self, stage: Optional[str] = None):
         print('Creating train/val/test DataLoaders...')
         trainloader, valloader, testloader = generate_dataloaders(

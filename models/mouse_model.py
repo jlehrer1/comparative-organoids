@@ -76,7 +76,7 @@ module = DataModule(
     datafiles=datafiles,
     labelfiles=labelfiles,
     class_label='numeric_class',
-    batch_size=16,
+    batch_size=8,
     num_workers=32,
     shuffle=True,
     drop_last=True,
@@ -88,8 +88,8 @@ model = TabNetLightning(
     output_dim=module.num_labels,
     optim_params={
         'optimizer': torch.optim.Adam,
-        'lr': 0.2,
-        'weight_decay': 0,
+        'lr': lr,
+        'weight_decay': weight_decay,
     },
     scheduler_params={
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
@@ -99,8 +99,8 @@ model = TabNetLightning(
 )
 
 wandb_logger = WandbLogger(
-    project=f"Tabnet-retina-model",
-    name='local-retina-model'
+    project=f"Mouse Model",
+    name=name,
 )
 
 trainer = pl.Trainer(
