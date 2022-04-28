@@ -95,7 +95,7 @@ model = TabNetLightning(
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'factor': 0.001,
     },
-    weights=total_class_weights(labelfiles, 'numeric_class', device),
+    weights=total_class_weights(labelfiles, 'numeric_class', device=device),
 )
 
 wandb_logger = WandbLogger(

@@ -7,6 +7,7 @@ import torch
 import numpy as np 
 import pandas as pd 
 import anndata as an
+import warnings 
 from functools import cached_property
 
 import pytorch_lightning as pl
@@ -34,8 +35,8 @@ class DataModule(pl.LightningDataModule):
         datafiles: List[str]=None,
         labelfiles: List[str]=None,
         urls: Dict[str, List[str]]=None,
-        unzip: bool=False,
-        sep: str='\t',
+        unzip: bool=True,
+        sep: str=',',
         datapath: str=None,
         is_assumed_numeric: bool=True,
         *args,
@@ -75,13 +76,12 @@ class DataModule(pl.LightningDataModule):
         """    
         super().__init__()
 
+        # Make sure we don't have datafiles/labelfiles AND urls at start
         if urls is not None and datafiles is not None or urls is not None and labelfiles is not None:
             raise ValueError("Either a dictionary of data to download, or paths to datafiles and labelfiles are supported, but not both.")
 
-        self.class_label = class_label
-        self.datafiles = datafiles 
-        self.labelfiles = labelfiles 
 
+        self.class_label = class_label
         self.urls = urls 
         self.unzip = unzip 
         self.sep = sep 
@@ -89,6 +89,18 @@ class DataModule(pl.LightningDataModule):
             datapath if datapath is not None else join(here, '..', '..', '..', 'data', 'raw')
         )
         self.is_assumed_numeric = is_assumed_numeric
+
+        # If we have a list of urls, we can generate the list of paths of datafiles/labelfiles that will be downloaded after self.prepare_data()
+        if self.urls is not None:
+            self.datafiles = [join(self.datapath, f) for f in self.urls.keys()] 
+            self.labelfiles = [join(self.datapath, f'labels_{f}') for f in self.urls.keys()] 
+        else:
+            self.datafiles = datafiles 
+            self.labelfiles = labelfiles
+
+        # Warn user in case tsv/csv ,/\t don't match, this can be annoying to diagnose
+        if (sep == '\t' and pathlib.Path(labelfiles[0]).suffix == '.csv') or (sep == ',' and pathlib.Path(labelfiles[0]).suffix == '.tsv'):
+            warnings.warn(f'Passed delimiter {sep = } doesn\'t match file extension, continuing...')
 
         self.args = args 
         self.kwargs = kwargs
@@ -103,33 +115,25 @@ class DataModule(pl.LightningDataModule):
             )
         
         if not self.is_assumed_numeric:
-            if self.urls is not None:
-                # Since we specifically formulated this download format in download_raw_expression_matrices
-                labelfiles = [join(self.datapath, f'labels_{file}') for file in self.urls.keys()]
-            else:
-                labelfiles = self.labelfiles 
-            
+            print('is_assumed_numeric=False, using sklearn.preprocessing.LabelEncoder and encoding target variables.')
+
             unique_targets = list(
-                set(np.concatenate([pd.read_csv(df, sep=self.sep).loc[:, self.class_label].unique() for df in labelfiles]))
+                set(np.concatenate([pd.read_csv(df, sep=self.sep).loc[:, self.class_label].unique() for df in self.labelfiles]))
             )
             
             le = LabelEncoder()
             le = le.fit(unique_targets)
             
-            for file in labelfiles:
+            for file in self.labelfiles:
                 labels = pd.read_csv(file, sep=self.sep)
 
-                labels = labels.rename(
-                    columns={
-                        self.class_label: f'categorical_{self.class_label}'
-                    }
-                )
-                
+                labels.loc[:, f'categorical_{self.class_label}'] = labels.loc[:, self.class_label]
+
                 labels.loc[:, self.class_label] = le.transform(
-                    labels.loc[:,f'categorical_{self.class_label}']
+                    labels.loc[:, f'categorical_{self.class_label}']
                 )
 
-                labels.to_csv(file, index=False) # Don't need to re-index here 
+                labels.to_csv(file, index=False, sep=self.sep) # Don't need to re-index here 
 
     def setup(self, stage: Optional[str] = None):
         print('Creating train/val/test DataLoaders...')
@@ -137,6 +141,7 @@ class DataModule(pl.LightningDataModule):
             datafiles=self.datafiles,
             labelfiles=self.labelfiles,
             class_label=self.class_label,
+            sep=self.sep,
             *self.args,
             **self.kwargs,
             pin_memory=True, # For gpu training
@@ -159,9 +164,8 @@ class DataModule(pl.LightningDataModule):
     @cached_property
     def num_labels(self):
         val = []
-        sep = self.kwargs['sep'] if 'sep' in self.kwargs else ','
         for file in self.labelfiles:
-            val.append(pd.read_csv(file, sep=sep).loc[:, self.class_label].values.max())
+            val.append(pd.read_csv(file, sep=self.sep).loc[:, self.class_label].values.max())
 
         return max(val) + 1
 
@@ -174,7 +178,7 @@ class DataModule(pl.LightningDataModule):
         elif pathlib.Path(self.datafiles[0]).suffix == '.h5ad':
             return an.read_h5ad(self.datafiles[0]).X.shape[1]
         else:
-            return pd.read_csv(self.datafiles[0], nrows=1).shape[1]
+            return pd.read_csv(self.datafiles[0], nrows=1, sep=self.sep).shape[1]
     
 # This has to be outside of the datamodule 
 # Since we have to download the files to calculate the gene intersection 

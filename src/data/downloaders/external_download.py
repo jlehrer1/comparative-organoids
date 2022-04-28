@@ -41,7 +41,6 @@ def download_raw_expression_matrices(
     for file, links in datasets.items():
         labelfile = f'labels_{file}'
         datalink, labellink = links
-        print(datalink ,labellink)
 
         datafile_path = join(data_path, file)
         labelfile_path = join(data_path, labelfile)

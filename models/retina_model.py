@@ -58,13 +58,14 @@ datafiles=[join(data_path, 'retina_T.csv')]
 labelfiles=[join(data_path, 'retina_labels_numeric.csv')]
 
 device = ('cuda:0' if torch.cuda.is_available() else None)
+
 module = DataModule(
     datafiles=datafiles,
     labelfiles=labelfiles,
     class_label='class_label',
     index_col='cell',
     batch_size=8,
-    num_workers=32,
+    num_workers=0,
     skip=3,
     shuffle=True,
     drop_last=True,
