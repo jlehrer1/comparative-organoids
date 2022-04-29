@@ -10,3 +10,5 @@ src/visualization/*.png
 __pycache__/*/*
 scripts/*
 tabnet*
+retina_T*
+retina_labels*

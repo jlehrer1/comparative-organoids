@@ -26,7 +26,7 @@ spec:
             nvidia.com/gpu: "1"
           requests:
             memory: 64Gi
-            cpu: "4"
+            cpu: "16"
             nvidia.com/gpu: "1"
         volumeMounts:
         - name: ephemeral

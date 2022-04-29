@@ -30,10 +30,3 @@ if __name__ == "__main__":
                 file_name=join(data_path, file),
             )
 
-    data = GeneExpressionData(
-        filename=join(data_path, ),
-        labelname='../data/processed/labels/primary_bhaduri_labels.csv',
-        class_label='Type',
-        skip=3,
-    )
-

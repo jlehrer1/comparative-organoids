@@ -17,7 +17,7 @@ from sklearn.preprocessing import LabelEncoder
 
 from .neural import GeneClassifier
 from .train import UploadCallback
-from .data import generate_dataloaders
+from .data import generate_dataloaders, compute_class_weights
 
 import sys, os 
 from os.path import join, dirname, abspath 
@@ -35,10 +35,13 @@ class DataModule(pl.LightningDataModule):
         datafiles: List[str]=None,
         labelfiles: List[str]=None,
         urls: Dict[str, List[str]]=None,
+        sep: str=None,
         unzip: bool=True,
-        sep: str=',',
         datapath: str=None,
         is_assumed_numeric: bool=True,
+        batch_size=4,
+        num_workers=0,
+        device=('cuda:0' if torch.cuda.is_available() else None),
         *args,
         **kwargs,
     ):
@@ -80,15 +83,16 @@ class DataModule(pl.LightningDataModule):
         if urls is not None and datafiles is not None or urls is not None and labelfiles is not None:
             raise ValueError("Either a dictionary of data to download, or paths to datafiles and labelfiles are supported, but not both.")
 
-
+        self.device = device 
         self.class_label = class_label
         self.urls = urls 
         self.unzip = unzip 
-        self.sep = sep 
         self.datapath = (
             datapath if datapath is not None else join(here, '..', '..', '..', 'data', 'raw')
         )
         self.is_assumed_numeric = is_assumed_numeric
+        self.batch_size = batch_size
+        self.num_workers = num_workers
 
         # If we have a list of urls, we can generate the list of paths of datafiles/labelfiles that will be downloaded after self.prepare_data()
         if self.urls is not None:
@@ -99,8 +103,21 @@ class DataModule(pl.LightningDataModule):
             self.labelfiles = labelfiles
 
         # Warn user in case tsv/csv ,/\t don't match, this can be annoying to diagnose
-        if (sep == '\t' and pathlib.Path(labelfiles[0]).suffix == '.csv') or (sep == ',' and pathlib.Path(labelfiles[0]).suffix == '.tsv'):
+        suffix = pathlib.Path(labelfiles[0]).suffix
+        if (sep == '\t' and suffix == 'csv') or (sep == ',' and suffix == '.tsv'):
             warnings.warn(f'Passed delimiter {sep = } doesn\'t match file extension, continuing...')
+
+        # Infer sep based on .csv/.tsv of labelfile (assumed to be homogeneous in case of delimited datafiles) if sep is not passed
+        if sep is None:
+            if suffix == '.tsv':
+                self.sep = '\t'
+            elif suffix == '.csv':
+                self.sep = ','
+            else:
+                warnings.warn('Separator not passed and not able to be inferred. Falling back to ","')
+                self.sep = ','
+        else:
+            self.sep = sep 
 
         self.args = args 
         self.kwargs = kwargs
@@ -142,9 +159,11 @@ class DataModule(pl.LightningDataModule):
             labelfiles=self.labelfiles,
             class_label=self.class_label,
             sep=self.sep,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=True, # For gpu training
             *self.args,
             **self.kwargs,
-            pin_memory=True, # For gpu training
         )
 
         print('Done, continuing to training.')
@@ -152,6 +171,14 @@ class DataModule(pl.LightningDataModule):
         self.valloader = valloader
         self.testloader = testloader
         
+        print('Calculating weights')
+        self.weights = compute_class_weights(
+            labelfiles=self.labelfiles, 
+            class_label=self.class_label, 
+            sep=self.sep, 
+            device=self.device,
+        )
+
     def train_dataloader(self):
         return self.trainloader
 

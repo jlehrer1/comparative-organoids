@@ -84,7 +84,15 @@ model = TabNetLightning(
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'factor': 0.001,
     },
-    weights=total_class_weights(labelfiles, 'class_label', device),
+    weights=compute_class_weights(
+        labelfiles=labelfiles, 
+        class_label='class_label', 
+        device=device
+    ),
+    n_d=32,
+    n_a=32,
+    n_steps=10,
+    
 )
 
 wandb_logger = WandbLogger(
@@ -96,7 +104,7 @@ trainer = pl.Trainer(
     gpus=(1 if torch.cuda.is_available() else 0),
     auto_lr_find=False,
     logger=wandb_logger,
-    max_epochs=100,
+    max_epochs=500,
     gradient_clip_val=0.5,
 )
 

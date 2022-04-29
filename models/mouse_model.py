@@ -14,6 +14,7 @@ from models.lib.neural import *
 from models.lib.lightning_train import *
 import pytorch_lightning as pl 
 from pytorch_lightning.loggers import WandbLogger
+from torchmetrics.functional import * 
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -95,7 +96,14 @@ model = TabNetLightning(
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'factor': 0.001,
     },
-    weights=total_class_weights(labelfiles, 'numeric_class', device=device),
+    metrics={
+        'confusionmatrix': confusion_matrix,
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+    },
+    weights=compute_class_weights(labelfiles, 'numeric_class', device=device),
+    weighted_metrics=False,
 )
 
 wandb_logger = WandbLogger(

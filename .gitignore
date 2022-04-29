@@ -120,3 +120,6 @@ data/retina/*
 data/retina_data/*
 data/fetal_lung/*
 data/dental/*
+data/10x_mouse/*
+xgboost/*
+data/cortex_development/*

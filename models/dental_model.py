@@ -91,7 +91,7 @@ module.setup()
 model = TabNetLightning(
     input_dim=module.num_features,
     output_dim=module.num_labels,
-    weights=total_class_weights([join(data_path, 'labels_human_dental.tsv')], class_label, sep='\t', device=device),
+    weights=compute_class_weights([join(data_path, 'labels_human_dental.tsv')], class_label, sep='\t', device=device),
     scheduler_params={
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'factor': 0.001,
@@ -111,7 +111,7 @@ wandb_logger = WandbLogger(
 )
 
 trainer = pl.Trainer(
-    logger=wandb_logger
+    logger=wandb_logger,
 )
 
 trainer.fit(model, datamodule=module)
