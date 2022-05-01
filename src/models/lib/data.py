@@ -228,8 +228,6 @@ class AnnDatasetMatrix(Dataset):
     def __init__(self,
         matrix: np.ndarray,
         labels: List[any],
-        *args,
-        **kwargs,
     ) -> None:
         super().__init__()
         self.data = matrix
@@ -258,6 +256,8 @@ class CollateLoader(DataLoader):
     def __init__(
         self,
         dataset: Type[Dataset],
+        batch_size: int,
+        num_workers: int,
         refgenes: List[str]=None,
         currgenes: List[str]=None,
         transpose: bool=False, 
@@ -314,6 +314,8 @@ class CollateLoader(DataLoader):
         super().__init__(
             dataset=dataset,
             collate_fn=collate_fn,
+            batch_size=batch_size,
+            num_workers=num_workers,
             **new_kwargs,
         )
 
@@ -441,9 +443,11 @@ def generate_single_dataset(
     datafile: str,
     labelfile: str,
     class_label: str,
+    index_col: str,
     test_prop=0.2,
     sep=',',
     subset=None,
+    stratify=True,
     *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset, Dataset]:
@@ -463,16 +467,18 @@ def generate_single_dataset(
     """    
     suffix = pathlib.Path(datafile).suffix
 
-    if subset is not None:
-        current_labels = pd.read_csv(labelfile, sep=sep).loc[subset, class_label]
-    else:
-        current_labels = pd.read_csv(labelfile, sep=sep).loc[:, class_label]
-
-    # Make stratified split on labels
-    trainsplit, valsplit = train_test_split(current_labels, stratify=current_labels, test_size=test_prop)
-    trainsplit, testsplit = train_test_split(trainsplit, stratify=trainsplit, test_size=test_prop)
-
     if suffix == '.h5ad':
+        # WAIT... THIS IS WRONG!!!
+        # I am selectng the index from the train test split, but not from the index_col
+        if subset is not None:
+            current_labels = pd.read_csv(labelfile, sep=sep, index_col=index_col).loc[subset, class_label]
+        else:
+            current_labels = pd.read_csv(labelfile, sep=sep, index_col=index_col).loc[:, class_label]
+
+        # Make stratified split on labels
+        trainsplit, valsplit = train_test_split(current_labels, stratify=(current_labels if stratify else None), test_size=test_prop)
+        trainsplit, testsplit = train_test_split(trainsplit, stratify=(trainsplit if stratify else None), test_size=test_prop)
+
         data = sc.read_h5ad(datafile)
         train, val, test = (
             AnnDatasetMatrix(
@@ -488,12 +494,22 @@ def generate_single_dataset(
             print(f'Extension {suffix} not recognized, \
                 interpreting as .csv. To silence this warning, pass in explicit file types.')
 
+        if subset is not None:
+            current_labels = pd.read_csv(labelfile, sep=sep).loc[subset, class_label]
+        else:
+            current_labels = pd.read_csv(labelfile, sep=sep).loc[:, class_label]
+
+        # Make stratified split on labels
+        trainsplit, valsplit = train_test_split(current_labels, stratify=(current_labels if stratify else None), test_size=test_prop)
+        trainsplit, testsplit = train_test_split(trainsplit, stratify=(trainsplit if stratify else None), test_size=test_prop)
+
         train, val, test = (
             GeneExpressionData(
                 filename=datafile,
                 labelname=labelfile,
                 class_label=class_label,
                 indices=indices,
+                index_col=index_col,
                 *args,
                 **kwargs,
             )
@@ -503,6 +519,16 @@ def generate_single_dataset(
     return train, val, test 
 
 def generate_single_dataloader(
+    datafile: str,
+    labelfile: str,
+    class_label: str,
+    index_col: str,
+    test_prop=0.2,
+    sep=',',
+    subset=None,
+    stratify=True,
+    batch_size=4,
+    num_workers=0,
     *args,
     **kwargs,
 ) -> Tuple[CollateLoader, CollateLoader, CollateLoader]:
@@ -514,6 +540,14 @@ def generate_single_dataloader(
     """
 
     train, val, test = generate_single_dataset(
+        datafile,
+        labelfile,
+        class_label,
+        index_col,
+        test_prop,
+        sep,
+        subset,
+        stratify,
         *args,
         **kwargs,
     )
@@ -521,6 +555,8 @@ def generate_single_dataloader(
     loaders = (
         CollateLoader(
                 dataset=dataset, 
+                batch_size=batch_size,
+                num_workers=num_workers,
                 *args,
                 **kwargs,
             )
@@ -597,7 +633,15 @@ def generate_datasets(
 def generate_dataloaders(
     datafiles: List[str], 
     labelfiles: List[str],
+    class_label: str,
     collocate: bool=True, 
+    index_col: str=None,
+    test_prop=0.2,
+    sep=',',
+    subset=None,
+    stratify=True,
+    batch_size: int=4,
+    num_workers: int=0,
     *args,
     **kwargs,
 ) -> Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]:
@@ -627,6 +671,13 @@ def generate_dataloaders(
         trainloader, valloader, testloader = generate_single_dataloader(
             datafile=datafile,
             labelfile=labelfile,
+            class_label=class_label,
+            index_col=index_col,
+            test_prop=test_prop,
+            sep=sep,
+            subset=subset,
+            stratify=stratify,
+
             *args,
             **kwargs,
         )
@@ -677,4 +728,3 @@ def compute_class_weights(
     return (
         weights.to(device) if device is not None else weights
     )
-

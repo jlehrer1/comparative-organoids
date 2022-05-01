@@ -73,6 +73,7 @@ datafiles=[join(data_path, 'MouseAdultInhibitoryNeurons.h5ad')]
 labelfiles=[join(data_path, 'MouseAdultInhibitoryNeurons_labels.csv')]
 
 device = ('cuda:0' if torch.cuda.is_available() else None)
+
 module = DataModule(
     datafiles=datafiles,
     labelfiles=labelfiles,
@@ -104,6 +105,9 @@ model = TabNetLightning(
     },
     weights=compute_class_weights(labelfiles, 'numeric_class', device=device),
     weighted_metrics=False,
+    n_d=32, 
+    n_a=32,
+    n_steps=10,
 )
 
 wandb_logger = WandbLogger(

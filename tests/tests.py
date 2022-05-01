@@ -119,13 +119,13 @@ def test_datamodule():
 
 def test_retina_data():
     N = 50 
-    datafile = os.path.join('..', 'data', 'retina_data', 'retina_T.csv')
-    labelfile = os.path.join('..', 'data', 'retina_data', 'retina_labels_numeric.csv')
+    datafile = os.path.join('..', 'data', 'retina', 'retina_T.csv')
+    labelfile = os.path.join('..', 'data', 'retina', 'retina_labels_numeric.csv')
 
     _test_first_n_samples(N, datafile, labelfile, 'class_label', 'cell')
     test_split(N, datafile, labelfile, 'class_label', 'cell')
 
 if __name__ == "__main__":
-    # map_cols_test()
-    # test_datamodule()
+    map_cols_test()
+    test_datamodule()
     test_retina_data()

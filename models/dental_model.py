@@ -83,8 +83,8 @@ module = DataModule(
     labelfiles=[join(data_path, 'labels_human_dental.tsv')],
     class_label=class_label,
     sep='\t',
-    batch_size=4,
-    num_workers=0,
+    batch_size=16,
+    num_workers=32,
 )
 
 module.setup()

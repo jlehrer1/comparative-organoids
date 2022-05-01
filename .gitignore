@@ -123,3 +123,5 @@ data/dental/*
 data/10x_mouse/*
 xgboost/*
 data/cortex_development/*
+tests/datapath
+data/tests/*

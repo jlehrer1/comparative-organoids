@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: retina-model-01-lr-no-decay
+  name: retina-model-${NUM}-lr-no-decay
 spec:
   backoffLimit: 5
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: retina-model-01-lr-no-decay
+        k8s-app: retina-model-${NUM}-lr-no-decay
     spec:
       restartPolicy: Never
       containers:
-      - name: retina-model-01-lr-no-decay
+      - name: retina-model-${NUM}-lr-no-decay
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -21,9 +21,9 @@ spec:
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
           python models/retina_model.py \
-          --lr=0.1 \
+          --lr=${LR} \
           --weight-decay=0.0 \
-          --name=retina-model-01-lr-no-decay"
+          --name=retina-model-${NUM}-lr-no-decay"
         ]
         resources:
           limits:

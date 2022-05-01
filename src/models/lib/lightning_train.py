@@ -114,7 +114,7 @@ class DataModule(pl.LightningDataModule):
             elif suffix == '.csv':
                 self.sep = ','
             else:
-                warnings.warn('Separator not passed and not able to be inferred. Falling back to ","')
+                warnings.warn(f'Separator not passed and not able to be inferred from {suffix=}. Falling back to ","')
                 self.sep = ','
         else:
             self.sep = sep 
@@ -141,9 +141,8 @@ class DataModule(pl.LightningDataModule):
             le = LabelEncoder()
             le = le.fit(unique_targets)
             
-            for file in self.labelfiles:
+            for idx, file in enumerate(self.labelfiles):
                 labels = pd.read_csv(file, sep=self.sep)
-
                 labels.loc[:, f'categorical_{self.class_label}'] = labels.loc[:, self.class_label]
 
                 labels.loc[:, self.class_label] = le.transform(
@@ -151,6 +150,8 @@ class DataModule(pl.LightningDataModule):
                 )
 
                 labels.to_csv(file, index=False, sep=self.sep) # Don't need to re-index here 
+
+                # self.labelfiles[idx] = file 
 
     def setup(self, stage: Optional[str] = None):
         print('Creating train/val/test DataLoaders...')

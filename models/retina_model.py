@@ -64,8 +64,8 @@ module = DataModule(
     labelfiles=labelfiles,
     class_label='class_label',
     index_col='cell',
-    batch_size=8,
-    num_workers=0,
+    batch_size=16,
+    num_workers=32,
     skip=3,
     shuffle=True,
     drop_last=True,
@@ -92,7 +92,6 @@ model = TabNetLightning(
     n_d=32,
     n_a=32,
     n_steps=10,
-    
 )
 
 wandb_logger = WandbLogger(
