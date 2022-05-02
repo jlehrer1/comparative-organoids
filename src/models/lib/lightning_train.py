@@ -208,45 +208,6 @@ class DataModule(pl.LightningDataModule):
         else:
             return pd.read_csv(self.datafiles[0], nrows=1, sep=self.sep).shape[1]
     
-# This has to be outside of the datamodule 
-# Since we have to download the files to calculate the gene intersection 
-def prepare_data(
-    data_path: str, 
-    datafiles: List[str], 
-    labelfiles: List[str],
-) -> None:
-    """
-    Prepare data for model training, by downloading the transposed and clean labels from the S3 bucket
-
-    :param data_path: Path to the top-level folder containing the data subfolders
-    :type data_path: str
-    :param datafiles: List of absolute paths to datafiles 
-    :type datafiles: List[str]
-    :param labelfiles: List of absolute paths to labelfiles
-    :type labelfiles: List[str]
-    """    
-    os.makedirs(os.path.join(data_path, 'interim'), exist_ok=True)
-    os.makedirs(os.path.join(data_path, 'processed', 'labels'), exist_ok=True)
-
-    for datafile, labelfile in zip(datafiles, labelfiles):
-        if not os.path.isfile(datafile):
-            print(f'Downloading {datafile}')
-            download(
-                remote_name=os.path.join('jlehrer/expression_data/interim/', datafile.split('/')[-1]),
-                file_name=datafile,
-            )
-        else:
-            print(f'{datafile} exists, continuing...')
-
-        if not os.path.isfile(labelfile):
-            print(f'Downloading {labelfile}')
-            download(
-                remote_name=os.path.join('jlehrer/expression_data/labels/', labelfile.split('/')[-1]),
-                file_name=labelfile,
-            )
-        else:
-            print(f'{labelfile} exists, continuing...\n')    
-
 def generate_trainer(
     datafiles: List[str],
     labelfiles: List[str],

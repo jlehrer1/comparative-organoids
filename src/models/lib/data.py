@@ -245,9 +245,10 @@ class AnnDatasetMatrix(Dataset):
 
         if issparse(data):
             data = data.todense()
+            data = np.squeeze(np.asarray(data)) # Need to get first row of 1xp matrix, weirdly this is how to do it :shrug:
 
         return (
-            torch.from_numpy(data)[0], # data is a numpy matrix, so take the first row. Can't index without converting first, for some reason
+            torch.from_numpy(data),
             self.labels[idx]
         )
     
@@ -472,8 +473,6 @@ def generate_single_dataset(
     suffix = pathlib.Path(datafile).suffix
 
     if suffix == '.h5ad':
-        # WAIT... THIS IS WRONG!!!
-        # I am selectng the index from the train test split, but not from the index_col
         if subset is not None:
             current_labels = pd.read_csv(labelfile, sep=sep, index_col=index_col).loc[subset, class_label]
         else:
@@ -527,12 +526,12 @@ def generate_single_dataloader(
     labelfile: str,
     class_label: str,
     index_col: str,
-    test_prop=0.2,
-    sep=',',
-    subset=None,
-    stratify=True,
-    batch_size=4,
-    num_workers=0,
+    test_prop: float,
+    sep: str,
+    subset: Collection[Any],
+    stratify: bool,
+    batch_size: int,
+    num_workers: int,
     *args,
     **kwargs,
 ) -> Tuple[CollateLoader, CollateLoader, CollateLoader]:
@@ -544,14 +543,14 @@ def generate_single_dataloader(
     """
 
     train, val, test = generate_single_dataset(
-        datafile,
-        labelfile,
-        class_label,
-        index_col,
-        test_prop,
-        sep,
-        subset,
-        stratify,
+        datafile=datafile,
+        labelfile=labelfile,
+        class_label=class_label,
+        index_col=index_col,
+        test_prop=test_prop,
+        sep=sep,
+        subset=subset,
+        stratify=stratify,
         *args,
         **kwargs,
     )
@@ -681,7 +680,8 @@ def generate_dataloaders(
             sep=sep,
             subset=subset,
             stratify=stratify,
-
+            batch_size=batch_size,
+            num_workers=num_workers,
             *args,
             **kwargs,
         )
