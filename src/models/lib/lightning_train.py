@@ -15,7 +15,7 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from sklearn.preprocessing import LabelEncoder 
 
-from .neural import GeneClassifier
+# from .neural import GeneClassifier
 from .train import UploadCallback
 from .data import generate_dataloaders, compute_class_weights
 

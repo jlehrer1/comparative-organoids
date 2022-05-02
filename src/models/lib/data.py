@@ -48,7 +48,7 @@ class GeneExpressionData(Dataset):
         we instead just drop the rows in the labelname file. Then the index_col column specifies the actual row numbers of the samples we want. Equivalently, the index_col is the numeric equivalent to 
         the labelname index after dropping the unwanted rows.
 
-        For this reason, index_col must be purely numeric, as the i-th entry of labelfile.loc[:, index_col] contains the actual line number of the i-th sample in the data file. 
+        For this reason, index_col must be purely numeric, as the i-th entry of labelfile.loc[:, index_col] contains the actual line number of the i-th sample in the data file.
 
         :param filename: Path to csv data file, where rows are samples and columns are features
         :type filename: str
@@ -228,6 +228,8 @@ class AnnDatasetMatrix(Dataset):
     def __init__(self,
         matrix: np.ndarray,
         labels: List[any],
+        *args,
+        **kwargs,
     ) -> None:
         super().__init__()
         self.data = matrix
@@ -245,12 +247,14 @@ class AnnDatasetMatrix(Dataset):
             data = data.todense()
 
         return (
-            torch.from_numpy(data), 
+            torch.from_numpy(data)[0], # data is a numpy matrix, so take the first row. Can't index without converting first, for some reason
             self.labels[idx]
         )
     
     def __len__(self):
-        return len(self.data)
+        return (
+            self.data.shape[0] if issparse(self.data) else len(self.data)
+        )
 
 class CollateLoader(DataLoader):
     def __init__(

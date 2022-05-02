@@ -44,17 +44,17 @@ data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'retina'
 print('Making data folder')
 os.makedirs(data_path, exist_ok=True)
 
-for file in ['retina_T.csv', 'retina_labels_numeric.csv']:
+for file in ['retina_T.h5ad', 'retina_labels_numeric.csv']:
     print(f'Downloading {file}')
 
     if not os.path.isfile(join(data_path, file)):
         download(
-            remote_name=join('jlehrer', 'retina_data', file),
+            remote_name=join('jlehrer', 'retina', file),
             file_name=join(data_path, file),
         )
 
-# Define labelfiles and trainer 
-datafiles=[join(data_path, 'retina_T.csv')]
+# Define labelfiles and trainer
+datafiles=[join(data_path, 'retina_T.h5ad')]
 labelfiles=[join(data_path, 'retina_labels_numeric.csv')]
 
 device = ('cuda:0' if torch.cuda.is_available() else None)
@@ -66,7 +66,6 @@ module = DataModule(
     index_col='cell',
     batch_size=16,
     num_workers=32,
-    skip=3,
     shuffle=True,
     drop_last=True,
     normalize=True,
@@ -84,11 +83,11 @@ model = TabNetLightning(
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
         'factor': 0.001,
     },
-    weights=compute_class_weights(
-        labelfiles=labelfiles, 
-        class_label='class_label', 
-        device=device
-    ),
+    # weights=compute_class_weights(
+    #     labelfiles=labelfiles, 
+    #     class_label='class_label', 
+    #     device=device
+    # ),
     n_d=32,
     n_a=32,
     n_steps=10,
