@@ -106,22 +106,28 @@ model = TabNetLightning(
     weighted_metrics=False,
 )
 
-lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
-checkpoint_monitor = pl.callbacks.ModelCheckpoint(
-    dirpath=join(here, 'checkpoints'), 
-    filename='{epoch}-{weighted_val_accuracy}'
-)
-
 wandb_logger = WandbLogger(
     project=f"tabnet-classifer-sweep",
     name='Dental model local'
 )
 
+lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+checkpoint_callback = pl.callbacks.ModelCheckpoint(
+    dirpath=join(here, 'checkpoints'), 
+    filename='{epoch}-{weighted_val_accuracy}'
+)
+upload_callback = UploadCallback(
+    path='checkpoints',
+    desc='dental'
+)
+
 trainer = pl.Trainer(
-    gpus=(1 if torch.cuda.is_available() else 0),    
+    gpus=(1 if torch.cuda.is_available() else 0),
+    auto_lr_find=False,
     logger=wandb_logger,
     max_epochs=100,
-    callbacks=[lr_monitor, checkpoint_monitor]
+    gradient_clip_val=0.5,
+    callbacks=[lr_callback, checkpoint_callback, upload_callback]
 )
 
 trainer.fit(model, datamodule=module)

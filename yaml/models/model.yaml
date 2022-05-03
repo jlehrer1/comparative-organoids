@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tabnet-classifier-${I}-${NAME}
+  name: ${TYPE}-model
 spec:
   backoffLimit: 0
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: tabnet-classifier-${I}-${NAME}
+        k8s-app: ${TYPE}-model
     spec:
       restartPolicy: Never
       containers:
-      - name: tabnet-classifier-${I}-${NAME}
+      - name: ${TYPE}-model
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:
@@ -20,15 +20,7 @@ spec:
           value: "1"
         args: [
           "wandb login --relogin $(cat wandbcreds) && \
-          python src/models/train_neural_network.py \
-          --num-workers=32 \ 
-          --lr=${LR} \
-          --momentum=${MOMENTUM} \
-          --weight-decay=${WEIGHT_DECAY} \
-          --class-label=${CLASS_LABEL} \
-          --batch-size=${BATCH_SIZE} \ 
-          --weighted-metrics=${WEIGHTED_METRICS} \
-          --num-workers=64" 
+          python models/${TYPE}_model.py --name=${NAME}"
         ]
         resources:
           limits:

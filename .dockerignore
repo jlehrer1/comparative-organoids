@@ -13,3 +13,8 @@ tabnet*
 retina_T*
 retina_labels*
 xgboost/*
+tests/*
+checkpoints/*
+.wandb/*
+*.log
+*.ckpt

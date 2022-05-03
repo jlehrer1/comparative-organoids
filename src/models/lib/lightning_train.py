@@ -62,7 +62,7 @@ class DataModule(pl.LightningDataModule):
         sep: str=None,
         unzip: bool=True,
         datapath: str=None,
-        is_assumed_numeric: bool=True,
+        assume_numeric_label: bool=True,
         batch_size=4,
         num_workers=0,
         device=('cuda:0' if torch.cuda.is_available() else None),
@@ -96,8 +96,8 @@ class DataModule(pl.LightningDataModule):
         :type sep: str, optional
         :param datapath: Path to local directory to download datafiles and labelfiles to, if using URL. defaults to None
         :type datapath: str, optional
-        :param is_assumed_numeric: If the class_label column in all labelfiles is numeric. Otherwise, we automatically apply sklearn.preprocessing.LabelEncoder to the intersection of all possible labels, defaults to True
-        :type is_assumed_numeric: bool, optional
+        :param assume_numeric_label: If the class_label column in all labelfiles is numeric. Otherwise, we automatically apply sklearn.preprocessing.LabelEncoder to the intersection of all possible labels, defaults to True
+        :type assume_numeric_label: bool, optional
         :raises ValueError: If both a dictionary of URL's is passed and labelfiles/datafiles are passed. We can only handle one, not a mix of both, since there isn't a way to determine easily if a string is an external url or not. 
 
         """    
@@ -114,7 +114,7 @@ class DataModule(pl.LightningDataModule):
         self.datapath = (
             datapath if datapath is not None else join(here, '..', '..', '..', 'data', 'raw')
         )
-        self.is_assumed_numeric = is_assumed_numeric
+        self.assume_numeric_label = assume_numeric_label
         self.batch_size = batch_size
         self.num_workers = num_workers
 
@@ -155,8 +155,8 @@ class DataModule(pl.LightningDataModule):
                 datapath=self.datapath,
             )
         
-        if not self.is_assumed_numeric:
-            print('is_assumed_numeric=False, using sklearn.preprocessing.LabelEncoder and encoding target variables.')
+        if not self.assume_numeric_label:
+            print('assume_numeric_label=False, using sklearn.preprocessing.LabelEncoder and encoding target variables.')
 
             unique_targets = list(
                 set(np.concatenate([pd.read_csv(df, sep=self.sep).loc[:, self.class_label].unique() for df in self.labelfiles]))

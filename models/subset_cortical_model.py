@@ -29,4 +29,3 @@ if __name__ == "__main__":
                 remote_name=join('jlehrer', 'retina_data', file),
                 file_name=join(data_path, file),
             )
-

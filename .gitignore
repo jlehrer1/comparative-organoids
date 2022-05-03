@@ -125,3 +125,4 @@ xgboost/*
 data/cortex_development/*
 tests/datapath
 data/tests/*
+checkpoints/*

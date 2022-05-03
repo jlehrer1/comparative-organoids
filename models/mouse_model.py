@@ -56,18 +56,18 @@ for file in ['MouseAdultInhibitoryNeurons.h5ad', 'Mo_PV_paper_TDTomato_mouseonly
             file_name=join(data_path, file),
         )
 
-# Calculate gene intersection
-mouse_atlas = an.read_h5ad(join(data_path, 'MouseAdultInhibitoryNeurons.h5ad'))
-mo_data = an.read_h5ad(join(data_path, 'Mo_PV_paper_TDTomato_mouseonly.h5ad'))
+# # Calculate gene intersection
+# mouse_atlas = an.read_h5ad(join(data_path, 'MouseAdultInhibitoryNeurons.h5ad'))
+# mo_data = an.read_h5ad(join(data_path, 'Mo_PV_paper_TDTomato_mouseonly.h5ad'))
 
-g1 = mo_data.var.index.values
-g2 = mouse_atlas.var.index.values
+# g1 = mo_data.var.index.values
+# g2 = mouse_atlas.var.index.values
 
-g1 = [x.strip().upper() for x in g1]
-g2 = [x.strip().upper() for x in g2]
+# g1 = [x.strip().upper() for x in g1]
+# g2 = [x.strip().upper() for x in g2]
 
-refgenes = sorted(list(set(g1).intersection(g2)))
-print(f"{len(refgenes) = }")
+# refgenes = sorted(list(set(g1).intersection(g2)))
+# print(f"{len(refgenes) = }")
 
 # Define labelfiles and trainer 
 datafiles=[join(data_path, 'MouseAdultInhibitoryNeurons.h5ad')]
@@ -80,7 +80,7 @@ module = DataModule(
     labelfiles=labelfiles,
     class_label='numeric_class',
     batch_size=16,
-    num_workers=8,
+    num_workers=0,
     shuffle=True,
     drop_last=True,
     normalize=True,
@@ -116,10 +116,14 @@ wandb_logger = WandbLogger(
     name=name,
 )
 
-lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
-checkpoint_monitor = pl.callbacks.ModelCheckpoint(
+lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+checkpoint_callback = pl.callbacks.ModelCheckpoint(
     dirpath=join(here, 'checkpoints'), 
     filename='{epoch}-{weighted_val_accuracy}'
+)
+upload_callback = UploadCallback(
+    path='checkpoints',
+    desc='mouse'
 )
 
 trainer = pl.Trainer(
@@ -128,7 +132,7 @@ trainer = pl.Trainer(
     logger=wandb_logger,
     max_epochs=100,
     gradient_clip_val=0.5,
-    callbacks=[lr_monitor, checkpoint_monitor]
+    callbacks=[lr_callback, checkpoint_callback, upload_callback]
 )
 
 # train model

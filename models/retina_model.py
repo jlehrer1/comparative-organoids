@@ -93,6 +93,7 @@ model = TabNetLightning(
     n_d=32,
     n_a=32,
     n_steps=10,
+    weighted_metrics=True,
 )
 
 wandb_logger = WandbLogger(
@@ -100,19 +101,24 @@ wandb_logger = WandbLogger(
     name=name,
 )
 
-lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
-checkpoint_monitor = pl.callbacks.ModelCheckpoint(
+lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+checkpoint_callback = pl.callbacks.ModelCheckpoint(
     dirpath=join(here, 'checkpoints'), 
     filename='{epoch}-{weighted_val_accuracy}'
+)
+
+upload_callback = UploadCallback(
+    path='checkpoints',
+    desc='retina'
 )
 
 trainer = pl.Trainer(
     gpus=(1 if torch.cuda.is_available() else 0),
     auto_lr_find=False,
     logger=wandb_logger,
-    max_epochs=500,
+    max_epochs=100,
     gradient_clip_val=0.5,
-    callbacks=[lr_monitor, checkpoint_monitor]
+    callbacks=[lr_callback, checkpoint_callback, upload_callback]
 )
 
 # train model
