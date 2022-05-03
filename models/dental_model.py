@@ -63,7 +63,7 @@ args = parser.parse_args()
 lr, weight_decay, name = args.lr, args.weight_decay, args.name
 
 here = pathlib.Path(__file__).parent.resolve()
-data_path = join(here, '..', 'data', 'mouse')
+data_path = join(here, '..', 'data', 'dental')
 
 print('Making data folder')
 os.makedirs(data_path, exist_ok=True)
@@ -85,7 +85,7 @@ module = DataModule(
     class_label=class_label,
     sep='\t',
     batch_size=16,
-    num_workers=32,
+    num_workers=0,
 )
 
 module.setup()
@@ -98,7 +98,6 @@ model = TabNetLightning(
         'factor': 0.001,
     },
     metrics={
-        'confusionmatrix': confusion_matrix,
         'accuracy': accuracy,
         'precision': precision,
         'recall': recall,

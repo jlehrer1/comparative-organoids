@@ -126,3 +126,5 @@ data/cortex_development/*
 tests/datapath
 data/tests/*
 checkpoints/*
+data/developing_mouse_brain/*
+notebooks/developing_mouse_brain/*

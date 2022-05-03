@@ -513,6 +513,7 @@ def generate_single_dataset(
                 class_label=class_label,
                 indices=indices,
                 index_col=index_col,
+                sep=sep,
                 *args,
                 **kwargs,
             )
@@ -662,7 +663,6 @@ def generate_dataloaders(
     :return: Either lists containing train, val, test or SequentialLoader's for train, val, test 
     :rtype: Union[Tuple[List[CollateLoader], List[CollateLoader], List[CollateLoader]], Tuple[SequentialLoader, SequentialLoader, SequentialLoader]]
     """
-    
     if len(datafiles) != len(labelfiles):
         raise ValueError("Must have same number of datafiles and labelfiles")
     

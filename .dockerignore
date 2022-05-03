@@ -18,3 +18,7 @@ checkpoints/*
 .wandb/*
 *.log
 *.ckpt
+**/checkpoints/*
+**/.wandb/*
+wandb/*
+**/wandb/*

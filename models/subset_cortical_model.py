@@ -19,7 +19,7 @@ from models.lib.neural import GeneClassifier
 from models.lib.lightning_train import DataModule, generate_trainer
 
 if __name__ == "__main__":
-    data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', '')
+    data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'interim')
 
     for file in ['retina_T.csv', 'retina_labels_numeric.csv']:
         print(f'Downloading {file}')

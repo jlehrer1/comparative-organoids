@@ -80,7 +80,7 @@ module = DataModule(
     labelfiles=labelfiles,
     class_label='numeric_class',
     batch_size=16,
-    num_workers=0,
+    num_workers=32,
     shuffle=True,
     drop_last=True,
     normalize=True,
@@ -99,7 +99,6 @@ model = TabNetLightning(
         'factor': 0.001,
     },
     metrics={
-        'confusionmatrix': confusion_matrix,
         'accuracy': accuracy,
         'precision': precision,
         'recall': recall,

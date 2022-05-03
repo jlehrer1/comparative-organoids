@@ -127,7 +127,7 @@ class DataModule(pl.LightningDataModule):
             self.labelfiles = labelfiles
 
         # Warn user in case tsv/csv ,/\t don't match, this can be annoying to diagnose
-        suffix = pathlib.Path(labelfiles[0]).suffix
+        suffix = pathlib.Path(self.labelfiles[0]).suffix
         if (sep == '\t' and suffix == 'csv') or (sep == ',' and suffix == '.tsv'):
             warnings.warn(f'Passed delimiter {sep = } doesn\'t match file extension, continuing...')
 
@@ -145,7 +145,7 @@ class DataModule(pl.LightningDataModule):
 
         self.args = args 
         self.kwargs = kwargs
-        
+
     def prepare_data(self):
         if self.urls is not None:
             download_raw_expression_matrices(
@@ -223,6 +223,10 @@ class DataModule(pl.LightningDataModule):
 
     @cached_property
     def num_features(self):
+        if self.urls is not None and not os.path.isfile(self.datafiles[0]):
+            print('Trying to calcuate num_features before data has been downloaded. Downloading and continuing...')
+            self.prepare_data()
+
         if 'refgenes' in self.kwargs:
             return len(self.kwargs['refgenes'])
         elif hasattr(self, 'trainloader'):
@@ -231,7 +235,7 @@ class DataModule(pl.LightningDataModule):
             return an.read_h5ad(self.datafiles[0]).X.shape[1]
         else:
             return pd.read_csv(self.datafiles[0], nrows=1, sep=self.sep).shape[1]
-    
+
 def generate_trainer(
     datafiles: List[str],
     labelfiles: List[str],
