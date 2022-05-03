@@ -15,18 +15,42 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from sklearn.preprocessing import LabelEncoder 
 
-# from .neural import GeneClassifier
-from .train import UploadCallback
 from .data import generate_dataloaders, compute_class_weights
 
 import sys, os 
 from os.path import join, dirname, abspath 
 sys.path.append(join(dirname(abspath(__file__)), '..', '..'))
 
-from helper import gene_intersection, download
+from helper import gene_intersection, download, upload 
 from data.downloaders.external_download import download_raw_expression_matrices
 
 here = pathlib.Path(__file__).parent.absolute()
+
+class UploadCallback(pl.callbacks.Callback):
+    """Custom PyTorch callback for uploading model checkpoints to the braingeneers S3 bucket.
+    
+    Parameters:
+    path: Local path to folder where model checkpoints are saved
+    desc: Description of checkpoint that is appended to checkpoint file name on save
+    upload_path: Subpath in braingeneersdev/jlehrer/ to upload model checkpoints to
+    """
+    
+    def __init__(self, path, desc, upload_path='model_checkpoints') -> None:
+        super().__init__()
+        self.path = path 
+        self.desc = desc
+        self.upload_path = upload_path
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        epoch = trainer.current_epoch
+        if epoch % 10 == 0: # Save every ten epochs
+            checkpoint = f'checkpoint-{epoch}-desc-{self.desc}.ckpt'
+            trainer.save_checkpoint(os.path.join(self.path, checkpoint))
+            print(f'Uploading checkpoint at epoch {epoch}')
+            upload(
+                os.path.join(self.path, checkpoint),
+                os.path.join('jlehrer', self.upload_path, checkpoint)
+            )
 
 class DataModule(pl.LightningDataModule):
     def __init__(
@@ -265,16 +289,12 @@ def generate_trainer(
         desc=wandb_name
     )
 
-    # earlystoppingcallback = EarlyStopping(
-    #     monitor="val_loss",
-    #     patience=50,
-    #     verbose=True
-    # )
-
-    prepare_data(
-        data_path=data_path,
-        datafiles=datafiles,
-        labelfiles=labelfiles,
+    early_stop_callback = EarlyStopping(
+        monitor=("weighted_val_accuracy" if weighted_metrics else "val_accuarcy"), 
+        min_delta=0.00, 
+        patience=3, 
+        verbose=False, 
+        mode="max"
     )
 
     module = DataModule(
@@ -283,11 +303,9 @@ def generate_trainer(
         class_label=class_label, 
         batch_size=batch_size,
         num_workers=num_workers,
-        *args,
-        **kwargs,
     )
 
-    model = GeneClassifier(
+    model = TabNetLightning(
         input_dim=module.num_features,
         output_dim=module.num_labels,
         weighted_metrics=weighted_metrics,

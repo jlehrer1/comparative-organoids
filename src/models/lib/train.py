@@ -18,31 +18,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 from helper import upload, seed_everything
 from .data import clean_sample
 
-class UploadCallback(pl.callbacks.Callback):
-    """Custom PyTorch callback for uploading model checkpoints to the braingeneers S3 bucket.
-    
-    Parameters:
-    path: Local path to folder where model checkpoints are saved
-    desc: Description of checkpoint that is appended to checkpoint file name on save
-    upload_path: Subpath in braingeneersdev/jlehrer/ to upload model checkpoints to
-    """
-    
-    def __init__(self, path, desc, upload_path='model_checkpoints') -> None:
-        super().__init__()
-        self.path = path 
-        self.desc = desc
-        self.upload_path = upload_path
-
-    def on_train_epoch_end(self, trainer, pl_module):
-        epoch = trainer.current_epoch
-        if epoch % 10 == 0: # Save every ten epochs
-            checkpoint = f'checkpoint-{epoch}-desc-{self.desc}.ckpt'
-            trainer.save_checkpoint(os.path.join(self.path, checkpoint))
-            print(f'Uploading checkpoint at epoch {epoch}')
-            upload(
-                os.path.join(self.path, checkpoint),
-                os.path.join('jlehrer', self.upload_path, checkpoint)
-            )
 
 # reproducibility over all workers
 def seed_worker(worker_id):

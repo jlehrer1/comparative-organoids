@@ -62,7 +62,8 @@ device = ('cuda:0' if torch.cuda.is_available() else None)
 args = parser.parse_args()
 lr, weight_decay, name = args.lr, args.weight_decay, args.name
 
-data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'dental')
+here = pathlib.Path(__file__).parent.resolve()
+data_path = join(here, '..', 'data', 'mouse')
 
 print('Making data folder')
 os.makedirs(data_path, exist_ok=True)
@@ -105,13 +106,22 @@ model = TabNetLightning(
     weighted_metrics=False,
 )
 
+lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+checkpoint_monitor = pl.callbacks.ModelCheckpoint(
+    dirpath=join(here, 'checkpoints'), 
+    filename='{epoch}-{weighted_val_accuracy}'
+)
+
 wandb_logger = WandbLogger(
     project=f"tabnet-classifer-sweep",
     name='Dental model local'
 )
 
 trainer = pl.Trainer(
+    gpus=(1 if torch.cuda.is_available() else 0),    
     logger=wandb_logger,
+    max_epochs=100,
+    callbacks=[lr_monitor, checkpoint_monitor]
 )
 
 trainer.fit(model, datamodule=module)

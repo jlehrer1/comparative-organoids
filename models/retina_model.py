@@ -39,7 +39,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 lr, weight_decay, name = args.lr, args.weight_decay, args.name
-data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'retina')
+
+here = pathlib.Path(__file__).parent.resolve()
+data_path = join(here, '..', 'data', 'mouse')
 
 print('Making data folder')
 os.makedirs(data_path, exist_ok=True)
@@ -65,7 +67,7 @@ module = DataModule(
     class_label='class_label',
     index_col='cell',
     batch_size=16,
-    num_workers=32,
+    num_workers=0,
     shuffle=True,
     drop_last=True,
     normalize=True,
@@ -98,12 +100,19 @@ wandb_logger = WandbLogger(
     name=name,
 )
 
+lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+checkpoint_monitor = pl.callbacks.ModelCheckpoint(
+    dirpath=join(here, 'checkpoints'), 
+    filename='{epoch}-{weighted_val_accuracy}'
+)
+
 trainer = pl.Trainer(
     gpus=(1 if torch.cuda.is_available() else 0),
     auto_lr_find=False,
     logger=wandb_logger,
     max_epochs=500,
     gradient_clip_val=0.5,
+    callbacks=[lr_monitor, checkpoint_monitor]
 )
 
 # train model

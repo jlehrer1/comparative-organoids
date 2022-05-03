@@ -41,7 +41,8 @@ parser.add_argument(
 args = parser.parse_args()
 lr, weight_decay, name = args.lr, args.weight_decay, args.name
 
-data_path = join(pathlib.Path(__file__).parent.resolve(), '..', 'data', 'mouse')
+here = pathlib.Path(__file__).parent.resolve()
+data_path = join(here, '..', 'data', 'mouse')
 
 print('Making data folder')
 os.makedirs(data_path, exist_ok=True)
@@ -78,8 +79,8 @@ module = DataModule(
     datafiles=datafiles,
     labelfiles=labelfiles,
     class_label='numeric_class',
-    batch_size=8,
-    num_workers=32,
+    batch_size=16,
+    num_workers=8,
     shuffle=True,
     drop_last=True,
     normalize=True,
@@ -103,16 +104,22 @@ model = TabNetLightning(
         'precision': precision,
         'recall': recall,
     },
-    weights=compute_class_weights(labelfiles, 'numeric_class', device=device),
-    weighted_metrics=False,
-    n_d=32, 
-    n_a=32,
-    n_steps=10,
+    # weights=compute_class_weights(labelfiles, 'numeric_class', device=device),
+    weighted_metrics=True,
+    # n_d=32, 
+    # n_a=32,
+    # n_steps=10,
 )
 
 wandb_logger = WandbLogger(
     project=f"Mouse Model",
     name=name,
+)
+
+lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+checkpoint_monitor = pl.callbacks.ModelCheckpoint(
+    dirpath=join(here, 'checkpoints'), 
+    filename='{epoch}-{weighted_val_accuracy}'
 )
 
 trainer = pl.Trainer(
@@ -121,6 +128,7 @@ trainer = pl.Trainer(
     logger=wandb_logger,
     max_epochs=100,
     gradient_clip_val=0.5,
+    callbacks=[lr_monitor, checkpoint_monitor]
 )
 
 # train model
