@@ -96,7 +96,7 @@ model = TabNetLightning(
     },
     scheduler_params={
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
-        'factor': 0.001,
+        'factor': 0.75,
     },
     metrics={
         'accuracy': accuracy,
@@ -129,7 +129,7 @@ trainer = pl.Trainer(
     gpus=(1 if torch.cuda.is_available() else 0),
     auto_lr_find=False,
     logger=wandb_logger,
-    max_epochs=100,
+    max_epochs=500,
     gradient_clip_val=0.5,
     callbacks=[lr_callback, checkpoint_callback, upload_callback]
 )

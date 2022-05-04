@@ -95,7 +95,7 @@ model = TabNetLightning(
     weights=compute_class_weights([join(data_path, 'labels_human_dental.tsv')], class_label, sep='\t', device=device),
     scheduler_params={
         'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau,
-        'factor': 0.001,
+        'factor': 0.75,
     },
     metrics={
         'accuracy': accuracy,
@@ -106,8 +106,8 @@ model = TabNetLightning(
 )
 
 wandb_logger = WandbLogger(
-    project=f"tabnet-classifer-sweep",
-    name='Dental model local'
+    project=f"Dental Model",
+    name=name,
 )
 
 lr_callback = pl.callbacks.LearningRateMonitor(logging_interval='epoch')

@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ${TYPE}-model
+  name: jl-${TYPE}-model
 spec:
   backoffLimit: 5
   completions: 1
   template:
     metadata:
       labels:
-        k8s-app: ${TYPE}-model
+        k8s-app: jl-${TYPE}-model
     spec:
       restartPolicy: Never
       containers:
-      - name: ${TYPE}-model
+      - name: jl-${TYPE}-model
         image: jmlehrer/cell-exploration:latest
         command: ["stdbuf", "-i0", "-o0", "-e0", "bash", "-c"]
         env:

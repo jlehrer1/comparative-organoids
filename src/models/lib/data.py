@@ -267,9 +267,12 @@ class CollateLoader(DataLoader):
         currgenes: List[str]=None,
         transpose: bool=False, 
         normalize: bool=False,
+        add_noise: bool=False,
+        noise_func: Callable=None,
         *args,
         **kwargs,
     ) -> None:
+
         """
         Initializes a CollateLoader for efficient numerical batch-wise transformations
 
@@ -296,13 +299,17 @@ class CollateLoader(DataLoader):
                 refgenes=refgenes, 
                 currgenes=currgenes, 
                 transpose=transpose, 
-                normalize=normalize
+                normalize=normalize,
+                add_noise=add_noise,
+                noise_func=noise_func,
             )
         else:
             collate_fn = partial(
-                _standard_collate, 
+                _standard_collate,
                 normalize=normalize, 
-                transpose=transpose
+                transpose=transpose,
+                add_noise=add_noise,
+                noise_func=noise_func,
             )
 
         # This is awkward, but Dataloader init doesn't handle optional keyword arguments
@@ -346,6 +353,8 @@ def _collate_with_refgenes(
     currgenes: List[str],
     transpose: bool,
     normalize: bool,
+    add_noise: bool,
+    noise_func: Callable,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Collate minibatch of samples where we're intersecting the columns between refgenes and currgenes,
@@ -367,12 +376,19 @@ def _collate_with_refgenes(
     data = clean_sample(torch.stack([x[0] for x in sample]), refgenes, currgenes)
     labels = torch.tensor([x[1] for x in sample])
 
+    # Add Gaussian noise if noise function isn't specificed, otherwise use tht
+    # Assumes compatability with the data tensor 
+    if add_noise:
+        noise = torch.randn_like(data) if noise_func is None else noise_func(data)
+        data = data + noise 
+
     return _transform_sample(data, normalize, transpose), labels 
 
 def _standard_collate(
     sample: List[tuple],
     normalize: bool,
     transpose: bool,
+    add_noise: bool=False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Collate minibatch of samples, optionally normalizing and transposing. 
@@ -388,6 +404,9 @@ def _standard_collate(
     """    
     data = torch.stack([x[0] for x in sample])
     labels = torch.tensor([x[1] for x in sample])
+
+    if add_noise:
+        data = data + torch.randn_like(data)
 
     return _transform_sample(data, normalize, transpose), labels 
 
@@ -633,6 +652,160 @@ def generate_datasets(
         test_datasets = ConcatDataset(test_datasets)
 
     return train_datasets, val_datasets, test_datasets
+
+# def generate_single_test_dataset(
+#     datafile: str,
+#     class_label: str=None,
+#     index_col: str=None,
+#     labelfile: str=None,
+#     sep: str=',',
+#     *args,
+#     **kwargs,
+# ):
+#     # TODO: Write this annoying ass method 
+
+#     if labelfile is None and class_label is not None:
+#         raise ValueError("Cannot pass a class_label without a labelfile")
+    
+#     if labelfile is None and index_col is not None:
+#         raise ValueError("Cannot pass an index_col without a labelfile")
+
+#     suffix = pathlib.Path(datafile).suffix
+#     if suffix == '.h5ad':
+#         data = sc.read_h5ad(datafile)
+#         labels = pd.read_csv(labelfile, index_col=index_col).loc[:, class_label].values 
+#         dataset = AnnDatasetMatrix(
+#             matrix=data.X,
+#             labels=labels,
+#             *args,
+#             **kwargs,
+#         )
+
+#     else:
+#         if suffix != '.csv' and suffix != '.tsv':
+#             print(f'Extension {suffix} not recognized, \
+#                 interpreting as .csv. To silence this warning, pass in explicit file types.')
+#         dataset = GeneExpressionData(
+#                 filename=datafile,
+#                 labelname=labelfile,
+#                 class_label=class_label,
+#                 index_col=index_col,
+#                 sep=sep,
+#                 *args,
+#                 **kwargs,
+#             )
+
+#     return dataset
+
+def generate_single_test_dataset(
+    datafile: str,
+    labelfile: str,
+    class_label: str,
+    index_col: str,
+    sep: str=',',
+    *args,
+    **kwargs,
+) -> Union[GeneExpressionData, AnnDatasetFile, AnnDatasetMatrix]:
+    """
+    Generate a single dataset without any splitting, if we want to run prediction at inference time 
+
+    :param datafiles: List of absolute paths to csv files under data_path/ that define cell x expression matrices
+    :type datafiles: List[str]
+    :param labelfiles: ist of absolute paths to csv files under data_path/ that define cell x class matrices
+    :type labelfiles: List[str]
+    :param class_label: Column in label files to train on. Must exist in all datasets, this should throw a natural error if it does not. 
+    :type class_label: str
+    :raises ValueError: Errors if user requests to combine datasets but there is only one. This is probability misinformed and should raise an error.
+    :return: Training, validation and test datasets, respectively
+    :rtype: Tuple[GeneExpressionData, AnnDatasetFile, AnnDatasetMatrix]
+    """
+
+    suffix = pathlib.Path(datafile).suffix 
+
+    if suffix == '.h5ad':
+        data = sc.read_h5ad(datafile)
+        labels = pd.read_csv(labelfile, index_col=index_col, sep=sep).loc[:, class_label].values 
+        dataset = AnnDatasetMatrix(
+            matrix=data.X,
+            labels=labels,
+            *args,
+            **kwargs,
+        )
+
+    else:
+        if suffix != '.csv' and suffix != '.tsv':
+            print(f'Extension {suffix} not recognized, \
+                interpreting as .csv. To silence this warning, pass in explicit file types.')
+
+        dataset = GeneExpressionData(
+                filename=datafile,
+                labelname=labelfile,
+                class_label=class_label,
+                index_col=index_col,
+                sep=sep,
+                *args,
+                **kwargs,
+            )
+
+    return dataset
+
+def generate_single_test_loader(
+    datafile: str,
+    labelfile: str,
+    class_label: str,
+    index_col: str,
+    sep: str=',',
+    *args,
+    **kwargs,
+):
+
+    dataset = generate_single_test_dataset(
+        datafile,
+        labelfile,
+        class_label,
+        index_col,
+        sep,
+        *args,
+        **kwargs
+    )
+
+    return CollateLoader(
+        dataset=dataset,
+        *args,
+        **kwargs
+    )
+
+def generate_test_loaders(
+    datafiles: List[str],
+    labelfiles: List[str],
+    class_label: str,
+    index_col: str,
+    sep: str,
+    *args,
+    **kwargs
+) -> CollateLoader:
+    
+    loaders = []
+    for datafile, labelfile in zip(datafiles, labelfiles):
+        dataset = generate_single_test_dataset(
+            datafile,
+            labelfile,
+            class_label,
+            index_col,
+            sep,
+            *args,
+            **kwargs,
+        )
+
+        loaders.append(
+            CollateLoader(
+                dataset=dataset,
+                *args,
+                **kwargs,
+            )
+        )
+
+    return CollateLoader
 
 def generate_dataloaders(
     datafiles: List[str], 

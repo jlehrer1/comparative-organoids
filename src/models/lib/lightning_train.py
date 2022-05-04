@@ -35,18 +35,27 @@ class UploadCallback(pl.callbacks.Callback):
     upload_path: Subpath in braingeneersdev/jlehrer/ to upload model checkpoints to
     """
     
-    def __init__(self, path, desc, upload_path='model_checkpoints') -> None:
+    def __init__(
+        self, 
+        path: str, 
+        desc: str, 
+        upload_path='model_checkpoints',
+        epochs: int=20,
+    ) -> None:
         super().__init__()
         self.path = path 
         self.desc = desc
         self.upload_path = upload_path
+        self.epochs = epochs 
 
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
-        if epoch % 10 == 0: # Save every ten epochs
+
+        if epoch % self.epochs == 0: # Save every ten epochs
             checkpoint = f'checkpoint-{epoch}-desc-{self.desc}.ckpt'
             trainer.save_checkpoint(os.path.join(self.path, checkpoint))
             print(f'Uploading checkpoint at epoch {epoch}')
+            
             upload(
                 os.path.join(self.path, checkpoint),
                 os.path.join('jlehrer', self.upload_path, checkpoint)

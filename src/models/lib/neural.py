@@ -16,6 +16,7 @@ from pytorch_tabnet.utils import (
 import torch.nn.functional as F
 from torchmetrics.functional import accuracy, precision, recall 
 from pytorch_tabnet.tab_network import TabNet
+import copy
 
 class TabNetLightning(pl.LightningModule):
     def __init__(
@@ -290,3 +291,16 @@ class TabNetLightning(pl.LightningModule):
         self.network.load_state_dict(saved_state_dict)
         self.network.eval()
         self.load_class_attrs(loaded_params["class_attrs"])
+
+
+    def load_weights_from_unsupervised(self, unsupervised_model):
+        update_state_dict = copy.deepcopy(self.network.state_dict())
+        for param, weights in unsupervised_model.network.state_dict().items():
+            if param.startswith("encoder"):
+                # Convert encoder's layers name to match
+                new_param = "tabnet." + param
+            else:
+                new_param = param
+            if self.network.state_dict().get(new_param) is not None:
+                # update only common layers
+                update_state_dict[new_param] = weights
