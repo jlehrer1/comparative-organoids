@@ -22,19 +22,16 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 class GeneExpressionData(Dataset):
-    """
-    Defines a PyTorch Dataset for a CSV too large to fit in memory. 
-    """
     def __init__(
         self, 
         filename: str,
         labelname: str,
         class_label: str,
-        indices: Iterable[int]=None,
-        skip=3,
-        cast=True,
-        sep=',',
-        index_col=None,
+        indices: Collection[int]=None,
+        skip: int=3,
+        cast: bool=True,
+        sep: bool=',',
+        index_col: str=None, 
         columns: List[any]=None,
         **kwargs, # To handle extraneous inputs
     ):
@@ -290,7 +287,10 @@ class CollateLoader(DataLoader):
         """
 
         if refgenes is None and currgenes is not None or refgenes is not None and currgenes is None:
-            raise ValueError("If refgenes is passed, currgenes must be passed too. If currgenes is passed, refgenes must be passed too.")
+            raise ValueError(
+                "If refgenes is passed, currgenes must be passed too."
+                "If currgenes is passed, refgenes must be passed too."
+            )
         
         # Create collate_fn via a partial of the possible collators, depending on if columns intersection is being calculated
         if refgenes is not None:
@@ -440,8 +440,6 @@ def clean_sample(
     refgenes: List[str], 
     currgenes: List[str],
 ) -> torch.Tensor:
-    # currgenes and refgenes are already sorted
-    # Passed froem calculate_intersection
     """
     Remove uneeded gene columns for given sample.
 
@@ -498,8 +496,16 @@ def generate_single_dataset(
             current_labels = pd.read_csv(labelfile, sep=sep, index_col=index_col).loc[:, class_label]
 
         # Make stratified split on labels
-        trainsplit, valsplit = train_test_split(current_labels, stratify=(current_labels if stratify else None), test_size=test_prop)
-        trainsplit, testsplit = train_test_split(trainsplit, stratify=(trainsplit if stratify else None), test_size=test_prop)
+        trainsplit, valsplit = train_test_split(
+            current_labels, 
+            stratify=(current_labels if stratify else None), 
+            test_size=test_prop
+        )
+        trainsplit, testsplit = train_test_split(
+            trainsplit, 
+            stratify=(trainsplit if stratify else None), 
+            test_size=test_prop
+        )
 
         data = sc.read_h5ad(datafile)
         train, val, test = (
@@ -522,8 +528,16 @@ def generate_single_dataset(
             current_labels = pd.read_csv(labelfile, sep=sep).loc[:, class_label]
 
         # Make stratified split on labels
-        trainsplit, valsplit = train_test_split(current_labels, stratify=(current_labels if stratify else None), test_size=test_prop)
-        trainsplit, testsplit = train_test_split(trainsplit, stratify=(trainsplit if stratify else None), test_size=test_prop)
+        trainsplit, valsplit = train_test_split(
+            current_labels, 
+            stratify=(current_labels if stratify else None), 
+            test_size=test_prop
+        )
+        trainsplit, testsplit = train_test_split(
+            trainsplit, 
+            stratify=(trainsplit if stratify else None), 
+            test_size=test_prop
+        )
 
         train, val, test = (
             GeneExpressionData(
@@ -731,11 +745,9 @@ def generate_single_test_dataset(
             *args,
             **kwargs,
         )
-
     else:
         if suffix != '.csv' and suffix != '.tsv':
-            print(f'Extension {suffix} not recognized, \
-                interpreting as .csv. To silence this warning, pass in explicit file types.')
+            print(f'Extension {suffix} not recognized, interpreting as .csv. To silence this warning, pass in explicit file types.')
 
         dataset = GeneExpressionData(
                 filename=datafile,
@@ -758,7 +770,6 @@ def generate_single_test_loader(
     *args,
     **kwargs,
 ):
-
     dataset = generate_single_test_dataset(
         datafile,
         labelfile,
@@ -896,11 +907,13 @@ def compute_class_weights(
             pd.read_csv(file, sep=sep).loc[:, class_label].values
         )
 
-    weights = torch.from_numpy(compute_class_weight(
+    weights = torch.from_numpy(
+        compute_class_weight(
             classes=np.unique(comb),
             y=comb,
             class_weight='balanced',
-        )).float()
+        )
+    ).float()
 
     return (
         weights.to(device) if device is not None else weights
