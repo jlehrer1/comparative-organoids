@@ -436,8 +436,8 @@ def _transform_sample(
     return data 
 
 def clean_sample(
-    sample: torch.Tensor, 
-    refgenes: List[str], 
+    sample: torch.Tensor,
+    refgenes: List[str],
     currgenes: List[str],
 ) -> torch.Tensor:
     """
@@ -452,8 +452,9 @@ def clean_sample(
     :return: Sample reordered and intersected with the list of refgenes
     :rtype: torch.Tensor
     """
+    
     intersection = np.intersect1d(currgenes, refgenes, return_indices=True)
-    indices = intersection[1] # List of indices in currgenes that equal refgenes 
+    indices = intersection[1] # List of indices in sorted(currgenes) that equal sorted(refgenes)
     
     axis = (1 if sample.ndim == 2 else 0)
     sample = np.sort(sample, axis=axis)

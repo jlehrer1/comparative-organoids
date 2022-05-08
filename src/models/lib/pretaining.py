@@ -23,6 +23,9 @@ from pytorch_tabnet.tab_network import EmbeddingGenerator, RandomObfuscator, Tab
 import sys, os 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
+# ALL THIS IS FLATTENING THE API FROM https://github.com/dreamquark-ai/tabnet
+# GIVE MASSIVE CREDIT 
+
 class NoiseObfuscator(torch.nn.Module):
     def __init__(
         self,
@@ -40,7 +43,75 @@ class NoiseObfuscator(torch.nn.Module):
     def forward(self, x):
         return x + self.variance*torch.randn_like(x)
 
-class TabNetPretraining(torch.nn.Module):
+def UnsupervisedLoss(y_pred, embedded_x, obf_vars, eps=1e-9):
+    """
+    Implements unsupervised loss function.
+    This differs from orginal paper as it's scaled to be batch size independent
+    and number of features reconstructed independent (by taking the mean)
+    Parameters
+    ----------
+    y_pred : torch.Tensor or np.array
+        Reconstructed prediction (with embeddings)
+    embedded_x : torch.Tensor
+        Original input embedded by network
+    obf_vars : torch.Tensor
+        Binary mask for obfuscated variables.
+        1 means the variable was obfuscated so reconstruction is based on this.
+    eps : float
+        A small floating point to avoid ZeroDivisionError
+        This can happen in degenerated case when a feature has only one value
+    Returns
+    -------
+    loss : torch float
+        Unsupervised loss, average value over batch samples.
+    """
+    errors = y_pred - embedded_x
+    reconstruction_errors = torch.mul(errors, obf_vars) ** 2
+    batch_means = torch.mean(embedded_x, dim=0)
+    batch_means[batch_means == 0] = 1
+
+    batch_stds = torch.std(embedded_x, dim=0) ** 2
+    batch_stds[batch_stds == 0] = batch_means[batch_stds == 0]
+    features_loss = torch.matmul(reconstruction_errors, 1 / batch_stds)
+    # compute the number of obfuscated variables to reconstruct
+    nb_reconstructed_variables = torch.sum(obf_vars, dim=1)
+    # take the mean of the reconstructed variable errors
+    features_loss = features_loss / (nb_reconstructed_variables + eps)
+    # here we take the mean per batch, contrary to the paper
+    loss = torch.mean(features_loss)
+    return loss
+
+def UnsupervisedLossNumpy(y_pred, embedded_x, obf_vars, eps=1e-9):
+    """Compute Euclidean distance between reconstructed and original vector 
+
+    :param y_pred: _description_
+    :type y_pred: _type_
+    :param embedded_x: _description_
+    :type embedded_x: _type_
+    :param obf_vars: _description_
+    :type obf_vars: _type_
+    :param eps: _description_, defaults to 1e-9
+    :type eps: _type_, optional
+    :return: _description_
+    :rtype: _type_
+    """    
+    errors = y_pred - embedded_x
+    reconstruction_errors = np.multiply(errors, obf_vars) ** 2
+    batch_means = np.mean(embedded_x, axis=0)
+    batch_means = np.where(batch_means == 0, 1, batch_means)
+
+    batch_stds = np.std(embedded_x, axis=0, ddof=1) ** 2
+    batch_stds = np.where(batch_stds == 0, batch_means, batch_stds)
+    features_loss = np.matmul(reconstruction_errors, 1 / batch_stds)
+    # compute the number of obfuscated variables to reconstruct
+    nb_reconstructed_variables = np.sum(obf_vars, axis=1)
+    # take the mean of the reconstructed variable errors
+    features_loss = features_loss / (nb_reconstructed_variables + eps)
+    # here we take the mean per batch, contrary to the paper
+    loss = np.mean(features_loss)
+    return loss
+
+class TabNetPretraining(pl.LightningModule):
     def __init__(
         self,
         input_dim,
@@ -104,6 +175,7 @@ class TabNetPretraining(torch.nn.Module):
             momentum=momentum,
             mask_type=mask_type,
         )
+
         self.decoder = TabNetDecoder(
             self.post_embed_dim,
             n_d=n_d,
@@ -115,12 +187,6 @@ class TabNetPretraining(torch.nn.Module):
         )
 
     def forward(self, x):
-        """
-        Returns: res, embedded_x, obf_vars
-            res : output of reconstruction
-            embedded_x : embedded input
-            obf_vars : which variable where obfuscated
-        """
         embedded_x = self.embedder(x)
         if self.training:
             masked_x, obf_vars = self.masker(embedded_x)
@@ -137,6 +203,31 @@ class TabNetPretraining(torch.nn.Module):
     def forward_masks(self, x):
         embedded_x = self.embedder(x)
         return self.encoder.forward_masks(embedded_x)
+
+    def training_step(self, batch, batch_idx):
+        y, y_hat, loss = self._step(batch)
+
+        self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
+        self._compute_metrics(y_hat, y, 'train')
+
+        return loss
+
+    def _compute_metrics(self, 
+        y_hat: torch.Tensor, 
+        y: torch.Tensor, 
+        tag: str,
+        on_epoch=True, 
+        on_step=False,
+    ):
+        val = metric(y_hat, y, average='weighted', num_classes=self.output_dim)
+
+        self.log(
+            f"Reconstuction loss", 
+            val, 
+            on_epoch=on_epoch, 
+            on_step=on_step,
+            logger=True,
+        )
 
 def pretrain_model(
     datamodule,

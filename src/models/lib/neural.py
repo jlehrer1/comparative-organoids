@@ -17,6 +17,7 @@ import torch.nn.functional as F
 from torchmetrics.functional import accuracy, precision, recall 
 from pytorch_tabnet.tab_network import TabNet
 import copy
+import warnings
 
 class TabNetLightning(pl.LightningModule):
     def __init__(
@@ -51,6 +52,7 @@ class TabNetLightning(pl.LightningModule):
         weighted_metrics=False,
         weights=None,
         loss=None, # will default to cross_entropy
+        pretrained=None,
     ) -> None:
         super().__init__()
 
@@ -66,6 +68,8 @@ class TabNetLightning(pl.LightningModule):
         self.weights = weights 
         self.loss = loss 
 
+        if pretrained is not None:
+            self._from_pretrained(**pretrained.get_params())
         # self.device = ('cuda:0' if torch.cuda.is_available() else 'cpu!')
 
         print(f'Initializing network')
@@ -121,7 +125,7 @@ class TabNetLightning(pl.LightningModule):
         self.log("train_loss", loss, logger=True, on_epoch=True, on_step=True)
         self._compute_metrics(y_hat, y, 'train')
 
-        return loss 
+        return loss
 
     def validation_step(self, batch, batch_idx):
         y, y_hat, loss = self._step(batch)
@@ -292,7 +296,6 @@ class TabNetLightning(pl.LightningModule):
         self.network.eval()
         self.load_class_attrs(loaded_params["class_attrs"])
 
-
     def load_weights_from_unsupervised(self, unsupervised_model):
         update_state_dict = copy.deepcopy(self.network.state_dict())
         for param, weights in unsupervised_model.network.state_dict().items():
@@ -304,3 +307,27 @@ class TabNetLightning(pl.LightningModule):
             if self.network.state_dict().get(new_param) is not None:
                 # update only common layers
                 update_state_dict[new_param] = weights
+
+    def _from_pretrained(self, **kwargs):
+        update_list = [
+            "cat_dims",
+            "cat_emb_dim",
+            "cat_idxs",
+            "input_dim",
+            "mask_type",
+            "n_a",
+            "n_d",
+            "n_independent",
+            "n_shared",
+            "n_steps",
+        ]
+        for var_name, value in kwargs.items():
+            if var_name in update_list:
+                try:
+                    exec(f"global previous_val; previous_val = self.{var_name}")
+                    if previous_val != value:  # noqa
+                        wrn_msg = f"Pretraining: {var_name} changed from {previous_val} to {value}"  # noqa
+                        warnings.warn(wrn_msg)
+                        exec(f"self.{var_name} = value")
+                except AttributeError:
+                    exec(f"self.{var_name} = value")

@@ -119,14 +119,24 @@ upload_callback = UploadCallback(
     path='checkpoints',
     desc='dental'
 )
+early_stopping_callback = pl.callbacks.EarlyStopping(
+    monitor='val_loss',
+    patience=4,
+)
 
 trainer = pl.Trainer(
     gpus=(1 if torch.cuda.is_available() else 0),
     auto_lr_find=False,
     logger=wandb_logger,
-    max_epochs=100,
+    max_epochs=500,
     gradient_clip_val=0.5,
-    callbacks=[lr_callback, checkpoint_callback, upload_callback]
+    callbacks=[
+        lr_callback, 
+        checkpoint_callback, 
+        upload_callback,
+        early_stopping_callback,
+    ]
 )
 
 trainer.fit(model, datamodule=module)
+trainer.test(model, datamodule=module)
