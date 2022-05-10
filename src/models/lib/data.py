@@ -254,6 +254,10 @@ class AnnDatasetMatrix(Dataset):
             self.data.shape[0] if issparse(self.data) else len(self.data)
         )
 
+    @property 
+    def shape(self):
+        return self.data.shape 
+    
 class CollateLoader(DataLoader):
     def __init__(
         self,
@@ -264,8 +268,6 @@ class CollateLoader(DataLoader):
         currgenes: List[str]=None,
         transpose: bool=False, 
         normalize: bool=False,
-        add_noise: bool=False,
-        noise_func: Callable=None,
         *args,
         **kwargs,
     ) -> None:
@@ -299,17 +301,13 @@ class CollateLoader(DataLoader):
                 refgenes=refgenes, 
                 currgenes=currgenes, 
                 transpose=transpose, 
-                normalize=normalize,
-                add_noise=add_noise,
-                noise_func=noise_func,
+                normalize=normalize, 
             )
         else:
             collate_fn = partial(
                 _standard_collate,
                 normalize=normalize, 
                 transpose=transpose,
-                add_noise=add_noise,
-                noise_func=noise_func,
             )
 
         # This is awkward, but Dataloader init doesn't handle optional keyword arguments
@@ -353,8 +351,6 @@ def _collate_with_refgenes(
     currgenes: List[str],
     transpose: bool,
     normalize: bool,
-    add_noise: bool,
-    noise_func: Callable,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Collate minibatch of samples where we're intersecting the columns between refgenes and currgenes,
@@ -378,17 +374,12 @@ def _collate_with_refgenes(
 
     # Add Gaussian noise if noise function isn't specificed, otherwise use tht
     # Assumes compatability with the data tensor 
-    if add_noise:
-        noise = torch.randn_like(data) if noise_func is None else noise_func(data)
-        data = data + noise 
-
     return _transform_sample(data, normalize, transpose), labels 
 
 def _standard_collate(
     sample: List[tuple],
     normalize: bool,
     transpose: bool,
-    add_noise: bool=False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Collate minibatch of samples, optionally normalizing and transposing. 
@@ -404,9 +395,6 @@ def _standard_collate(
     """    
     data = torch.stack([x[0] for x in sample])
     labels = torch.tensor([x[1] for x in sample])
-
-    if add_noise:
-        data = data + torch.randn_like(data)
 
     return _transform_sample(data, normalize, transpose), labels 
 
@@ -492,7 +480,8 @@ def generate_single_dataset(
 
     if suffix == '.h5ad':
         if subset is not None:
-            current_labels = pd.read_csv(labelfile, sep=sep, index_col=index_col).loc[subset, class_label]
+            current_labels = pd.read_csv(labelfile, sep=sep, index_col=index_col).iloc[subset, :]
+            current_labels = current_labels.loc[:, class_label]
         else:
             current_labels = pd.read_csv(labelfile, sep=sep, index_col=index_col).loc[:, class_label]
 

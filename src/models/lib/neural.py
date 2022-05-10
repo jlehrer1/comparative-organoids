@@ -205,8 +205,6 @@ class TabNetLightning(pl.LightningModule):
         res_explain = []
 
         for batch_nb, data in enumerate(loader):
-            # data = data.to(self.device).float()
-
             if isinstance(data, tuple): # if we are running this on already labeled pairs and not just for inference
                 data, _ = data 
                 

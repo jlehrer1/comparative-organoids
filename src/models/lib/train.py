@@ -18,7 +18,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '
 from helper import upload, seed_everything
 from .data import clean_sample
 
-
 # reproducibility over all workers
 def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
