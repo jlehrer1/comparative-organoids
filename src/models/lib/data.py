@@ -369,7 +369,12 @@ def _collate_with_refgenes(
     :rtype: Tuple[torch.Tensor, torch.Tensor]
     """
 
-    data = clean_sample(torch.stack([x[0] for x in sample]), refgenes, currgenes)
+    data = clean_sample(
+        sample=torch.stack([x[0] for x in sample]), 
+        refgenes=refgenes, 
+        currgenes=currgenes,
+    )
+
     labels = torch.tensor([x[1] for x in sample])
 
     # Add Gaussian noise if noise function isn't specificed, otherwise use tht
@@ -459,6 +464,7 @@ def generate_single_dataset(
     sep=',',
     subset=None,
     stratify=True,
+    deterministic=False,
     *args,
     **kwargs,
 ) -> Tuple[Dataset, Dataset, Dataset]:
@@ -489,12 +495,14 @@ def generate_single_dataset(
         trainsplit, valsplit = train_test_split(
             current_labels, 
             stratify=(current_labels if stratify else None), 
-            test_size=test_prop
+            test_size=test_prop,
+            random_state=(42 if deterministic else None)
         )
         trainsplit, testsplit = train_test_split(
             trainsplit, 
             stratify=(trainsplit if stratify else None), 
-            test_size=test_prop
+            test_size=test_prop,
+            random_state=(42 if deterministic else None)
         )
 
         data = sc.read_h5ad(datafile)
@@ -656,50 +664,6 @@ def generate_datasets(
         test_datasets = ConcatDataset(test_datasets)
 
     return train_datasets, val_datasets, test_datasets
-
-# def generate_single_test_dataset(
-#     datafile: str,
-#     class_label: str=None,
-#     index_col: str=None,
-#     labelfile: str=None,
-#     sep: str=',',
-#     *args,
-#     **kwargs,
-# ):
-#     # TODO: Write this annoying ass method 
-
-#     if labelfile is None and class_label is not None:
-#         raise ValueError("Cannot pass a class_label without a labelfile")
-    
-#     if labelfile is None and index_col is not None:
-#         raise ValueError("Cannot pass an index_col without a labelfile")
-
-#     suffix = pathlib.Path(datafile).suffix
-#     if suffix == '.h5ad':
-#         data = sc.read_h5ad(datafile)
-#         labels = pd.read_csv(labelfile, index_col=index_col).loc[:, class_label].values 
-#         dataset = AnnDatasetMatrix(
-#             matrix=data.X,
-#             labels=labels,
-#             *args,
-#             **kwargs,
-#         )
-
-#     else:
-#         if suffix != '.csv' and suffix != '.tsv':
-#             print(f'Extension {suffix} not recognized, \
-#                 interpreting as .csv. To silence this warning, pass in explicit file types.')
-#         dataset = GeneExpressionData(
-#                 filename=datafile,
-#                 labelname=labelfile,
-#                 class_label=class_label,
-#                 index_col=index_col,
-#                 sep=sep,
-#                 *args,
-#                 **kwargs,
-#             )
-
-#     return dataset
 
 def generate_single_test_dataset(
     datafile: str,

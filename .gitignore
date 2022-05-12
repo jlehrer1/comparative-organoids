@@ -128,3 +128,4 @@ data/tests/*
 checkpoints/*
 data/developing_mouse_brain/*
 notebooks/developing_mouse_brain/*
+data/pancreas/*

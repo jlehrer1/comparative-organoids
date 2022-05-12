@@ -18,6 +18,7 @@ from torchmetrics.functional import accuracy, precision, recall
 from pytorch_tabnet.tab_network import TabNet
 import copy
 import warnings
+from functools import cached_property
 
 class TabNetLightning(pl.LightningModule):
     def __init__(
@@ -236,6 +237,9 @@ class TabNetLightning(pl.LightningModule):
         sum_explain = M_explain.sum(axis=0)
         feature_importances_ = sum_explain / np.sum(sum_explain)
         return feature_importances_
+
+    def feature_importances(self, dataloader):
+        return self._compute_feature_importances(dataloader)
 
     def save_model(self, path):
         saved_params = {}

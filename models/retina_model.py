@@ -71,6 +71,7 @@ module = DataModule(
     shuffle=True,
     drop_last=True,
     normalize=True,
+    deterministic=True,
 )
 
 model = TabNetLightning(

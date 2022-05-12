@@ -16,6 +16,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from torchmetrics.functional import * 
 
+from functools import partial 
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--lr',
@@ -86,6 +88,7 @@ module = DataModule(
     normalize=True,
     refgenes=refgenes,
     currgenes=g2,
+    deterministic=True,
 )
 
 model = TabNetLightning(
@@ -104,12 +107,13 @@ model = TabNetLightning(
         'accuracy': accuracy,
         'precision': precision,
         'recall': recall,
+        'f1_sep': partial(f1_score, average='none')
     },
     # weights=compute_class_weights(labelfiles, 'numeric_class', device=device),
     weighted_metrics=True,
-    # n_d=32, 
-    # n_a=32,
-    # n_steps=10,
+    n_d=32, 
+    n_a=32,
+    n_steps=10,
 )
 
 wandb_logger = WandbLogger(

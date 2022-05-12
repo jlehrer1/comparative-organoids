@@ -86,6 +86,7 @@ module = DataModule(
     sep='\t',
     batch_size=16,
     num_workers=0,
+    deterministic=True,
 )
 
 module.setup()
